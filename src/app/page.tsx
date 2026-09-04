@@ -38,7 +38,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="bg-home-scene flex min-h-screen justify-center items-center p-6 sm:p-10 lg:p-32">
+    <main className="bg-home-scene flex min-h-dvh justify-center items-center p-6 sm:p-10 lg:p-32">
       <div className="w-full max-w-xl rounded-lg bg-white/95 p-8 shadow-2xl">
         <div className="w-full">
           <div className="mb-10 flex items-center gap-2.5">

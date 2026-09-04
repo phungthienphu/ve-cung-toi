@@ -59,7 +59,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
 
   if (!state) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-slate-400">
+      <div className="flex min-h-dvh items-center justify-center text-slate-400">
         {connected ? "Đang tải phòng..." : "Đang kết nối..."}
       </div>
     );
@@ -78,7 +78,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   if (state.status === "gameEnd") {
     const ranking = (finalPlayers ?? state.players).slice().sort((a, b) => b.score - a.score);
     return (
-      <div className="bg-game-scene flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="bg-game-scene flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">Kết thúc ván chơi</h2>
         <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
@@ -126,7 +126,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   }
 
   return (
-    <div className="bg-game-scene min-h-screen">
+    <div className="bg-game-scene min-h-dvh">
     <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-4 md:px-6">
       <RoundHeader
         round={state.round}
