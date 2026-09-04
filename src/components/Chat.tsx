@@ -13,10 +13,18 @@ interface Props {
 export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [entries]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,6 +32,13 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
     if (!trimmed) return;
     onSend(trimmed);
     setText("");
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   }
 
   return (
@@ -53,13 +68,16 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
           );
         })}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-100 p-2">
-        <input
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-slate-100 p-2">
+        <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
           maxLength={200}
+          rows={1}
           placeholder={canGuess ? "Nhập câu đoán..." : "Nhắn tin..."}
-          className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+          className="max-h-24 min-w-0 flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
         />
         <button
           type="submit"

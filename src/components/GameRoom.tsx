@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useGameRoom } from "@/lib/useGameRoom";
 import { WORD_CHOICE_SECONDS, POST_ROUND_SECONDS } from "@shared/types";
 import Lobby from "./Lobby";
@@ -17,12 +18,14 @@ interface Props {
 }
 
 export default function GameRoom({ roomId, playerId, name }: Props) {
+  const router = useRouter();
   const {
     state,
     chat,
     myWord,
     wordChoices,
     connected,
+    kicked,
     finalPlayers,
     strokeEvents,
     send,
@@ -40,6 +43,15 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
     prevStatus.current = state?.status ?? null;
   }, [state?.status]);
 
+  useEffect(() => {
+    if (kicked) {
+      alert("Bạn đã bị chủ phòng mời ra khỏi phòng.");
+      router.push("/");
+    }
+  }, [kicked, router]);
+
+  if (kicked) return null;
+
   if (!state) {
     return (
       <div className="flex min-h-screen items-center justify-center text-slate-400">
@@ -55,7 +67,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   const drawerName = state.players.find((p) => p.id === state.drawerId)?.name;
 
   if (state.status === "lobby") {
-    return <Lobby state={state} selfId={playerId} isHost={isHost} roomId={roomId} onStart={(config) => send({ type: "start_game", config })} />;
+    return <Lobby state={state} selfId={playerId} isHost={isHost} roomId={roomId} send={send} onStart={(config) => send({ type: "start_game", config })} />;
   }
 
   if (state.status === "gameEnd") {
@@ -112,9 +124,19 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         drawerName={drawerName}
       />
 
-      <div className="grid flex-1 gap-4 md:grid-cols-[220px_1fr_260px]">
-        <div className="order-2 md:order-1">
-          <PlayerList players={state.players} drawerId={state.drawerId} selfId={playerId} />
+      <div className="grid flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-start">
+        <div className="order-2 flex flex-col gap-2 md:order-1">
+          <PlayerList players={state.players} drawerId={state.drawerId} selfId={playerId} onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined} />
+          <button
+            onClick={() => {
+              if (!confirm("Rời khỏi phòng?")) return;
+              send({ type: "leave_room" });
+              router.push("/");
+            }}
+            className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-red-500 shadow-sm hover:bg-red-50"
+          >
+            Rời phòng
+          </button>
         </div>
 
         <div className="order-1 md:order-2">
@@ -131,7 +153,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           )}
         </div>
 
-        <div className="order-3 h-[320px] md:h-auto">
+        <div className="order-3 h-[320px] md:h-[600px]">
           <Chat
             entries={chat}
             selfId={playerId}
@@ -191,7 +213,7 @@ function RoundHeader({
         <span className="font-mono font-semibold">{seconds}s</span>
       </div>
       <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full bg-brand-500 transition-[width]" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
       </div>
       {(status === "playing" || status === "choosing") && (
         <div className="mt-2 text-center text-2xl font-black tracking-widest text-slate-700">{display || " "}</div>

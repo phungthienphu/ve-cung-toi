@@ -42,9 +42,36 @@ export const EN_DEFAULT_WORDS: string[] = [
   "snowman", "santa claus", "superhero", "vampire", "dragon", "robot",
 ];
 
+export const VI_HARD_WORDS: string[] = [
+  "deadline dí sát nút", "wifi yếu", "hết pin lúc quan trọng", "nhạc sến",
+  "crush đi ngang qua", "giả vờ bận", "họp online bị đơ hình", "sếp gọi ngoài giờ",
+  "kẹt xe giờ tan tầm", "trà đá vỉa hè", "cháy túi cuối tháng", "giao hàng nhầm địa chỉ",
+  "wifi chùa hàng xóm", "mất ví đúng lúc đói", "dậy muộn đi làm", "than thở cuối tuần",
+  "ảo tưởng sức mạnh", "flex quá đà", "đu trend", "cà khịa",
+  "sống ảo", "ghost tin nhắn", "đứng hình mất 5 giây", "hết mood làm việc",
+  "nấu ăn cháy nồi", "đi làm vào thứ hai", "họp hành liên miên", "lương ba cọc ba đồng",
+  "đặt đồ ăn nhầm món", "sạc pin quên rút", "gửi nhầm tin nhắn cho sếp", "quên mật khẩu",
+  "lag game giữa trận", "spam like dạo", "trà chanh chém gió", "canh giờ vàng săn sale",
+  "chỉnh ảnh sống ảo", "trốn deadline", "họp lại chốt lịch họp", "khoe con lên mạng",
+  "review 1 sao dạo",
+];
+
+export const EN_HARD_WORDS: string[] = [
+  "deadline stress", "dead phone battery", "awkward silence", "Monday morning",
+  "ghosted text", "burnt dinner", "overslept alarm", "video call freeze",
+  "broke by month end", "secret crush", "fake busy", "traffic jam",
+  "spam likes", "forgot password", "wrong order delivered", "boss calls after hours",
+  "running out of memes", "procrastination", "autocorrect fail", "buffering video",
+  "lost airpod", "overthinking", "group project drama", "cliffhanger ending",
+  "plot twist", "awkward eye contact", "endless scrolling", "humble brag",
+  "doom scrolling", "fashionably late",
+];
+
 export const DEFAULT_WORDLISTS: WordlistDef[] = [
-  { id: "vi-default", name: "Đời sống (Tiếng Việt)", language: "vi", words: VI_DEFAULT_WORDS },
-  { id: "en-default", name: "Everyday life (English)", language: "en", words: EN_DEFAULT_WORDS },
+  { id: "vi-default", name: "Đời sống (Tiếng Việt - Dễ)", language: "vi", words: VI_DEFAULT_WORDS },
+  { id: "en-default", name: "Everyday life (English - Easy)", language: "en", words: EN_DEFAULT_WORDS },
+  { id: "vi-hard", name: "Khó & Hài hước (Tiếng Việt)", language: "vi", words: VI_HARD_WORDS },
+  { id: "en-hard", name: "Hard & Funny (English)", language: "en", words: EN_HARD_WORDS },
 ];
 
 export function getWordsForIds(ids: string[]): string[] {

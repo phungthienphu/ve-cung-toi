@@ -21,6 +21,7 @@ export interface GameRoomHandle {
   myWord: string | null;
   wordChoices: { choices: string[]; deadline: number } | null;
   connected: boolean;
+  kicked: boolean;
   finalPlayers: Player[] | null;
   lastRoundResult: { word: string; scores: { playerId: string; delta: number }[] } | null;
   strokeEvents: { kind: "stroke" | "point" | "end" | "clear"; segment?: StrokeSegment; strokeId?: string; point?: StrokePoint }[];
@@ -35,6 +36,7 @@ export function useGameRoom(roomId: string, playerId: string, name: string): Gam
   const [myWord, setMyWord] = useState<string | null>(null);
   const [wordChoices, setWordChoices] = useState<{ choices: string[]; deadline: number } | null>(null);
   const [connected, setConnected] = useState(false);
+  const [kicked, setKicked] = useState(false);
   const [finalPlayers, setFinalPlayers] = useState<Player[] | null>(null);
   const [lastRoundResult, setLastRoundResult] = useState<{ word: string; scores: { playerId: string; delta: number }[] } | null>(null);
   const [strokeEvents, setStrokeEvents] = useState<GameRoomHandle["strokeEvents"]>([]);
@@ -88,6 +90,9 @@ export function useGameRoom(roomId: string, playerId: string, name: string): Gam
         case "game_result":
           setFinalPlayers(msg.players);
           break;
+        case "kicked":
+          setKicked(true);
+          break;
         case "error":
           console.error("Room error:", msg.message);
           break;
@@ -107,7 +112,7 @@ export function useGameRoom(roomId: string, playerId: string, name: string): Gam
 
   const clearStrokeEvents = useCallback(() => setStrokeEvents([]), []);
 
-  return { state, chat, myWord, wordChoices, connected, finalPlayers, lastRoundResult, strokeEvents, send, clearStrokeEvents };
+  return { state, chat, myWord, wordChoices, connected, kicked, finalPlayers, lastRoundResult, strokeEvents, send, clearStrokeEvents };
 }
 
 export type { RoomConfig };

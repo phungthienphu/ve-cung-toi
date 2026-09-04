@@ -82,7 +82,9 @@ export type ClientMessage =
   | { type: "stroke_end"; strokeId: string }
   | { type: "clear_canvas" }
   | { type: "chat"; text: string }
-  | { type: "play_again" };
+  | { type: "play_again" }
+  | { type: "kick_player"; playerId: string }
+  | { type: "leave_room" };
 
 export type ServerMessage =
   | { type: "state"; state: PublicRoomState }
@@ -95,4 +97,5 @@ export type ServerMessage =
   | { type: "clear_canvas" }
   | { type: "round_result"; word: string; scores: { playerId: string; delta: number }[] }
   | { type: "game_result"; players: Player[] }
+  | { type: "kicked" }
   | { type: "error"; message: string };

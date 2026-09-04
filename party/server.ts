@@ -128,6 +128,10 @@ export default class GameRoom implements Party.Server {
         return this.handleChat(msg.text, sender);
       case "play_again":
         return this.handlePlayAgain(sender);
+      case "kick_player":
+        return this.handleKickPlayer(msg.playerId, sender);
+      case "leave_room":
+        return this.handleLeaveRoom(sender);
     }
   }
 
@@ -252,6 +256,44 @@ export default class GameRoom implements Party.Server {
     this.turnEndsAt = null;
     this.phaseEndsAt = null;
     this.broadcastState();
+  }
+
+  private handleKickPlayer(targetId: string, sender: Party.Connection) {
+    if (sender.id !== this.hostId || targetId === sender.id) return;
+    const target = this.players.get(targetId);
+    if (!target) return;
+
+    const targetConn = [...this.party.getConnections()].find((c) => c.id === targetId);
+    if (targetConn) {
+      targetConn.send(JSON.stringify({ type: "kicked" } satisfies ServerMessage));
+      targetConn.close();
+    }
+    this.players.delete(targetId);
+    this.systemMessage(`${target.name} đã bị chủ phòng mời ra khỏi phòng.`);
+
+    if (this.status !== "lobby" && this.status !== "gameEnd" && this.drawerId === targetId) {
+      this.endTurn();
+    }
+    this.broadcastState();
+  }
+
+  private handleLeaveRoom(sender: Party.Connection) {
+    const player = this.players.get(sender.id);
+    if (!player) return;
+
+    this.players.delete(sender.id);
+    this.systemMessage(`${player.name} đã rời phòng.`);
+
+    if (this.hostId === sender.id) {
+      const next = [...this.players.values()].find((p) => p.connected);
+      this.hostId = next ? next.id : null;
+      if (next) next.isHost = true;
+    }
+    if (this.status !== "lobby" && this.status !== "gameEnd" && this.drawerId === sender.id) {
+      this.endTurn();
+    }
+    this.broadcastState();
+    sender.close();
   }
 
   private handleChat(text: string, sender: Party.Connection) {

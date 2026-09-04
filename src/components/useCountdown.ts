@@ -13,7 +13,7 @@ export function useCountdown(endsAt: number | null): number {
     setRemaining(Math.max(0, endsAt - Date.now()));
     const id = setInterval(() => {
       setRemaining(Math.max(0, endsAt - Date.now()));
-    }, 250);
+    }, 100);
     return () => clearInterval(id);
   }, [endsAt]);
 
