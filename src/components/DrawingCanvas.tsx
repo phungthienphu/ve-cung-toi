@@ -14,6 +14,16 @@ const CANVAS_W = 900;
 const CANVAS_H = 560;
 const SEND_THROTTLE_MS = 40;
 
+const PENCIL_CURSOR_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>
+  <g transform='rotate(45 16 16)'>
+    <rect x='13' y='2' width='6' height='20' rx='1.5' fill='#334155'/>
+    <rect x='13' y='2' width='6' height='6' rx='1.5' fill='#fbbf24'/>
+    <polygon points='13,22 19,22 16,30' fill='#f8fafc' stroke='#334155' stroke-width='1'/>
+    <polygon points='14.5,26 17.5,26 16,30' fill='#1e293b'/>
+  </g>
+</svg>`;
+const PENCIL_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(PENCIL_CURSOR_SVG)}") 4 28, crosshair`;
+
 const PALETTE = [
   "#1e1e1e", "#ffffff", "#7f7f7f", "#c1c1c1",
   "#ef4444", "#f97316", "#facc15", "#22c55e",
@@ -170,13 +180,13 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className={`block w-full touch-none ${isDrawer ? "cursor-crosshair" : "cursor-default"}`}
-          style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}` }}
+          className="block w-full touch-none"
+          style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, cursor: isDrawer ? PENCIL_CURSOR : "default" }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -185,7 +195,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
       </div>
 
       {isDrawer && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
           <div className="flex gap-1.5">
             {PALETTE.map((c) => (
               <button
@@ -214,18 +224,20 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
 
           <button
             onClick={() => setTool(tool === "eraser" ? "pen" : "eraser")}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-              tool === "eraser" ? "bg-brand-500 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              tool === "eraser"
+                ? "border-brand-500 bg-brand-500 text-white"
+                : "border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-600"
             }`}
           >
-            🧽 Tẩy
+            Tẩy
           </button>
 
           <button
             onClick={handleClear}
-            className="rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
           >
-            🗑️ Xóa hết
+            Xóa hết
           </button>
         </div>
       )}

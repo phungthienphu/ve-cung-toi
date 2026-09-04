@@ -20,6 +20,20 @@ const config: Config = {
           800: "#1a257f",
           900: "#141c5c",
         },
+        // Sampled from the hero illustration (chalkboard/pig artwork) so the
+        // landing/join screens feel like one piece with it, instead of a
+        // cold blue SaaS panel bolted onto a warm hand-drawn scene.
+        cream: {
+          50: "#fbf6ec",
+          100: "#f5ead2",
+          200: "#ecdcb8",
+        },
+        clay: {
+          500: "#c1613f",
+          600: "#a84f31",
+          700: "#8c4028",
+        },
+        ink: "#3e2f22",
       },
     },
   },

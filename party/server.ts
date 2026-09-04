@@ -2,7 +2,9 @@ import type * as Party from "partykit/server";
 import {
   DEFAULT_ROOM_CONFIG,
   MAX_PLAYERS,
+  MAX_WORD_COUNT,
   MIN_PLAYERS_TO_START,
+  MIN_WORD_COUNT,
   POST_ROUND_SECONDS,
   WORD_CHOICE_SECONDS,
   type ChatEntry,
@@ -37,6 +39,10 @@ function makeId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function countWords(phrase: string): number {
+  return phrase.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default class GameRoom implements Party.Server {
   players = new Map<string, Player>();
   hostId: string | null = null;
@@ -62,6 +68,12 @@ export default class GameRoom implements Party.Server {
   turnScoreDelta = new Map<string, number>();
 
   tickHandle: ReturnType<typeof setInterval> | null = null;
+  // A page refresh briefly closes the old socket right before the new one
+  // reconnects. Deferring the consequences of a disconnect (host handoff,
+  // skipping a drawer's turn) by a short grace period means a plain reload
+  // doesn't look like someone leaving.
+  disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  static readonly DISCONNECT_GRACE_MS = 8000;
 
   constructor(readonly party: Party.Party) {}
 
@@ -76,15 +88,32 @@ export default class GameRoom implements Party.Server {
     const player = this.players.get(connection.id);
     if (!player) return;
     player.connected = false;
+    this.broadcastState();
+
+    const existing = this.disconnectTimers.get(player.id);
+    if (existing) clearTimeout(existing);
+    this.disconnectTimers.set(
+      player.id,
+      setTimeout(() => this.finalizeDisconnect(player.id), GameRoom.DISCONNECT_GRACE_MS)
+    );
+  }
+
+  /** Runs only if the player hasn't reconnected within the grace period. */
+  private finalizeDisconnect(playerId: string) {
+    this.disconnectTimers.delete(playerId);
+    const player = this.players.get(playerId);
+    if (!player || player.connected) return;
+
     this.systemMessage(`${player.name} đã rời phòng.`);
 
-    if (this.status !== "lobby" && this.status !== "gameEnd" && this.drawerId === player.id) {
+    if (this.status !== "lobby" && this.status !== "gameEnd" && this.drawerId === playerId) {
       this.systemMessage(`${player.name} (người vẽ) đã rời phòng, chuyển lượt.`);
       this.endTurn();
     }
 
-    if (this.hostId === player.id) {
-      const next = [...this.players.values()].find((p) => p.connected && p.id !== player.id);
+    if (this.hostId === playerId) {
+      player.isHost = false;
+      const next = [...this.players.values()].find((p) => p.connected && p.id !== playerId);
       this.hostId = next ? next.id : null;
       if (next) next.isHost = true;
     }
@@ -156,6 +185,11 @@ export default class GameRoom implements Party.Server {
       if (player.isHost) this.hostId = playerId;
       this.systemMessage(`${cleanName} đã vào phòng.`);
     } else {
+      const pendingDisconnect = this.disconnectTimers.get(playerId);
+      if (pendingDisconnect) {
+        clearTimeout(pendingDisconnect);
+        this.disconnectTimers.delete(playerId);
+      }
       player.connected = true;
       player.name = cleanName;
       this.systemMessage(`${cleanName} đã kết nối lại.`);
@@ -186,16 +220,30 @@ export default class GameRoom implements Party.Server {
       return;
     }
 
+    const minWords = Math.min(Math.max(MIN_WORD_COUNT, Math.round(config.minWords) || MIN_WORD_COUNT), MAX_WORD_COUNT);
+    const maxWords = Math.min(Math.max(minWords, Math.round(config.maxWords) || MAX_WORD_COUNT), MAX_WORD_COUNT);
+
     this.config = {
       rounds: Math.min(Math.max(1, Math.round(config.rounds) || 1), 10),
       drawSeconds: Math.min(Math.max(30, Math.round(config.drawSeconds) || 80), 240),
       wordlistIds: config.wordlistIds?.length ? config.wordlistIds : ["vi-default"],
       customWords: (config.customWords || []).map((w) => w.trim()).filter(Boolean),
+      minWords,
+      maxWords,
     };
 
-    this.wordPool = [...getWordsForIds(this.config.wordlistIds), ...this.config.customWords];
+    const fullPool = [...getWordsForIds(this.config.wordlistIds), ...this.config.customWords];
+    this.wordPool = fullPool.filter((w) => {
+      const n = countWords(w);
+      return n >= minWords && n <= maxWords;
+    });
     if (this.wordPool.length < 3) {
-      sender.send(JSON.stringify({ type: "error", message: "Cần ít nhất 3 từ trong bộ từ vựng đã chọn." } satisfies ServerMessage));
+      sender.send(
+        JSON.stringify({
+          type: "error",
+          message: `Chỉ có ${this.wordPool.length} từ phù hợp với khoảng ${minWords}-${maxWords} từ/câu. Hãy nới rộng khoảng hoặc thêm từ tùy chỉnh.`,
+        } satisfies ServerMessage)
+      );
       return;
     }
     this.usedWords.clear();

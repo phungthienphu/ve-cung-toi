@@ -13,7 +13,7 @@ export default function PlayerList({ players, drawerId, selfId, onKick }: Props)
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl bg-white p-3 shadow-sm">
+    <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
       <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
         Người chơi ({players.length})
       </h3>

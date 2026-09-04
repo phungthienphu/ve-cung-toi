@@ -55,7 +55,7 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl bg-white shadow-sm">
+    <div className="flex h-full min-h-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xl">
       <div ref={listRef} className="no-scrollbar flex-1 space-y-1.5 overflow-y-auto p-3 text-sm">
         {entries.map((entry) => {
           if (entry.type === "system") {
@@ -90,7 +90,7 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
           maxLength={200}
           rows={1}
           placeholder={canGuess ? "Nhập câu đoán..." : "Nhắn tin..."}
-          className="max-h-24 min-w-0 flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+          className="max-h-24 min-w-0 flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="submit"

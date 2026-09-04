@@ -78,19 +78,20 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   if (state.status === "gameEnd") {
     const ranking = (finalPlayers ?? state.players).slice().sort((a, b) => b.score - a.score);
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-6 px-4 py-10">
-        <h2 className="text-3xl font-black text-brand-600">🏆 Kết thúc ván chơi!</h2>
-        <div className="w-full rounded-2xl bg-white p-6 shadow-lg">
+      <div className="bg-game-scene flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Kết thúc ván chơi</h2>
+        <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
           {ranking.map((p, i) => (
             <div key={p.id} className="flex items-center justify-between border-b border-slate-100 py-2.5 last:border-0">
-              <span className="flex items-center gap-2 font-medium">
+              <span className="flex items-center gap-2 font-medium text-slate-800">
                 <span className="text-slate-400">#{i + 1}</span>
                 {i === 0 && "🥇"}
                 {i === 1 && "🥈"}
                 {i === 2 && "🥉"}
                 {p.name}
               </span>
-              <span className="font-bold text-brand-600">{p.score} điểm</span>
+              <span className="font-semibold text-brand-600">{p.score} điểm</span>
             </div>
           ))}
         </div>
@@ -101,24 +102,32 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
                 playClick();
                 send({ type: "play_again" });
               }}
-              className="rounded-xl bg-brand-500 px-5 py-2.5 font-semibold text-white hover:bg-brand-600"
+              className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-200 transition hover:bg-brand-600"
             >
               Chơi lại
             </button>
           )}
-          <Link href="/leaderboard" className="rounded-xl bg-slate-100 px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-200">
-            🏆 Xếp hạng
+          <Link
+            href="/leaderboard"
+            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+          >
+            Xếp hạng
           </Link>
-          <Link href="/" className="rounded-xl bg-slate-100 px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-200">
+          <Link
+            href="/"
+            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+          >
             Về trang chủ
           </Link>
         </div>
+      </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-3 py-4 md:px-6">
+    <div className="bg-game-scene min-h-screen">
+    <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-4 md:px-6">
       <RoundHeader
         round={state.round}
         totalTurns={state.totalTurns}
@@ -142,7 +151,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
               send({ type: "leave_room" });
               router.push("/");
             }}
-            className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-red-500 shadow-sm hover:bg-red-50"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-red-500 shadow-xl transition hover:border-red-300 hover:bg-red-50"
           >
             Rời phòng
           </button>
@@ -175,6 +184,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
       {isDrawerRole && wordChoices && (
         <WordChoiceModal choices={wordChoices.choices} deadline={wordChoices.deadline} onChoose={(word) => send({ type: "choose_word", word })} />
       )}
+    </div>
     </div>
   );
 }
@@ -211,7 +221,7 @@ function RoundHeader({
   const display = isDrawer && myWord ? myWord.split("").join(" ") : (wordHint ?? "").split("").join(" ");
 
   return (
-    <div className="rounded-xl bg-white p-3 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
       <div className="flex items-center justify-between text-sm text-slate-500">
         <span>Lượt {round}/{totalTurns}</span>
         <span>
@@ -238,8 +248,8 @@ function WordChoiceModal({ choices, deadline, onChoose }: { choices: string[]; d
   const seconds = Math.ceil(remaining / 1000);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="animate-bounce-in w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-        <h3 className="mb-1 text-lg font-bold">✏️ Chọn một từ để vẽ</h3>
+      <div className="animate-bounce-in w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 text-center shadow-xl">
+        <h3 className="mb-1 text-lg font-bold text-slate-900">Chọn một từ để vẽ</h3>
         <p className={`mb-4 text-sm ${seconds <= 4 ? "font-semibold text-red-500" : "text-slate-400"}`}>{seconds}s để chọn</p>
         <div className="flex flex-col gap-2">
           {choices.map((w) => (
@@ -249,7 +259,7 @@ function WordChoiceModal({ choices, deadline, onChoose }: { choices: string[]; d
                 playClick();
                 onChoose(w);
               }}
-              className="rounded-xl border-2 border-brand-100 px-4 py-3 font-semibold text-brand-700 transition hover:scale-[1.02] hover:border-brand-400 hover:bg-brand-50"
+              className="rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-700 transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
             >
               {w}
             </button>
@@ -273,9 +283,9 @@ function RoundEndPanel({ word, snapshot }: { word: string | null; snapshot: stri
   }
 
   return (
-    <div className="mt-3 flex flex-col items-center gap-3 rounded-xl bg-white p-4 text-center shadow-sm">
-      <p className="text-lg">
-        Đáp án là: <span className="font-bold text-brand-600">{word}</span>
+    <div className="mt-3 flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xl">
+      <p className="text-lg text-slate-800">
+        Đáp án là: <span className="font-semibold text-brand-600">{word}</span>
       </p>
       {snapshot && (
         <>
@@ -285,12 +295,15 @@ function RoundEndPanel({ word, snapshot }: { word: string | null; snapshot: stri
             <a
               href={snapshot}
               download={`ve-cung-toi-${Date.now()}.png`}
-              className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
+              className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm shadow-brand-200 transition hover:bg-brand-600"
             >
-              ⬇️ Tải về
+              Tải về
             </a>
-            <button onClick={handleCopy} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200">
-              📋 Sao chép
+            <button
+              onClick={handleCopy}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+            >
+              Sao chép
             </button>
           </div>
         </>

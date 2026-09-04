@@ -36,14 +36,21 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
   if (!name) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 via-white to-pink-50 px-4">
-        <div className="animate-pop-in w-full max-w-sm rounded-3xl border-4 border-white bg-white/90 p-6 text-center shadow-xl shadow-brand-100">
-          <div className="mb-1 text-4xl">🎨</div>
-          <h1 className="mb-4 text-2xl font-bold text-slate-800">Vào phòng {roomId}</h1>
+      <main className="bg-game-scene flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
+          <div className="mb-6 flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-clay-500 text-base text-white shadow-sm shadow-clay-500/30">
+              ✎
+            </div>
+            <span className="text-base font-semibold tracking-tight text-ink">Vẽ Cùng Tôi</span>
+          </div>
+          <h1 className="mb-1 text-xl font-bold text-ink">Vào phòng</h1>
+          <p className="mb-5 font-mono text-sm tracking-wider text-ink/40">{roomId}</p>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Tên hiển thị</label>
           <input
             autoFocus
-            className="mb-4 w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-            placeholder="Nhập tên hiển thị của bạn"
+            className="mb-4 w-full rounded-lg border border-cream-200 px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
+            placeholder="Ví dụ: Phú"
             maxLength={20}
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
@@ -51,9 +58,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           />
           <button
             onClick={confirmName}
-            className="w-full rounded-xl bg-brand-500 px-4 py-3 font-semibold text-white shadow-md shadow-brand-200 transition hover:scale-[1.02] hover:bg-brand-600 active:scale-[0.98]"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-clay-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-clay-500/30 transition hover:bg-clay-600 active:bg-clay-700"
           >
-            Vào phòng 🚀
+            Vào phòng
+            <span aria-hidden>→</span>
           </button>
         </div>
       </main>

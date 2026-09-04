@@ -8,7 +8,21 @@ body {
 }
 
 body {
-  background: linear-gradient(180deg, #f5f7ff 0%, #eef1ff 100%);
+  background: #f8fafc;
+}
+
+.bg-game-scene {
+  background-image: url("/bg-in-game.png");
+  background-size: cover;
+  background-position: center;
+  background-color: #f5ead2;
+}
+
+.bg-home-scene {
+  background-image: url("/bg-ve-cung-toi.png");
+  background-size: cover;
+  background-position: center;
+  background-color: #ecdcb8;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -34,21 +48,4 @@ body {
 }
 .animate-wiggle {
   animation: wiggle 0.5s ease-in-out infinite;
-}
-
-@keyframes float-blob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(20px, -30px) scale(1.08); }
-  66% { transform: translate(-15px, 15px) scale(0.95); }
-}
-.animate-float-blob {
-  animation: float-blob 12s ease-in-out infinite;
-}
-
-@keyframes pop-in {
-  0% { transform: scale(0.6); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.animate-pop-in {
-  animation: pop-in 0.3s ease-out;
 }

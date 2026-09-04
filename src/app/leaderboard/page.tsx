@@ -49,10 +49,14 @@ export default function LeaderboardPage() {
   const rows = history ? aggregate(history) : [];
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-4 py-10">
+    <main className="bg-game-scene min-h-screen">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-black text-brand-600">🏆 Bảng xếp hạng</h1>
-        <Link href="/" className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Bảng xếp hạng</h1>
+        <Link
+          href="/"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+        >
           Về trang chủ
         </Link>
       </div>
@@ -67,7 +71,7 @@ export default function LeaderboardPage() {
       )}
 
       {rows.length > 0 && (
-        <div className="mb-10 overflow-hidden rounded-2xl bg-white shadow-lg shadow-brand-100">
+        <div className="mb-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
               <tr>
@@ -103,7 +107,7 @@ export default function LeaderboardPage() {
           <h2 className="mb-3 text-lg font-bold">Ván chơi gần đây</h2>
           <div className="space-y-3">
             {history.map((game) => (
-              <div key={game._id} className="rounded-xl bg-white p-4 shadow-sm">
+              <div key={game._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
                 <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
                   <span>Phòng {game.roomId}</span>
                   <span>{new Date(game.playedAt).toLocaleString("vi-VN")}</span>
@@ -123,6 +127,7 @@ export default function LeaderboardPage() {
           </div>
         </>
       )}
+    </div>
     </main>
   );
 }
