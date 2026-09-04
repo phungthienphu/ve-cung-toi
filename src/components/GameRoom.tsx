@@ -86,6 +86,9 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
               Chơi lại
             </button>
           )}
+          <Link href="/leaderboard" className="rounded-xl bg-slate-100 px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-200">
+            🏆 Xếp hạng
+          </Link>
           <Link href="/" className="rounded-xl bg-slate-100 px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-200">
             Về trang chủ
           </Link>

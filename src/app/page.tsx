@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getStoredName, makeRoomId, setStoredName } from "@/lib/player";
 
 export default function HomePage() {
@@ -84,6 +85,10 @@ export default function HomePage() {
       <p className="max-w-sm text-center text-xs text-slate-400">
         Tối đa 8 người / phòng. Gửi mã phòng hoặc link cho bạn bè để cùng chơi.
       </p>
+
+      <Link href="/leaderboard" className="text-sm font-medium text-brand-600 hover:underline">
+        🏆 Xem bảng xếp hạng
+      </Link>
     </main>
   );
 }
