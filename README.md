@@ -34,7 +34,7 @@ scripts/seed.ts          # Seed bộ từ mặc định vào MongoDB
    cp .env.example .env.local
    ```
 
-   Điền `MONGODB_URI` (dùng [MongoDB Atlas](https://www.mongodb.com/atlas), free tier là đủ). `NEXT_PUBLIC_PARTYKIT_HOST` để mặc định `127.0.0.1:1999` khi chạy local.
+   Điền `MONGODB_URI` (dùng [MongoDB Atlas](https://www.mongodb.com/atlas), free tier là đủ). Nếu connection string không có sẵn tên database trong path (ví dụ dạng `mongodb+srv://user:pass@cluster.mongodb.net/?appName=...`), điền thêm `MONGODB_DB_NAME` (ví dụ `ve-cung-toi`) — code sẽ dùng biến này để chọn database. `NEXT_PUBLIC_PARTYKIT_HOST` để mặc định `127.0.0.1:1999` khi chạy local.
 
 3. (Tùy chọn) Seed bộ từ vựng mặc định vào MongoDB:
 
@@ -69,6 +69,7 @@ Lệnh này (chạy `partykit deploy`) sẽ hỏi đăng nhập PartyKit (Cloudf
 1. Import repo vào [Vercel](https://vercel.com/new).
 2. Thêm biến môi trường:
    - `MONGODB_URI` — connection string MongoDB Atlas.
+   - `MONGODB_DB_NAME` — chỉ cần nếu connection string không có tên database sẵn trong path.
    - `NEXT_PUBLIC_PARTYKIT_HOST` — domain PartyKit đã deploy ở trên (không có `https://`, ví dụ `ve-cung-toi.<username>.partykit.dev`).
 3. Deploy.
 

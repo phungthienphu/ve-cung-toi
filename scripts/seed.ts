@@ -15,7 +15,7 @@ async function main() {
     process.exit(1);
   }
 
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { dbName: process.env.MONGODB_DB_NAME || undefined });
   console.log("Connected to MongoDB.");
 
   for (const list of DEFAULT_WORDLISTS) {

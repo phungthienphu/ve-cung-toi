@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME;
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -20,7 +21,10 @@ export async function dbConnect() {
   }
   if (cache.conn) return cache.conn;
   if (!cache.promise) {
-    cache.promise = mongoose.connect(MONGODB_URI, { bufferCommands: false });
+    cache.promise = mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
+      dbName: MONGODB_DB_NAME || undefined,
+    });
   }
   cache.conn = await cache.promise;
   return cache.conn;
