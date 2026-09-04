@@ -45,6 +45,16 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart }: Props)
     }
 
     onStart({ rounds, drawSeconds, wordlistIds: wordlistIds.length ? wordlistIds : ["vi-default"], customWords: custom });
+
+    if (custom.length >= 20) {
+      fetch("/api/wordlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `Tùy chỉnh - phòng ${roomId}`, words: custom, createdBy: selfId }),
+      }).catch(() => {
+        // Best-effort only — persisting the custom list must never block starting the game.
+      });
+    }
   }
 
   return (
