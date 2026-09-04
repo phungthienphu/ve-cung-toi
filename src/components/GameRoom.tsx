@@ -141,8 +141,8 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         drawerName={drawerName}
       />
 
-      <div className="grid flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-start">
-        <div className="order-2 flex flex-col gap-2 md:order-1">
+      <div className="grid flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-stretch">
+        <div className="order-2 flex flex-col gap-2 md:order-1 md:h-[600px]">
           <PlayerList players={state.players} drawerId={state.drawerId} selfId={playerId} onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined} />
           <button
             onClick={() => {
@@ -151,20 +151,22 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
               send({ type: "leave_room" });
               router.push("/");
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-red-500 shadow-xl transition hover:border-red-300 hover:bg-red-50"
+            className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-red-500 shadow-xl transition hover:border-red-300 hover:bg-red-50"
           >
             Rời phòng
           </button>
         </div>
 
-        <div className="order-1 md:order-2">
-          <DrawingCanvas
-            ref={canvasRef}
-            isDrawer={isDrawer}
-            strokeEvents={strokeEvents}
-            clearStrokeEvents={clearStrokeEvents}
-            send={send}
-          />
+        <div className="order-1 flex flex-col gap-2 md:order-2 md:h-[600px]">
+          <div className="min-h-0 flex-1">
+            <DrawingCanvas
+              ref={canvasRef}
+              isDrawer={isDrawer}
+              strokeEvents={strokeEvents}
+              clearStrokeEvents={clearStrokeEvents}
+              send={send}
+            />
+          </div>
 
           {state.status === "roundEnd" && (
             <RoundEndPanel word={state.revealedWord} snapshot={snapshot} />

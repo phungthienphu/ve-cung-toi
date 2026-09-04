@@ -179,14 +179,14 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+    <div className="flex h-full flex-col gap-2">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="block w-full touch-none"
-          style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, cursor: isDrawer ? PENCIL_CURSOR : "default" }}
+          className="block h-full w-full touch-none"
+          style={{ cursor: isDrawer ? PENCIL_CURSOR : "default" }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
