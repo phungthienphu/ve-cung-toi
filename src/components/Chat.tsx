@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChatEntry } from "@shared/types";
+import { playCorrect, playPop } from "@/lib/sound";
+import { burstConfetti } from "@/lib/confetti";
 
 interface Props {
   entries: ChatEntry[];
@@ -15,8 +17,18 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const lastSeenId = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+
+    const last = entries[entries.length - 1];
+    const isFirstRender = lastSeenId.current === undefined;
+    if (last && !isFirstRender && last.id !== lastSeenId.current && last.type === "correct") {
+      playCorrect();
+      burstConfetti();
+    }
+    lastSeenId.current = last ? last.id : null;
   }, [entries]);
 
   useEffect(() => {
@@ -30,6 +42,7 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) return;
+    playPop();
     onSend(trimmed);
     setText("");
   }
@@ -54,7 +67,7 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
           }
           if (entry.type === "correct") {
             return (
-              <div key={entry.id} className="font-medium text-emerald-600">
+              <div key={entry.id} className="animate-bounce-in font-medium text-emerald-600">
                 🎉 {entry.name} đã đoán đúng!
               </div>
             );

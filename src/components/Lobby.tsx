@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ClientMessage, PublicRoomState, RoomConfig } from "@shared/types";
 import { DEFAULT_ROOM_CONFIG, MIN_PLAYERS_TO_START } from "@shared/types";
 import { DEFAULT_WORDLISTS } from "@shared/wordlists";
+import { playClick } from "@/lib/sound";
 import PlayerList from "./PlayerList";
 
 interface Props {
@@ -35,6 +36,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
 
   function handleLeave() {
     if (!confirm("Rời khỏi phòng?")) return;
+    playClick();
     send({ type: "leave_room" });
     router.push("/");
   }
@@ -48,6 +50,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
   }
 
   function handleStart() {
+    playClick();
     const suffix = difficulty === "hard" ? "hard" : "default";
     const wordlistIds = [useVi && `vi-${suffix}`, useEn && `en-${suffix}`].filter(Boolean) as string[];
     const custom = customWords

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useGameRoom } from "@/lib/useGameRoom";
 import { WORD_CHOICE_SECONDS, POST_ROUND_SECONDS } from "@shared/types";
+import { playClick } from "@/lib/sound";
+import { fireworks } from "@/lib/confetti";
 import Lobby from "./Lobby";
 import PlayerList from "./PlayerList";
 import Chat from "./Chat";
@@ -39,6 +41,9 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   useEffect(() => {
     if (prevStatus.current === "playing" && state?.status === "roundEnd") {
       setSnapshot(canvasRef.current?.getDataUrl() ?? null);
+    }
+    if (prevStatus.current !== "gameEnd" && state?.status === "gameEnd") {
+      fireworks();
     }
     prevStatus.current = state?.status ?? null;
   }, [state?.status]);
@@ -92,7 +97,10 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         <div className="flex gap-3">
           {isHost && (
             <button
-              onClick={() => send({ type: "play_again" })}
+              onClick={() => {
+                playClick();
+                send({ type: "play_again" });
+              }}
               className="rounded-xl bg-brand-500 px-5 py-2.5 font-semibold text-white hover:bg-brand-600"
             >
               Chơi lại
@@ -130,6 +138,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           <button
             onClick={() => {
               if (!confirm("Rời khỏi phòng?")) return;
+              playClick();
               send({ type: "leave_room" });
               router.push("/");
             }}
@@ -210,10 +219,12 @@ function RoundHeader({
           {status === "playing" && `${drawerName ?? "?"} đang vẽ`}
           {status === "roundEnd" && "Hết lượt!"}
         </span>
-        <span className="font-mono font-semibold">{seconds}s</span>
+        <span className={`font-mono font-semibold ${seconds <= 10 && status === "playing" ? "animate-wiggle text-red-500" : ""}`}>
+          {seconds}s
+        </span>
       </div>
       <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
+        <div className={`h-full ${seconds <= 10 && status === "playing" ? "bg-red-500" : "bg-brand-500"}`} style={{ width: `${pct}%` }} />
       </div>
       {(status === "playing" || status === "choosing") && (
         <div className="mt-2 text-center text-2xl font-black tracking-widest text-slate-700">{display || " "}</div>
@@ -224,17 +235,21 @@ function RoundHeader({
 
 function WordChoiceModal({ choices, deadline, onChoose }: { choices: string[]; deadline: number; onChoose: (w: string) => void }) {
   const remaining = useCountdown(deadline);
+  const seconds = Math.ceil(remaining / 1000);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-        <h3 className="mb-1 text-lg font-bold">Chọn một từ để vẽ</h3>
-        <p className="mb-4 text-sm text-slate-400">{Math.ceil(remaining / 1000)}s để chọn</p>
+      <div className="animate-bounce-in w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <h3 className="mb-1 text-lg font-bold">✏️ Chọn một từ để vẽ</h3>
+        <p className={`mb-4 text-sm ${seconds <= 4 ? "font-semibold text-red-500" : "text-slate-400"}`}>{seconds}s để chọn</p>
         <div className="flex flex-col gap-2">
           {choices.map((w) => (
             <button
               key={w}
-              onClick={() => onChoose(w)}
-              className="rounded-xl border-2 border-brand-100 px-4 py-3 font-semibold text-brand-700 transition hover:border-brand-400 hover:bg-brand-50"
+              onClick={() => {
+                playClick();
+                onChoose(w);
+              }}
+              className="rounded-xl border-2 border-brand-100 px-4 py-3 font-semibold text-brand-700 transition hover:scale-[1.02] hover:border-brand-400 hover:bg-brand-50"
             >
               {w}
             </button>
