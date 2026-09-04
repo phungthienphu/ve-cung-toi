@@ -13,10 +13,24 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   useEffect(() => {
     setPlayerId(getOrCreatePlayerId());
     const stored = getStoredName();
-    if (stored) setName(stored);
-  }, []);
+    setNameInput(stored);
+    // Skip re-asking on a refresh/reconnect within the same tab+room, but a
+    // fresh visit (e.g. opening someone else's invite link) always confirms
+    // the name first — a leftover name from a previous room shouldn't stick.
+    if (stored && sessionStorage.getItem(`vct_confirmed:${roomId}`) === "1") {
+      setName(stored);
+    }
+  }, [roomId]);
 
   if (!playerId) return null;
+
+  function confirmName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setStoredName(trimmed);
+    sessionStorage.setItem(`vct_confirmed:${roomId}`, "1");
+    setName(trimmed);
+  }
 
   if (!name) {
     return (
@@ -29,19 +43,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           maxLength={20}
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && nameInput.trim()) {
-              setStoredName(nameInput.trim());
-              setName(nameInput.trim());
-            }
-          }}
+          onKeyDown={(e) => e.key === "Enter" && confirmName()}
         />
         <button
-          onClick={() => {
-            if (!nameInput.trim()) return;
-            setStoredName(nameInput.trim());
-            setName(nameInput.trim());
-          }}
+          onClick={confirmName}
           className="w-full rounded-xl bg-brand-500 px-4 py-3 font-semibold text-white hover:bg-brand-600"
         >
           Vào phòng
