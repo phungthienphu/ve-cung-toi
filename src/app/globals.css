@@ -13,12 +13,15 @@ body {
 }
 
 /* iOS/Android auto-zoom on focus kicks in for any form control under 16px.
-   Force 16px only on small screens so desktop keeps its compact text-sm look. */
+   Force 16px only on small screens so desktop keeps its compact text-sm look.
+   !important is required here: Tailwind's text-sm/text-xs classes are applied
+   directly on these elements and outrank a plain element selector on
+   specificity alone, regardless of source order. */
 @media (max-width: 767px) {
   input,
   textarea,
   select {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 }
 
