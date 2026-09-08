@@ -39,7 +39,7 @@ export default function HomePage() {
 
   return (
     <main className="bg-home-scene flex min-h-app justify-center items-center p-6 sm:p-10 lg:p-32">
-      <div className="w-full max-w-xl rounded-lg bg-white/95 p-8 shadow-2xl">
+      <div className="w-full min-w-0 max-w-xl rounded-lg bg-white/95 p-8 shadow-2xl">
         <div className="w-full">
           <div className="mb-10 flex items-center gap-2.5">
             
@@ -77,7 +77,7 @@ export default function HomePage() {
 
             <div className="flex gap-2">
               <input
-                className="flex-1 rounded-lg border border-cream-200 bg-white px-3.5 py-2.5 font-mono text-sm uppercase tracking-wider text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
+                className="min-w-0 flex-1 rounded-lg border border-cream-200 bg-white px-3.5 py-2.5 font-mono text-sm uppercase tracking-wider text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                 placeholder="MÃ PHÒNG"
                 maxLength={8}
                 value={joinCode}
