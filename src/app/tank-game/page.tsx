@@ -25,9 +25,9 @@ export default function TankGameHomePage() {
 
   return (
     <main className="flex min-h-app items-center justify-center bg-tank-scene px-4">
-      <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
+      <div className="w-full max-w-xl rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
         <div className="mb-6 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-700 text-base text-white">🎯</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-lg text-white">🎯</div>
           <span className="text-base font-semibold tracking-tight text-ink">Đại Chiến Xe Tăng</span>
         </div>
 
