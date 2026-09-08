@@ -87,11 +87,11 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
 
   return (
     <div className="bg-game-scene min-h-dvh flex items-center">
-      <div className="m-auto grid w-full max-w-4xl gap-5 px-4 py-10 md:grid-cols-[1fr_320px]">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-          <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="m-auto grid w-full min-w-0 max-w-4xl gap-5 px-4 py-10 md:grid-cols-[1fr_320px]">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xl font-bold tracking-tight text-slate-900">Phòng chờ</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleCopyLink}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"

@@ -179,8 +179,8 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
   }
 
   return (
-    <div className="flex h-full flex-col gap-2">
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+    <div className="flex h-full min-w-0 flex-col gap-2">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
@@ -195,8 +195,8 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
       </div>
 
       {isDrawer && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-          <div className="flex gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
+          <div className="flex flex-wrap gap-1.5">
             {PALETTE.map((c) => (
               <button
                 key={c}

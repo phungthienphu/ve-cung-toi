@@ -55,28 +55,28 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xl">
-      <div ref={listRef} className="no-scrollbar flex-1 space-y-1.5 overflow-y-auto p-3 text-sm">
+    <div className="flex h-full min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xl">
+      <div ref={listRef} className="no-scrollbar min-w-0 flex-1 space-y-1.5 overflow-y-auto p-3 text-sm">
         {entries.map((entry) => {
           if (entry.type === "system") {
             return (
-              <div key={entry.id} className="text-center text-xs italic text-slate-400">
+              <div key={entry.id} className="break-words text-center text-xs italic text-slate-400">
                 {entry.text}
               </div>
             );
           }
           if (entry.type === "correct") {
             return (
-              <div key={entry.id} className="animate-bounce-in font-medium text-emerald-600">
+              <div key={entry.id} className="animate-bounce-in break-words font-medium text-emerald-600">
                 🎉 {entry.name} đã đoán đúng!
               </div>
             );
           }
           const isSelf = entry.playerId === selfId;
           return (
-            <div key={entry.id} className={isSelf ? "text-brand-700" : "text-slate-700"}>
+            <div key={entry.id} className={`break-words ${isSelf ? "text-brand-700" : "text-slate-700"}`}>
               <span className="font-semibold">{entry.name}: </span>
-              <span>{entry.text}</span>
+              <span className="break-all">{entry.text}</span>
             </div>
           );
         })}

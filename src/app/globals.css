@@ -9,6 +9,17 @@ body {
 
 body {
   background: #f8fafc;
+  overflow-x: hidden;
+}
+
+/* iOS/Android auto-zoom on focus kicks in for any form control under 16px.
+   Force 16px only on small screens so desktop keeps its compact text-sm look. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 .bg-game-scene {

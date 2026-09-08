@@ -37,6 +37,18 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   const canvasRef = useRef<DrawingCanvasHandle | null>(null);
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const prevStatus = useRef<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [unseenChat, setUnseenChat] = useState(0);
+  const lastSeenChatLen = useRef(0);
+
+  useEffect(() => {
+    if (chatOpen) {
+      lastSeenChatLen.current = chat.length;
+      setUnseenChat(0);
+    } else {
+      setUnseenChat(Math.max(0, chat.length - lastSeenChatLen.current));
+    }
+  }, [chat.length, chatOpen]);
 
   useEffect(() => {
     if (prevStatus.current === "playing" && state?.status === "roundEnd") {
@@ -83,19 +95,19 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">Kết thúc ván chơi</h2>
         <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
           {ranking.map((p, i) => (
-            <div key={p.id} className="flex items-center justify-between border-b border-slate-100 py-2.5 last:border-0">
-              <span className="flex items-center gap-2 font-medium text-slate-800">
-                <span className="text-slate-400">#{i + 1}</span>
+            <div key={p.id} className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-0">
+              <span className="flex min-w-0 items-center gap-2 font-medium text-slate-800">
+                <span className="shrink-0 text-slate-400">#{i + 1}</span>
                 {i === 0 && "🥇"}
                 {i === 1 && "🥈"}
                 {i === 2 && "🥉"}
-                {p.name}
+                <span className="truncate">{p.name}</span>
               </span>
-              <span className="font-semibold text-brand-600">{p.score} điểm</span>
+              <span className="shrink-0 font-semibold text-brand-600">{p.score} điểm</span>
             </div>
           ))}
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           {isHost && (
             <button
               onClick={() => {
@@ -141,8 +153,20 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         drawerName={drawerName}
       />
 
-      <div className="grid flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-stretch">
-        <div className="order-2 flex flex-col gap-2 md:order-1 md:h-[600px]">
+      <button
+        onClick={() => setChatOpen(true)}
+        className="relative flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-xl transition hover:border-brand-500 hover:text-brand-600 md:hidden"
+      >
+        💬 Xem chat
+        {unseenChat > 0 && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-semibold text-white">
+            {unseenChat > 9 ? "9+" : unseenChat}
+          </span>
+        )}
+      </button>
+
+      <div className="grid min-w-0 flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-stretch">
+        <div className="order-2 flex min-w-0 flex-col gap-2 md:order-1 md:h-[600px]">
           <PlayerList players={state.players} drawerId={state.drawerId} selfId={playerId} onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined} />
           <button
             onClick={() => {
@@ -157,8 +181,8 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           </button>
         </div>
 
-        <div className="order-1 flex flex-col gap-2 md:order-2 md:h-[600px]">
-          <div className="min-h-0 flex-1">
+        <div className="order-1 flex h-[50dvh] min-w-0 flex-col gap-2 md:order-2 md:h-[600px]">
+          <div className="min-h-0 min-w-0 flex-1">
             <DrawingCanvas
               ref={canvasRef}
               isDrawer={isDrawer}
@@ -173,7 +197,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           )}
         </div>
 
-        <div className="order-3 h-[320px] md:h-[600px]">
+        <div className="order-3 hidden min-w-0 md:block md:h-[600px]">
           <Chat
             entries={chat}
             selfId={playerId}
@@ -182,6 +206,31 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           />
         </div>
       </div>
+
+      {chatOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/40 md:hidden">
+          <button className="flex-1" aria-label="Đóng chat" onClick={() => setChatOpen(false)} />
+          <div className="flex h-[85dvh] min-w-0 flex-col rounded-t-2xl bg-white p-2 shadow-2xl">
+            <div className="mb-1 flex shrink-0 items-center justify-between px-2 py-1">
+              <span className="text-sm font-semibold text-slate-700">Chat</span>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="rounded-lg px-2 py-1 text-sm text-slate-400 hover:text-slate-700"
+              >
+                Đóng ✕
+              </button>
+            </div>
+            <div className="min-h-0 min-w-0 flex-1">
+              <Chat
+                entries={chat}
+                selfId={playerId}
+                canGuess={state.status === "playing" && !isDrawer && !self?.hasGuessedCorrectly}
+                onSend={(text) => send({ type: "chat", text })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {isDrawerRole && wordChoices && (
         <WordChoiceModal choices={wordChoices.choices} deadline={wordChoices.deadline} onChoose={(word) => send({ type: "choose_word", word })} />
@@ -224,14 +273,14 @@ function RoundHeader({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-      <div className="flex items-center justify-between text-sm text-slate-500">
-        <span>Lượt {round}/{totalTurns}</span>
-        <span>
+      <div className="flex items-center justify-between gap-2 text-sm text-slate-500">
+        <span className="shrink-0">Lượt {round}/{totalTurns}</span>
+        <span className="min-w-0 truncate text-center">
           {status === "choosing" && `${drawerName ?? "?"} đang chọn từ...`}
           {status === "playing" && `${drawerName ?? "?"} đang vẽ`}
           {status === "roundEnd" && "Hết lượt!"}
         </span>
-        <span className={`font-mono font-semibold ${seconds <= 10 && status === "playing" ? "animate-wiggle text-red-500" : ""}`}>
+        <span className={`shrink-0 font-mono font-semibold ${seconds <= 10 && status === "playing" ? "animate-wiggle text-red-500" : ""}`}>
           {seconds}s
         </span>
       </div>
@@ -293,7 +342,7 @@ function RoundEndPanel({ word, snapshot }: { word: string | null; snapshot: stri
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={snapshot} alt="Tranh vừa vẽ" className="max-h-40 rounded-lg border border-slate-200" />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             <a
               href={snapshot}
               download={`ve-cung-toi-${Date.now()}.png`}
