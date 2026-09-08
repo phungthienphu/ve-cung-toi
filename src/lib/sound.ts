@@ -84,6 +84,84 @@ export function playWhoosh() {
   osc.stop(t0 + 0.35);
 }
 
+/** Short filtered white-noise burst — the raw ingredient for gunshots/explosions. */
+function noiseBurst(duration: number, gainPeak: number, filterFreq: number) {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const bufferSize = Math.max(1, Math.floor(audio.sampleRate * duration));
+  const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audio.createBufferSource();
+  noise.buffer = buffer;
+  const filter = audio.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = filterFreq;
+  const gain = audio.createGain();
+  const t0 = audio.currentTime;
+  gain.gain.setValueAtTime(gainPeak, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audio.destination);
+  noise.start(t0);
+  noise.stop(t0 + duration + 0.02);
+}
+
+/** Tank cannon firing — quick tonal "pew" layered over a noise crack. */
+export function playTankShoot() {
+  tone(920, 0, 0.05, 0.05, "square");
+  noiseBurst(0.07, 0.07, 4500);
+}
+
+/** Bullet impact — a bullet vanishing against a wall or a tank. */
+export function playTankExplosion() {
+  noiseBurst(0.3, 0.16, 1100);
+  tone(90, 0, 0.28, 0.09, "sawtooth");
+}
+
+/** The default "big shot" skill firing — a heavier, lower-pitched thump than a normal shot. */
+export function playTankBigShot() {
+  tone(220, 0, 0.1, 0.1, "square");
+  tone(70, 0, 0.16, 0.12, "sawtooth");
+  noiseBurst(0.12, 0.1, 3000);
+}
+
+/** A big shot detonating — bigger and longer than a normal bullet impact. */
+export function playTankBigExplosion() {
+  noiseBurst(0.45, 0.22, 900);
+  tone(60, 0, 0.4, 0.14, "sawtooth");
+  tone(50, 0.05, 0.35, 0.1, "sawtooth");
+}
+
+/** A shield absorbing a hit — a short metallic "ping", distinct from a real impact. */
+export function playShieldBlock() {
+  tone(1200, 0, 0.08, 0.07, "sine");
+  tone(1800, 0.02, 0.05, 0.05, "sine");
+}
+
+/** Self just got set on fire by a fire bullet — a crackling whoosh. */
+export function playFireIgnite() {
+  noiseBurst(0.25, 0.1, 2200);
+  tone(400, 0, 0.15, 0.08, "sawtooth");
+}
+
+/** Self took damage — bullet, trap, or terrain hazard. */
+export function playTankHit() {
+  tone(160, 0, 0.12, 0.1, "square");
+}
+
+/** Self picked up an item or healed off a pickup. */
+export function playTankPickup() {
+  [660, 880].forEach((f, i) => tone(f, i * 0.05, 0.12, 0.07, "triangle"));
+}
+
+/** Metallic clang — one tank successfully shoves another. */
+export function playTankImpact() {
+  tone(180, 0, 0.08, 0.1, "square");
+  tone(1400, 0, 0.04, 0.05, "square");
+}
+
 /**
  * Gentle looping background chime — a slow pentatonic arpeggio at very low
  * volume. This is a generated ambient loop, not a licensed music track; swap

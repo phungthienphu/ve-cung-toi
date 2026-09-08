@@ -39,6 +39,13 @@ body {
   background-color: #ecdcb8;
 }
 
+.bg-tank-scene {
+  background-image: url("/tank-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-color: #8ec6e8;
+}
+
 /* Tailwind's min-h-dvh alone can render short on first paint on some mobile
    browsers before they recompute the dynamic viewport (leaving a blank strip
    top/bottom until a scroll/resize triggers a relayout). Stacking 100vh first

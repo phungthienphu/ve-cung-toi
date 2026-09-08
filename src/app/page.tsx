@@ -93,11 +93,15 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-10 flex items-center gap-4 text-xs text-ink/40">
+          <div className="mt-10 flex flex-wrap items-center gap-4 text-xs text-ink/40">
             <span>Tối đa 8 người / phòng</span>
             <span className="text-ink/20">•</span>
             <Link href="/leaderboard" className="font-medium text-clay-600 transition hover:text-clay-700">
               Bảng xếp hạng →
+            </Link>
+            <span className="text-ink/20">•</span>
+            <Link href="/tank-game" className="font-medium text-clay-600 transition hover:text-clay-700" onClick={() => playClick()}>
+              🎯 Đại chiến xe tăng →
             </Link>
           </div>
         </div>

@@ -2,5 +2,8 @@
   "$schema": "https://www.partykit.io/schema.json",
   "name": "ve-cung-toi",
   "main": "party/server.ts",
+  "parties": {
+    "tanks": "party/tank-server.ts"
+  },
   "compatibilityDate": "2024-11-01"
 }
