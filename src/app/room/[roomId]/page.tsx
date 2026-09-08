@@ -36,7 +36,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
   if (!name) {
     return (
-      <main className="bg-game-scene flex min-h-dvh items-center justify-center px-4">
+      <main className="bg-game-scene flex min-h-app items-center justify-center px-4">
         <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
           <div className="mb-6 flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-clay-500 text-base text-white shadow-sm shadow-clay-500/30">

@@ -86,7 +86,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
   }
 
   return (
-    <div className="bg-game-scene min-h-dvh flex items-center">
+    <div className="bg-game-scene min-h-app flex items-center">
       <div className="m-auto grid w-full min-w-0 max-w-4xl gap-5 px-4 py-10 md:grid-cols-[1fr_320px]">
         <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

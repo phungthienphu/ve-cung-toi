@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className="min-h-dvh text-slate-900 antialiased">
+      <body className="min-h-app text-slate-900 antialiased">
         {children}
         <SoundToggle />
       </body>
