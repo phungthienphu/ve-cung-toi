@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTankRoom } from "@/lib/useTankRoom";
-import { playClick } from "@/lib/sound";
+import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw } from "@/lib/sound";
 import { fireworks } from "@/lib/confetti";
 import { DEFAULT_MAP_ID, KILL_TARGET, MAX_ULTIMATE_ENERGY, MIN_TANK_PLAYERS, TANK_MAPS, type ItemKind, type Team } from "@shared/tankTypes";
 import TankCanvas from "./TankCanvas";
@@ -28,6 +28,42 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
   useEffect(() => {
     if (state?.status === "ended") fireworks();
   }, [state?.status]);
+
+  // A short chime whenever another player joins the lobby (skip the very
+  // first render, which is just us seeing the room's existing roster).
+  const prevPlayerIdsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!state || state.status !== "lobby") {
+      prevPlayerIdsRef.current = null;
+      return;
+    }
+    const ids = new Set(state.players.map((p) => p.id));
+    const prevIds = prevPlayerIdsRef.current;
+    if (prevIds && [...ids].some((id) => !prevIds.has(id))) playJoin();
+    prevPlayerIdsRef.current = ids;
+  }, [state]);
+
+  // Win/lose/draw sting when the match ends, from the local player's POV.
+  const endSoundPlayedRef = useRef(false);
+  useEffect(() => {
+    if (!state) return;
+    if (state.status !== "ended") {
+      endSoundPlayedRef.current = false;
+      return;
+    }
+    if (endSoundPlayedRef.current) return;
+    endSoundPlayedRef.current = true;
+    const self = state.players.find((p) => p.id === playerId);
+    if (state.mode === "team") {
+      if (!state.winningTeam) playMatchDraw();
+      else if (self && self.team === state.winningTeam) playMatchWin();
+      else playMatchLose();
+    } else {
+      if (!state.winnerId) playMatchDraw();
+      else if (state.winnerId === playerId) playMatchWin();
+      else playMatchLose();
+    }
+  }, [state, playerId]);
 
   if (!state) {
     return (

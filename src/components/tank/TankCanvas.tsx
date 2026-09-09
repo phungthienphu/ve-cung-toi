@@ -44,6 +44,9 @@ import {
   playTankShoot,
   playShieldBlock,
   playFireIgnite,
+  playTankDestroyed,
+  playBoostStart,
+  playUltimateReady,
 } from "@/lib/sound";
 import { getSprite } from "@/lib/imageCache";
 
@@ -1258,18 +1261,35 @@ export default function TankCanvas({ state, selfId, send }: Props) {
 
   // Reactive sound cues from the self tank's own state changes — took
   // damage (bullet/trap/hazard), or picked something up off the ground.
-  const prevSelfRef = useRef<{ hp: number; itemCount: number; burning: boolean } | null>(null);
+  const prevSelfRef = useRef<{
+    hp: number;
+    itemCount: number;
+    burning: boolean;
+    alive: boolean;
+    isBoosting: boolean;
+    ultimateEnergy: number;
+  } | null>(null);
   useEffect(() => {
     const self = state.players.find((p) => p.id === selfId);
     if (!self) return;
     const isBurning = !!self.burningUntil && self.burningUntil > state.serverNow;
     const prev = prevSelfRef.current;
     if (prev) {
-      if (self.hp < prev.hp) playTankHit();
+      if (!self.alive && prev.alive) playTankDestroyed();
+      else if (self.hp < prev.hp) playTankHit();
       else if (self.hp > prev.hp || self.items.length > prev.itemCount) playTankPickup();
       if (isBurning && !prev.burning) playFireIgnite();
+      if (self.isBoosting && !prev.isBoosting) playBoostStart();
+      if (self.ultimateEnergy >= MAX_ULTIMATE_ENERGY && prev.ultimateEnergy < MAX_ULTIMATE_ENERGY) playUltimateReady();
     }
-    prevSelfRef.current = { hp: self.hp, itemCount: self.items.length, burning: isBurning };
+    prevSelfRef.current = {
+      hp: self.hp,
+      itemCount: self.items.length,
+      burning: isBurning,
+      alive: self.alive,
+      isBoosting: self.isBoosting,
+      ultimateEnergy: self.ultimateEnergy,
+    };
   }, [state.players, selfId, state.serverNow]);
 
   useEffect(() => {

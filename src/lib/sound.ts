@@ -162,6 +162,51 @@ export function playTankImpact() {
   tone(1400, 0, 0.04, 0.05, "square");
 }
 
+/** Self's tank got destroyed — heavier and longer than a normal hit/impact. */
+export function playTankDestroyed() {
+  noiseBurst(0.5, 0.25, 700);
+  tone(140, 0, 0.3, 0.14, "sawtooth");
+  tone(70, 0.08, 0.35, 0.12, "sawtooth");
+}
+
+/** Boost just kicked in — a rising "power up" whoosh. */
+export function playBoostStart() {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = "sawtooth";
+  const t0 = audio.currentTime;
+  osc.frequency.setValueAtTime(150, t0);
+  osc.frequency.exponentialRampToValueAtTime(500, t0 + 0.2);
+  gain.gain.setValueAtTime(0.08, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+  osc.connect(gain);
+  gain.connect(audio.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.25);
+}
+
+/** Ultimate energy just filled up — a bright ready-to-use chime. */
+export function playUltimateReady() {
+  [523.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.06, 0.2, 0.09, "sine"));
+}
+
+/** Match ended in the local player's favor. */
+export function playMatchWin() {
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, i * 0.09, 0.3, 0.13, "triangle"));
+}
+
+/** Match ended and the local player's side lost. */
+export function playMatchLose() {
+  [392, 329.63, 261.63, 220].forEach((f, i) => tone(f, i * 0.12, 0.35, 0.1, "sawtooth"));
+}
+
+/** Match ended in a draw. */
+export function playMatchDraw() {
+  [440, 440, 440].forEach((f, i) => tone(f, i * 0.15, 0.18, 0.08, "triangle"));
+}
+
 /**
  * Gentle looping background chime — a slow pentatonic arpeggio at very low
  * volume. This is a generated ambient loop, not a licensed music track; swap
