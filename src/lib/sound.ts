@@ -146,6 +146,67 @@ export function playFireIgnite() {
   tone(400, 0, 0.15, 0.08, "sawtooth");
 }
 
+/** A bomber's engine drone for the length of one airstrike run — fades in as
+ * it approaches, sustains, fades out as it flies off. `durationMs` should
+ * match the plane's actual on-screen flight time. */
+export function playPlaneRoar(durationMs: number) {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const duration = durationMs / 1000;
+  const bufferSize = Math.max(1, Math.floor(audio.sampleRate * duration));
+  const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audio.createBufferSource();
+  noise.buffer = buffer;
+  const filter = audio.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 220;
+  filter.Q.value = 0.7;
+  const gain = audio.createGain();
+  const t0 = audio.currentTime;
+  const fadeIn = Math.min(0.6, duration * 0.25);
+  const fadeOut = Math.min(0.8, duration * 0.3);
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(0.09, t0 + fadeIn);
+  gain.gain.setValueAtTime(0.09, Math.max(t0 + fadeIn, t0 + duration - fadeOut));
+  gain.gain.linearRampToValueAtTime(0.0001, t0 + duration);
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audio.destination);
+  noise.start(t0);
+  noise.stop(t0 + duration + 0.05);
+}
+
+/** The classic falling-bomb whistle — a descending pitch that lands right as
+ * the bomb does. `durationMs` should match the visual fall time. */
+export function playBombWhistle(durationMs: number) {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const duration = durationMs / 1000;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = "sine";
+  const t0 = audio.currentTime;
+  osc.frequency.setValueAtTime(1700, t0);
+  osc.frequency.exponentialRampToValueAtTime(450, t0 + duration);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.linearRampToValueAtTime(0.11, t0 + duration * 0.15);
+  gain.gain.setValueAtTime(0.11, t0 + duration * 0.85);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  osc.connect(gain);
+  gain.connect(audio.destination);
+  osc.start(t0);
+  osc.stop(t0 + duration + 0.05);
+}
+
+/** A carpet-bomb volley landing — bigger and lower than a normal explosion. */
+export function playBombBoom() {
+  noiseBurst(0.6, 0.28, 600);
+  tone(55, 0, 0.5, 0.16, "sawtooth");
+  tone(40, 0.06, 0.45, 0.12, "sawtooth");
+}
+
 /** Self took damage — bullet, trap, or terrain hazard. */
 export function playTankHit() {
   tone(160, 0, 0.12, 0.1, "square");

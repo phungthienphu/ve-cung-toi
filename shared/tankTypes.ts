@@ -30,23 +30,23 @@ export const TANK_MAPS: TankMapDef[] = [
     layout: [
       "###############################",
       "#B.B..........................#",
-      "#.R............C..............#",
-      "#BRB.....#####................#",
-      "#.R......#...#................#",
-      "#.R......#...#####............#",
-      "#.R..##..#.........##.........#",
-      "#.R..##......HHH....##........#",
-      "#.R............H......C.......#",
-      "#.R......####..H....#####.....#",
-      "#.R......#...........#........#",
-      "#.R#####.#..###......#........#",
-      "#.R#.....#..#....C...#....##..#",
-      "#.R#.........#..####......##..#",
-      "#.R###.......#................#",
-      "#.RRRRRRRRRR#####.............#",
-      "#.........HRRRRRR###.......B.B#",
-      "#..............CRRRRRRRRRRRRR.#",
-      "#..........................B.B#",
+      "#...RRRRRRRR....C.........B...#",
+      "#B.BR....#####.....#######....#",
+      "#...R....#...#.....#######....#",
+      "#...R....#...#.....#..........#",
+      "#...RRRRR#...#.....#........C.#",
+      "#....###R.......HHH#..........#",
+      "#....###R........H....######..#",
+      "#.......R........H....######..#",
+      "#.......RRRRRRRR....RRRRRR....#",
+      "#.......####...R....R....R....#",
+      "#.....B.####RRRCRRRRR....R.R..#",
+      "#.......####...R.......B.R.R..#",
+      "#...####.......R###......R.R..#",
+      "#..R#R##RRRRRRRR###RRRRRRR.R..#",
+      "#..R#R##....HHH.###..C.....R..#",
+      "#..RRRRRRRRRRRRR###.RRRRRRRR..#",
+      "#.......C..................B.B#",
       "###############################",
     ],
   },
@@ -57,27 +57,27 @@ export const TANK_MAPS: TankMapDef[] = [
 
     layout: [
       "#####################################",
-      "#B.B..............#.................#",
-      "#.R...####........#......###........#",
-      "#BRB...##.........#......###........#",
-      "#.R####...........#.C...............#",
-      "#.R####.....###...#####.............#",
-      "#.R..........#.........#............#",
-      "#.R..###.....#..HHH....#....####....#",
-      "#.R..#.......#....H....#....#.......#",
-      "#.R..#..#####.....H....#....#.......#",
-      "#.R..#..#......C...........###......#",
-      "#.R.....#....#######.......###......#",
-      "#.R###..#....#.............#........#",
-      "#.R#....#....#....###......#........#",
-      "#.R#.........#....#........####.....#",
-      "#.R#####.....#....#.................#",
-      "#.R...............#......C..........#",
-      "#.R...###.........#####.............#",
-      "#.R...###.........................#.#",
-      "#.RRRRRRRRRR...H.............H...B.B#",
-      "#.........CRRRRRRRRRRRRRRRRRRRRRRRR.#",
-      "#................................B.B#",
+      "#B.B................................#",
+      "#....####...####.....####....####...#",
+      "#B.B.####...###RRRRRRR###....####...#",
+      "#.RRRRRRRRRRR###.R.......C...####...#",
+      "#...........R....R##RRRRRRRRR####...#",
+      "#...###...##R#...R###.......R.C.....#",
+      "#...###...##R#...R###.....##R#......#",
+      "#...###.....R....RHHH.....##R#......#",
+      "#...###.RRRRRRRRRR.H......##R#..###.#",
+      "#.......R.....####.H........RRRRRRR.#",
+      "#......#R##...####..........R..R##R.#",
+      "#....C.#R##...####...###RRRRR..R##R.#",
+      "#......#R##..........###R......R..R.#",
+      "#......#R##..........###R.HHH..R##R.#",
+      "#.......R..###.......###R......R##R.#",
+      "#...####RRRRRRR.C.......R..####R##R.#",
+      "#...#####..###R...##RRRRRRRRRRRR..R.#",
+      "#...#####..HH#R...#####..C.####...R.#",
+      "#..........###R..RRRRRRRRRR......BRB#",
+      "#.....###RRRRRRRRRRRR...#####.....R.#",
+      "#.........RRRRRRRRRRRRRRR####....B.B#",
       "#####################################",
     ],
   },
@@ -89,28 +89,28 @@ export const TANK_MAPS: TankMapDef[] = [
     layout: [
       "#######################################",
       "#B.B..................................#",
-      "#.R......######.......................#",
-      "#BRB.....######....H..................#",
-      "#.R.................C......#####......#",
-      "#.R..###...............H....#####.....#",
-      "#.R..###....####.............#........#",
-      "#.R.......H..####............#........#",
-      "#.R.........#####.....................#",
-      "#.R..................######...C.......#",
-      "#.R######............######...........#",
-      "#.R######..H..........................#",
-      "#.R.............###...................#",
-      "#.R...#####.....###...................#",
-      "#.R...#####..............####.........#",
-      "#.R............CH........####.........#",
-      "#.R###...................####.........#",
-      "#.R###......######....................#",
-      "#.R.......H..######..............H....#",
-      "#.R.........######....................#",
-      "#.R......................C............#",
-      "#.R................................B.B#",
-      "#.RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR.#",
-      "#..................................B.B#",
+      "#.RRRRRRR######.........######........#",
+      "#BRB....#######.........###R##........#",
+      "#.R.....#######............R..C.......#",
+      "#.R..........RR..HHH.......RRRRRR###..#",
+      "#.RRRRRRRRRR..R###H#............####..#",
+      "#...####...R...###H#............####..#",
+      "#...####...R...#####...............RR.#",
+      "#...####...R........RR...C..........R.#",
+      "#...####...R.........R######........R.#",
+      "#.........HHH.......R#######........R.#",
+      "#..........RC.......R......RR....C..R.#",
+      "#.....##RRRRRRRRRRRRR.......R######.R.#",
+      "#.....######.......CR.......#######.R.#",
+      "#.....######........R.......RRRRRRRRR.#",
+      "#...................R.####..R.........#",
+      "#............#####..R.####..R.HHH.....#",
+      "#............###RRRRRRRRRRRRR..H......#",
+      "#...####.....#####....####.....####...#",
+      "#...####.....R####.............####...#",
+      "#...###RRRRRRR...........HH....R###B.B#",
+      "#.......C......................R###...#",
+      "#............RRRRRRRRRRRRRRRRRRR...B.B#",
       "#######################################",
     ],
   },
@@ -370,6 +370,59 @@ export interface Crate {
 export const CRATE_SIZE = 24;
 export const CRATE_MAX_HP = 3; // ~3 shots to blow one apart
 
+/** One bomb of a carpet-bombing airstrike, targeting a single tile's pixel
+ * center. Removed server-side the instant it lands (`strikeAt` passes). */
+export interface AirstrikeBomb {
+  x: number;
+  y: number;
+  strikeAt: number;
+  // Blast radius in px — grows the longer the match runs (see
+  // AIRSTRIKE_RAMP_MS), so late-match airstrikes hit noticeably harder to
+  // stay threatening. Sent to the client so its warning marker/explosion
+  // visuals scale to match the real hitbox instead of always looking the
+  // same size.
+  radius: number;
+}
+
+/** A grass-terrain-only hazard: a 3x3 patch of ground gets marked, then a
+ * bomber plane flies a straight line across the map and the marked tiles
+ * detonate as it passes overhead. `plane*` fields describe that flight line
+ * in pixel coordinates so the client can smoothly place the plane sprite
+ * purely from timestamps, with no extra network chatter. */
+export interface Airstrike {
+  id: string;
+  bombs: AirstrikeBomb[];
+  warnAt: number;
+  // Same value as every bomb's own `strikeAt` (the whole 3x3 volley lands
+  // together) — kept here too so the client can still compute "how far
+  // through the flight is the drop moment" after the bombs array has
+  // already emptied out (each bomb is removed the instant it lands).
+  strikeAt: number;
+  planeFromX: number;
+  planeFromY: number;
+  planeToX: number;
+  planeToY: number;
+  planeDepartAt: number;
+  planeArriveAt: number;
+}
+
+export const AIRSTRIKE_WARN_MS = 2200;
+export const AIRSTRIKE_FLIGHT_MS = 5200;
+export const AIRSTRIKE_MIN_INTERVAL_MS = 14000;
+export const AIRSTRIKE_MAX_INTERVAL_MS = 24000;
+export const BOMB_DAMAGE = 45;
+export const BOMB_RADIUS = TILE_SIZE * 0.65;
+export const BOMB_RADIUS_MAX = TILE_SIZE * 1.35;
+// How long (wall-clock, since the match started) it takes airstrikes to ramp
+// up from "mostly random, small blast" to "aimed at you, big blast" — a
+// fixed ramp rather than tied to the match timer so it also applies to
+// practice rooms, which have no timer at all.
+export const AIRSTRIKE_RAMP_MS = 90_000;
+// How many tiles away from a targeted player an airstrike's center can land
+// at minimum (late-match) vs. maximum (start-of-match) intensity.
+export const AIRSTRIKE_AIM_MIN_TILES = 1;
+export const AIRSTRIKE_AIM_MAX_TILES = 9;
+
 export interface Monster {
   id: string;
   x: number;
@@ -390,7 +443,10 @@ export interface TankImpact {
   id: string;
   x: number;
   y: number;
-  kind: "shove" | "trap" | "shield" | "crate";
+  kind: "shove" | "trap" | "shield" | "crate" | "bomb";
+  // Only set for "bomb" — the blast radius that hit, so the client's
+  // explosion visual scales to match instead of always looking the same size.
+  radius?: number;
 }
 
 /** A single-tick elimination event — consumed client-side to show a
@@ -404,7 +460,7 @@ export interface TankKillEvent {
 
 export type TankRoomStatus = "lobby" | "playing" | "ended";
 
-export type TankRoomMode = "ffa" | "team";
+export type TankRoomMode = "ffa" | "team" | "practice";
 
 export interface TankPublicState {
   roomId: string;
@@ -417,6 +473,7 @@ export interface TankPublicState {
   traps: Trap[];
   crates: Crate[];
   monsters: Monster[];
+  airstrikes: Airstrike[];
   impacts: TankImpact[];
   kills: TankKillEvent[];
   mapId: string;
@@ -434,6 +491,7 @@ export type TankClientMessage =
   | { type: "set_mode"; mode: TankRoomMode }
   | { type: "start_game"; mapId: string }
   | { type: "play_again" }
+  | { type: "end_game" }
   | { type: "input"; up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number }
   | { type: "shoot"; big?: boolean }
   | { type: "use_item"; kind: ItemKind }

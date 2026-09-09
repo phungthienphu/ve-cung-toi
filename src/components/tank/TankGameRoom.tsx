@@ -128,7 +128,19 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                 >
                   Đấu đội
                 </button>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "set_mode", mode: "practice" })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    state.mode === "practice" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Luyện tập
+                </button>
               </div>
+              {state.mode === "practice" && (
+                <p className="mt-1.5 text-xs text-slate-400">Chơi một mình để nghịch bản đồ — không cần đủ người, không giới hạn thời gian.</p>
+              )}
             </div>
           )}
 
@@ -186,10 +198,14 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                   playClick();
                   send({ type: "start_game", mapId });
                 }}
-                disabled={connectedCount < MIN_TANK_PLAYERS}
+                disabled={state.mode !== "practice" && connectedCount < MIN_TANK_PLAYERS}
                 className="min-w-0 flex-1 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {connectedCount < MIN_TANK_PLAYERS ? `Cần ít nhất ${MIN_TANK_PLAYERS} người` : "Bắt đầu chiến đấu"}
+                {state.mode !== "practice" && connectedCount < MIN_TANK_PLAYERS
+                  ? `Cần ít nhất ${MIN_TANK_PLAYERS} người`
+                  : state.mode === "practice"
+                    ? "Vào luyện tập"
+                    : "Bắt đầu chiến đấu"}
               </button>
             ) : (
               <p className="min-w-0 flex-1 py-2.5 text-center text-sm text-slate-500">Đang chờ chủ phòng bắt đầu...</p>
@@ -312,7 +328,9 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             {remainingLabel && (
               <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-mono font-semibold text-slate-700">⏱ {remainingLabel}</span>
             )}
-            {state.mode === "team" ? (
+            {state.mode === "practice" ? (
+              <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">🎯 Luyện tập</span>
+            ) : state.mode === "team" ? (
               <span className="shrink-0 font-semibold">
                 <span className="text-blue-600">Đội A: {state.teamScores.A}</span>
                 <span className="mx-1.5 text-slate-300">·</span>
@@ -327,12 +345,25 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
               ))
             )}
           </div>
-          <button
-            onClick={handleLeave}
-            className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
-          >
-            Rời phòng
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {state.mode === "practice" && isHost && (
+              <button
+                onClick={() => {
+                  playClick();
+                  send({ type: "end_game" });
+                }}
+                className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-500"
+              >
+                Kết thúc luyện tập
+              </button>
+            )}
+            <button
+              onClick={handleLeave}
+              className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
+            >
+              Rời phòng
+            </button>
+          </div>
         </div>
 
         {self && (
