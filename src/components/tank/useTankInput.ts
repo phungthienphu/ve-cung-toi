@@ -63,6 +63,10 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   // Desktop-only mouse aim: null means "no mouse aim active, fire along the
   // 4-directional facing instead" (touch devices never set this).
   const aimAngleRef = useRef<number | null>(null);
+  // Distance from the tank to the cursor, world px — local-only (never sent
+  // to the server, see handleAimMove), used to cap Dark's own scope line at
+  // the actual cursor position.
+  const aimDistanceRef = useRef<number | null>(null);
   // Updated every draw() frame by the caller so handleAimMove (which runs
   // outside the rAF loop) can convert a screen-space mouse position into a
   // world angle without redoing the camera-clamp math itself.
@@ -77,6 +81,18 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
     lastSentInputRef.current = key;
     send({ type: "input", ...held, aimAngle: angle ?? undefined });
   }, [send]);
+
+  // The one normal fire trigger (Space, left click, the touch fire button)
+  // does double duty for a "charge" skin (see ULTIMATE_ACTIVATION_MODE):
+  // while scoped it releases that shot instead of a normal one, so the
+  // player never needs a second button — aim, then just fire as usual.
+  const sendShot = useCallback(() => {
+    const self = stateRef.current.players.find((p) => p.id === selfId);
+    const isScoped = !!self && self.sniperChargingSince !== null;
+    send({ type: "shoot", big: isScoped || undefined });
+    if (isScoped) playTankBigShot();
+    else playTankShoot();
+  }, [send, selfId, stateRef]);
 
   useEffect(() => {
     const held = heldRef.current;
@@ -95,8 +111,7 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
           sendInput();
         }
       } else if (e.key === " " && !e.repeat) {
-        send({ type: "shoot" });
-        playTankShoot();
+        sendShot();
         e.preventDefault();
       } else if (["1", "2", "3"].includes(e.key)) {
         const self = stateRef.current.players.find((p) => p.id === selfId);
@@ -106,8 +121,11 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
       } else if ((e.key === "r" || e.key === "R") && !e.repeat) {
         const self = stateRef.current.players.find((p) => p.id === selfId);
         if (!self || self.ultimateEnergy < ULTIMATE_CONFIG[skinForColor(self.color)].maxEnergy) return;
-        if (ULTIMATE_ACTIVATION_MODE[skinForColor(self.color)] === "charge") {
-          send({ type: "charge_ultimate" });
+        const skin = skinForColor(self.color);
+        if (ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
+          // A single tap toggles the scope on — no holding required. Firing
+          // happens later through the normal shoot trigger (see sendShot).
+          if (self.sniperChargingSince === null) send({ type: "charge_ultimate" });
         } else {
           send({ type: "shoot", big: true });
           playTankBigShot();
@@ -123,15 +141,6 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
       } else if (e.key === "Shift") {
         held.boost = false;
         sendInput();
-      } else if (e.key === "r" || e.key === "R") {
-        // Only meaningful for a "charge" skin (see ULTIMATE_ACTIVATION_MODE)
-        // that's actually mid-charge — releasing R for every other skin is a
-        // no-op since onKeyDown already fired/activated on press.
-        const self = stateRef.current.players.find((p) => p.id === selfId);
-        if (self && self.sniperChargingSince !== null) {
-          send({ type: "shoot", big: true });
-          playTankBigShot();
-        }
       }
     }
     function onBlur() {
@@ -148,7 +157,7 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
       window.removeEventListener("blur", onBlur);
       send({ type: "input", up: false, down: false, left: false, right: false, boost: false });
     };
-  }, [send, selfId, sendInput, stateRef]);
+  }, [send, selfId, sendInput, sendShot, stateRef]);
 
   // Touch controls: a virtual joystick (resolved to the same 4-directional
   // input the server understands — no diagonal movement in this game) plus
@@ -210,8 +219,7 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   const shootTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isShootingRef = useRef(false);
   function fireOnce() {
-    send({ type: "shoot" });
-    playTankShoot();
+    sendShot();
     const self = stateRef.current.players.find((p) => p.id === selfId);
     const isRapidFiring = !!self?.rapidFireUntil && self.rapidFireUntil > Date.now();
     const delay = isRapidFiring ? RAPID_FIRE_COOLDOWN_MS : FIRE_COOLDOWN_MS;
@@ -252,11 +260,21 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
     const mouseY = ((e.clientY - rect.top) / rect.height) * VIEWPORT_H;
     const selfScreenX = self.x + cameraOffsetRef.current.x;
     const selfScreenY = self.y + cameraOffsetRef.current.y;
-    aimAngleRef.current = Math.atan2(mouseY - selfScreenY, mouseX - selfScreenX);
+    const dx = mouseX - selfScreenX;
+    const dy = mouseY - selfScreenY;
+    aimAngleRef.current = Math.atan2(dy, dx);
+    // Only the angle is ever sent to the server (aimAngle), so a remote
+    // viewer of Dark's scope line has no way to know how far the cursor
+    // actually is and has to fall back to "wall or max range". The local
+    // player does know it exactly, though — kept here so TankCanvas can
+    // stop Dark's own scope line at the real cursor position instead of
+    // always stretching it out to the wall/max range.
+    aimDistanceRef.current = Math.hypot(dx, dy);
     sendInput();
   }
   function handleAimLeave() {
     aimAngleRef.current = null;
+    aimDistanceRef.current = null;
     sendInput();
     stopShooting();
   }
@@ -274,6 +292,7 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
 
   return {
     cameraOffsetRef,
+    aimDistanceRef,
     joyBaseRef,
     joyKnobRef,
     handleJoyPointerDown,

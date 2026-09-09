@@ -21,11 +21,11 @@ export interface SniperCtx {
   bullets: Bullet[];
 }
 
-/** Dark: resolves the charged sniper shot — called both when the player
- * releases the charge normally and when the tick loop auto-fires it past
- * SNIPER_MAX_CHARGE_MS. Fires at the tank's current aim (not whatever angle
- * it was when charging started), same damage as a normal ultimate but much
- * faster travel. */
+/** Dark: resolves the scoped sniper shot — called both when the player pulls
+ * the normal fire trigger while scoped and when the tick loop auto-fires it
+ * past SNIPER_MAX_CHARGE_MS. Fires at the tank's current aim (not whatever
+ * angle it was when the scope toggled on), same damage as a normal ultimate
+ * but much faster travel. */
 export function fireSniperShot(ctx: SniperCtx, player: TankPlayer) {
   const angle = aimAngleOf(player);
   const offset = TANK_SIZE / 2 + BULLET_SIZE;

@@ -321,10 +321,12 @@ export const ULTIMATE_CONFIG: Record<TankSkin, UltimateEnergyConfig> = {
 };
 
 /** How pressing "R" behaves for each skin — "instant" fires/activates the
- * moment the button goes down (and only that one message is ever sent);
- * "charge" starts a hold-then-release window instead: a `charge_ultimate`
- * message on press, then the existing `shoot: {big: true}` on release to
- * actually fire. Both client input code and the server consult this table
+ * moment the button is pressed (a single `shoot: {big: true}` message);
+ * "charge" instead toggles a scope on with one tap (`charge_ultimate`, no
+ * holding required) and the shot itself fires later through the *normal*
+ * shoot trigger (Space/left click/the touch fire button) while scoped, which
+ * client input code checks and upgrades to `shoot: {big: true}` — see
+ * useTankInput.ts. Both client input code and the server consult this table
  * instead of hardcoding which skin(s) currently work which way, so adding
  * another charge-based skill later is a one-line table edit, not a new
  * `skin === "..."` check scattered across input/HUD/server files. */
@@ -345,12 +347,14 @@ export const ULTIMATE_ACTIVATION_MODE: Record<TankSkin, UltimateActivationMode> 
 export const RAPID_FIRE_DURATION_MS = 2000;
 export const RAPID_FIRE_COOLDOWN_MS = 140; // vs. the normal FIRE_COOLDOWN_MS (350ms)
 
-// Dark's ultimate: hold to charge a sniper shot (shows a telegraphed scope
-// line everyone can see and react to), release to fire. Damage stays the
-// same as a normal ultimate (ULTIMATE_DAMAGE_MULTIPLIER), but the round
-// travels much faster than any other bullet.
+// Dark's ultimate: press R to toggle on a scope (shows a telegraphed line
+// everyone can see and react to, following the mouse freely — no need to
+// hold anything down), then fire with the normal shoot trigger (Space/left
+// click/the touch fire button) to release the shot at the current aim.
+// Damage stays the same as a normal ultimate (ULTIMATE_DAMAGE_MULTIPLIER),
+// but the round travels much faster than any other bullet.
 export const SNIPER_BULLET_SPEED = 12; // vs. the normal BULLET_SPEED (6.5)
-export const SNIPER_MAX_CHARGE_MS = 3000; // auto-fires if held this long
+export const SNIPER_MAX_CHARGE_MS = 6000; // auto-fires if left scoped this long without firing
 export const SNIPER_SCOPE_RANGE = 600; // px — how far the telegraph line reaches if it hits no wall first
 
 // Follow-camera viewport (MOBA-style zoomed-in view) — the client only ever
@@ -398,9 +402,10 @@ export interface TankPlayer {
   // timestamp it expires at) — shortens the normal shot cooldown and drives
   // the client's glow effect.
   rapidFireUntil: number | null;
-  // Dark's ultimate: non-null while charging a sniper shot (the timestamp
-  // charging started) — drives the client's telegraphed scope-line effect,
-  // visible to every player, and auto-fires past SNIPER_MAX_CHARGE_MS.
+  // Dark's ultimate: non-null while the scope is toggled on (the timestamp
+  // it was toggled on) — drives the client's telegraphed scope-line effect,
+  // visible to every player, and auto-fires past SNIPER_MAX_CHARGE_MS if the
+  // player never pulls the trigger themselves.
   sniperChargingSince: number | null;
 }
 

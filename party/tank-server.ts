@@ -367,10 +367,12 @@ export default class TankRoom implements Party.Server {
 
   /**
    * Dispatches a "shoot" message. `big` requests the local skin's ultimate —
-   * for a "charge" skin (see ULTIMATE_ACTIVATION_MODE) this message means
-   * "release the charge and fire", handled entirely separately from the
-   * normal cooldown-gated path below (charging itself already gated when
-   * this could happen); every other skin fires/activates immediately.
+   * for a "charge" skin (see ULTIMATE_ACTIVATION_MODE) this is what the
+   * client upgrades a normal fire-trigger press into while scoped, meaning
+   * "release the shot at the current aim", handled entirely separately from
+   * the normal cooldown-gated path below (toggling the scope on already
+   * gated when this could happen); every other skin fires/activates
+   * immediately on its own dedicated button press.
    */
   private handleShoot(sender: Party.Connection, big: boolean) {
     const player = this.players.get(sender.id);
@@ -420,10 +422,11 @@ export default class TankRoom implements Party.Server {
     });
   }
 
-  /** Starts a "charge" skin's hold-to-charge ultimate (currently just Dark's
-   * sniper — see fireSniperShot for the release/auto-fire side). The client
-   * is expected to only send this for a charge-mode skin, but this re-checks
-   * server-side to be safe. */
+  /** Toggles on a "charge" skin's ultimate (currently just Dark's scope —
+   * see fireSniperShot for the actual-fire/auto-fire side, triggered later
+   * by a normal "shoot" message). A single tap, no holding required. The
+   * client is expected to only send this for a charge-mode skin, but this
+   * re-checks server-side to be safe. */
   private handleChargeUltimate(sender: Party.Connection) {
     const player = this.players.get(sender.id);
     if (!player || !player.alive || this.status !== "playing") return;

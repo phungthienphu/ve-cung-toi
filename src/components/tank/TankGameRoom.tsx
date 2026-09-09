@@ -53,7 +53,7 @@ const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
   },
   dark: {
     icon: "🎯",
-    label: "Bắn tỉa (giữ R để ngắm, thả để bắn) — sát thương gấp đôi, đạn bay rất nhanh",
+    label: "Bắn tỉa (R để bật ngắm, bắn bằng nút bắn thường) — sát thương gấp đôi, đạn bay rất nhanh",
     activeClasses: "border-red-400 bg-red-50 text-red-700 hover:bg-red-100",
     barClass: "bg-red-500",
   },
@@ -459,31 +459,20 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                 </span>
               );
 
-              // "charge" skins fire on release, not on click — see
-              // ULTIMATE_ACTIVATION_MODE. Everything else keeps the simple
-              // tap-to-fire button it's always had.
-              if (ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
-                return (
-                  <button
-                    type="button"
-                    disabled={!ready}
-                    onPointerDown={(e) => {
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      send({ type: "charge_ultimate" });
-                    }}
-                    onPointerUp={() => isCharging && send({ type: "shoot", big: true })}
-                    onPointerCancel={() => isCharging && send({ type: "shoot", big: true })}
-                    title={ui.label}
-                    className={className}
-                  >
-                    {ui.icon}
-                    {bar}
-                    <span className="text-[10px] font-bold">R</span>
-                  </button>
-                );
-              }
+              // A "charge" skin just toggles the scope on with one tap — the
+              // shot itself fires later through the normal fire button/key
+              // (see useTankInput.ts's sendShot), so this button behaves
+              // like a plain tap for every skin, just sending a different
+              // message while one is charge-based.
+              const isCharge = ULTIMATE_ACTIVATION_MODE[skin] === "charge";
               return (
-                <button type="button" disabled={!ready} onClick={() => send({ type: "shoot", big: true })} title={ui.label} className={className}>
+                <button
+                  type="button"
+                  disabled={!ready || isCharging}
+                  onClick={() => send(isCharge ? { type: "charge_ultimate" } : { type: "shoot", big: true })}
+                  title={ui.label}
+                  className={className}
+                >
                   {ui.icon}
                   {bar}
                   <span className="text-[10px] font-bold">R</span>

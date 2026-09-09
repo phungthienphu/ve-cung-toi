@@ -252,7 +252,11 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         if (p.sniperChargingSince === null) continue;
         const rp = renderPos(p.id, p.x, p.y);
         const angle = p.aimAngle ?? DIR_ANGLE[p.dir];
-        const end = computeScopeEndpoint(m, rp.x, rp.y, angle);
+        // Only the local player's own scope line can know the real cursor
+        // distance (never sent over the network) — everyone else's falls
+        // back to the full wall-or-max-range line.
+        const maxDist = p.id === selfId ? input.aimDistanceRef.current ?? undefined : undefined;
+        const end = computeScopeEndpoint(m, rp.x, rp.y, angle, maxDist);
         drawScopeLine(ctx, rp.x, rp.y, end.x, end.y, now);
       }
 
@@ -318,7 +322,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     // reassigned) — including them here doesn't change when this effect
     // re-runs, it just satisfies the linter, which can't see through the
     // custom hooks to verify that stability itself.
-  }, [selfId, input.cameraOffsetRef, explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef]);
+  }, [selfId, input.cameraOffsetRef, input.aimDistanceRef, explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef]);
 
   const self = state.players.find((p) => p.id === selfId);
 

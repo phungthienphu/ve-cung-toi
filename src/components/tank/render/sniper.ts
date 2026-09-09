@@ -10,13 +10,26 @@ const RAY_STEP = 8;
 
 /** Marches along `angle` from (x, y) until it hits a wall or runs out of
  * range, returning where the scope line should end. Purely a rendering
- * concern — the real bullet does its own collision once actually fired. */
-export function computeScopeEndpoint(m: ReturnType<typeof getMap>, x: number, y: number, angle: number): { x: number; y: number } {
+ * concern — the real bullet does its own collision once actually fired.
+ *
+ * `maxDist` defaults to the full SNIPER_SCOPE_RANGE (used for every other
+ * player's scope, since only their aim *angle* is known over the network,
+ * never how far their cursor actually is). The local player's own line
+ * should instead pass the real cursor distance so the reticle sits under
+ * the mouse instead of always stretching out to the wall/max range. */
+export function computeScopeEndpoint(
+  m: ReturnType<typeof getMap>,
+  x: number,
+  y: number,
+  angle: number,
+  maxDist: number = SNIPER_SCOPE_RANGE
+): { x: number; y: number } {
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
   let px = x;
   let py = y;
-  for (let dist = 0; dist < SNIPER_SCOPE_RANGE; dist += RAY_STEP) {
+  const cappedMax = Math.min(maxDist, SNIPER_SCOPE_RANGE);
+  for (let dist = 0; dist < cappedMax; dist += RAY_STEP) {
     const nx = x + dx * dist;
     const ny = y + dy * dist;
     if (tileCharAt(m, nx, ny) === "#") break;
