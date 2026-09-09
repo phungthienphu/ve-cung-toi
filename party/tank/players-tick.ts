@@ -63,6 +63,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.hp = MAX_HP;
         player.respawnAt = null;
         player.blindedUntil = null;
+        player.stunnedUntil = null;
         player.boostEnergy = MAX_BOOST_ENERGY;
         player.isBoosting = false;
         player.shieldHitsLeft = 0;
@@ -81,6 +82,9 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
     if (player.sniperChargingSince !== null && now - player.sniperChargingSince >= SNIPER_MAX_CHARGE_MS) {
       fireSniperShot(ctx, player);
     }
+    if (player.stunnedUntil !== null && now >= player.stunnedUntil) {
+      player.stunnedUntil = null;
+    }
 
     const input = ctx.inputs.get(player.id);
     if (!input) {
@@ -95,14 +99,19 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       else if (input.right) dir = "right";
 
       const isShielded = player.shieldHitsLeft > 0;
-      player.moving = dir !== null && !isShielded;
+      const isStunned = player.stunnedUntil !== null && now < player.stunnedUntil;
+      const isImmobilized = isShielded || isStunned;
+      player.moving = dir !== null && !isImmobilized;
       // The shield is a "turtle" tool — it holds position entirely while
-      // active. You can still turn to face/shoot, just not relocate.
-      const wantsBoost = dir !== null && input.boost && player.boostEnergy > 0 && !isShielded;
-      if (dir) {
+      // active. Stunned is the same "can't relocate" effect, just inflicted
+      // by someone else. You can still turn to face/shoot while shielded
+      // (not stunned — see tank-server.ts's isStunned, which blocks acting
+      // entirely), just not relocate.
+      const wantsBoost = dir !== null && input.boost && player.boostEnergy > 0 && !isImmobilized;
+      if (dir && !isStunned) {
         player.dir = dir;
       }
-      if (dir && !isShielded) {
+      if (dir && !isImmobilized) {
         const speed = wantsBoost ? TANK_SPEED * BOOST_SPEED_MULTIPLIER : TANK_SPEED;
         const v = DIR_VECTOR[dir];
         const nx = player.x + v.dx * speed;

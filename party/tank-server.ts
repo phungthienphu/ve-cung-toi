@@ -48,7 +48,7 @@ import { spawnMonster, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
 import { stepRedBarrages } from "./tank/redBarrage";
-import { activateRapidFire, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
+import { activateRapidFire, activateSandWave, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
 import type { InputState } from "./tank/types";
 
 export default class TankRoom implements Party.Server {
@@ -71,6 +71,7 @@ export default class TankRoom implements Party.Server {
   lastBurnDamageAt = new Map<string, number>();
   lastMonsterDirChangeAt = new Map<string, number>();
   lastMonsterContactAt = new Map<string, number>();
+  lastMonsterHealAt = new Map<string, number>();
   monsterAggroUntil = new Map<string, number>();
   monsterRestUntil = new Map<string, number>();
   mapId: string = DEFAULT_MAP_ID;
@@ -212,6 +213,7 @@ export default class TankRoom implements Party.Server {
         respawnAt: null,
         items: [],
         blindedUntil: null,
+        stunnedUntil: null,
         boostEnergy: MAX_BOOST_ENERGY,
         isBoosting: false,
         ultimateEnergy: 0,
@@ -280,6 +282,7 @@ export default class TankRoom implements Party.Server {
       p.dir = "down";
       p.items = [];
       p.blindedUntil = null;
+      p.stunnedUntil = null;
       p.boostEnergy = MAX_BOOST_ENERGY;
       p.isBoosting = false;
       p.ultimateEnergy = 0;
@@ -298,6 +301,7 @@ export default class TankRoom implements Party.Server {
     this.lastPickupSpawnAt = Date.now();
     this.lastMonsterDirChangeAt.clear();
     this.lastMonsterContactAt.clear();
+    this.lastMonsterHealAt.clear();
     this.lastBurnDamageAt.clear();
     this.monsterAggroUntil.clear();
     this.monsterRestUntil.clear();
@@ -380,9 +384,15 @@ export default class TankRoom implements Party.Server {
    * gated when this could happen); every other skin fires/activates
    * immediately on its own dedicated button press.
    */
+  /** Sand's stun: can't move (see players-tick.ts) or act at all while it's
+   * in effect — checked by every action handler below. */
+  private isStunned(player: TankPlayer): boolean {
+    return player.stunnedUntil !== null && player.stunnedUntil > Date.now();
+  }
+
   private handleShoot(sender: Party.Connection, big: boolean) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing") return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
     const skin = skinForColor(player.color);
 
     if (big && ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
@@ -401,10 +411,14 @@ export default class TankRoom implements Party.Server {
     if (now - last < cooldown) return;
     this.lastShotAt.set(sender.id, now);
 
-    // Ultimates that are a self-buff rather than a projectile stop here
-    // instead of falling through to spawn a bullet.
+    // Ultimates that resolve on their own (a self-buff, an instant area
+    // effect) stop here instead of falling through to spawn a bullet.
     if (big && skin === "blue") {
       activateRapidFire(player, now);
+      return;
+    }
+    if (big && skin === "sand") {
+      activateSandWave(this, player, this.map, now);
       return;
     }
 
@@ -435,7 +449,7 @@ export default class TankRoom implements Party.Server {
    * re-checks server-side to be safe. */
   private handleChargeUltimate(sender: Party.Connection) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing") return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
     const skin = skinForColor(player.color);
     if (ULTIMATE_ACTIVATION_MODE[skin] !== "charge") return;
     if (player.sniperChargingSince !== null) return;
@@ -449,7 +463,7 @@ export default class TankRoom implements Party.Server {
    * so this is the only place server-side that skin's skill is triggered. */
   private handleThrowBomb(x: number, y: number, sender: Party.Connection) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing") return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
     const skin = skinForColor(player.color);
     if (ULTIMATE_ACTIVATION_MODE[skin] !== "target") return;
     if (player.ultimateEnergy < ULTIMATE_CONFIG[skin].maxEnergy) return;
@@ -458,7 +472,7 @@ export default class TankRoom implements Party.Server {
 
   private handleUseItem(kind: ItemKind, sender: Party.Connection) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing") return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
     const slot = player.items.indexOf(kind);
     if (slot === -1) return;
 

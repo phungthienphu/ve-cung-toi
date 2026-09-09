@@ -8,15 +8,26 @@
 
 import {
   BULLET_SIZE,
+  MONSTER_AGGRO_TIMEOUT_MS,
+  MONSTER_RESPAWN_DELAY_MS,
   RAPID_FIRE_DURATION_MS,
   RED_BOMB_MAX_RANGE,
+  SAND_WAVE_DAMAGE,
+  SAND_WAVE_KNOCKBACK_DIST,
+  SAND_WAVE_RANGE,
+  SAND_WAVE_STUN_MS,
+  SAND_WAVE_WIDTH,
   SNIPER_BULLET_SPEED,
   TANK_SIZE,
   type Bullet,
+  type Monster,
+  type Pickup,
   type RedBarrage,
+  type TankMapDef,
   type TankPlayer,
 } from "../../shared/tankTypes";
-import { aimAngleOf, makeId } from "./geometry";
+import { type CombatCtx, damagePlayer } from "./combat";
+import { aimAngleOf, makeId, tankBlocked } from "./geometry";
 import { createRedBarrage } from "./redBarrage";
 
 /**
@@ -95,4 +106,61 @@ export function throwRedBomb(player: TankPlayer, x: number, y: number, now: numb
   }
   player.ultimateEnergy = 0;
   return createRedBarrage(player.id, tx, ty, now);
+}
+
+export interface SandWaveCtx extends CombatCtx {
+  monsters: Monster[];
+  monsterAggroUntil: Map<string, number>;
+  pickups: Pickup[];
+}
+
+/** Sand: an instant shockwave fanned out along the tank's current aim — a
+ * SAND_WAVE_RANGE-long by SAND_WAVE_WIDTH-wide rectangle, resolved the
+ * moment it's triggered (no travel time, unlike a bullet). Anyone caught in
+ * it takes light damage, gets knocked back along the same direction (capped
+ * by walls, same as any other push in this game); a tank is also stunned —
+ * a monster instead just gets bumped and aggroed, the same way a bullet hit
+ * would, since a monster has no inputs of its own to lock out. */
+export function activateSandWave(ctx: SandWaveCtx, player: TankPlayer, map: TankMapDef, now: number) {
+  const angle = aimAngleOf(player);
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  player.ultimateEnergy = 0;
+  ctx.impacts.push({ id: makeId(), x: player.x, y: player.y, kind: "sand_wave", angle });
+
+  const inCone = (x: number, y: number) => {
+    const dx = x - player.x;
+    const dy = y - player.y;
+    const forward = dx * ux + dy * uy; // distance along the wave's direction
+    const perp = -dx * uy + dy * ux; // perpendicular distance off the centerline
+    return forward >= 0 && forward <= SAND_WAVE_RANGE && Math.abs(perp) <= SAND_WAVE_WIDTH / 2;
+  };
+  const knockBack = (target: { x: number; y: number }) => {
+    const nx = target.x + ux * SAND_WAVE_KNOCKBACK_DIST;
+    const ny = target.y + uy * SAND_WAVE_KNOCKBACK_DIST;
+    if (!tankBlocked(map, nx, target.y)) target.x = nx;
+    if (!tankBlocked(map, target.x, ny)) target.y = ny;
+  };
+
+  for (const target of ctx.players.values()) {
+    if (target.id === player.id || !target.alive || !inCone(target.x, target.y)) continue;
+    damagePlayer(ctx, target, SAND_WAVE_DAMAGE, player.id);
+    target.stunnedUntil = now + SAND_WAVE_STUN_MS;
+    knockBack(target);
+  }
+
+  for (const monster of ctx.monsters) {
+    if (!monster.alive || !inCone(monster.x, monster.y)) continue;
+    monster.hp -= 1;
+    if (monster.hp <= 0) {
+      monster.alive = false;
+      monster.respawnAt = now + MONSTER_RESPAWN_DELAY_MS;
+      monster.aggroPlayerId = null;
+      ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shield" });
+    } else {
+      monster.aggroPlayerId = player.id;
+      ctx.monsterAggroUntil.set(monster.id, now + MONSTER_AGGRO_TIMEOUT_MS);
+      knockBack(monster);
+    }
+  }
 }

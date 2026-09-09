@@ -174,6 +174,38 @@ export function drawBurningOverlay(ctx: CanvasRenderingContext2D, x: number, y: 
   }
 }
 
+/** Spinning "dizzy stars" over a stunned tank (Sand's ultimate) — visible to
+ * everyone, same as the burning overlay, so it's obvious at a glance who
+ * currently can't move or act. */
+export function drawStunnedOverlay(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  const half = TANK_SIZE / 2;
+  const orbitY = y - half - 16;
+  for (let i = 0; i < 3; i++) {
+    const angle = time / 260 + (i / 3) * Math.PI * 2;
+    const sx = x + Math.cos(angle) * 10;
+    const sy = orbitY + Math.sin(angle) * 3;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(angle);
+    ctx.fillStyle = "#fde047";
+    ctx.strokeStyle = "#a16207";
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    for (let p = 0; p < 5; p++) {
+      const a = (p / 5) * Math.PI * 2 - Math.PI / 2;
+      const r = p % 2 === 0 ? 4 : 1.8;
+      const px = Math.cos(a) * r;
+      const py = Math.sin(a) * r;
+      if (p === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: number) {
   const half = PICKUP_SIZE / 2;
   ctx.fillStyle = "#dcfce7";

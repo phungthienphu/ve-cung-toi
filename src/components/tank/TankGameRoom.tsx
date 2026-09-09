@@ -65,7 +65,12 @@ const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
     activeClasses: "border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100",
     barClass: "bg-orange-500",
   },
-  sand: DEFAULT_ULTIMATE_UI,
+  sand: {
+    icon: "🌪️",
+    label: "Sóng cát (R) — đẩy lùi + choáng 1s kẻ địch phía trước, sát thương thấp",
+    activeClasses: "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100",
+    barClass: "bg-amber-500",
+  },
   bigRed: DEFAULT_ULTIMATE_UI,
   darkLarge: DEFAULT_ULTIMATE_UI,
   huge: DEFAULT_ULTIMATE_UI,

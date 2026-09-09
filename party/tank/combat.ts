@@ -65,6 +65,21 @@ export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number,
   ctx.kills.push({ id: makeId(), killerName: killer ? killer.name : null, victimName: target.name });
 }
 
+/** Same as damagePlayer, but a standing shield eats the hit first (one of
+ * its charges, no damage) instead of being bypassed — for any damage source
+ * that isn't already a bullet routed through applyHit below (monster
+ * contact damage is the current example: it used to call damagePlayer
+ * directly, which meant a shielded tank getting mauled by a monster took
+ * full damage anyway). */
+export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: number, ownerId: string | null) {
+  if (target.shieldHitsLeft > 0) {
+    target.shieldHitsLeft -= 1;
+    ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
+    return;
+  }
+  damagePlayer(ctx, target, amount, ownerId);
+}
+
 /** Applies bullet damage/effects to a hit tank; returns true if the tank died. */
 export function applyHit(ctx: CombatCtx, target: TankPlayer, bulletKind: "normal" | "blind" | "big" | "fire", ownerId: string): boolean {
   if (target.shieldHitsLeft > 0) {

@@ -207,6 +207,33 @@ export function playBombBoom() {
   tone(40, 0.06, 0.45, 0.12, "sawtooth");
 }
 
+/** Sand's ultimate firing — a low, gritty rumbling whoosh, distinct from a
+ * bullet/explosion sound since nothing actually detonates. */
+export function playSandWave() {
+  noiseBurst(0.35, 0.14, 500);
+  tone(120, 0, 0.28, 0.1, "sawtooth");
+  tone(90, 0.05, 0.22, 0.08, "sawtooth");
+}
+
+/** Self just got stunned (Sand's ultimate) — a short woozy descending
+ * warble, distinct from a normal hit. */
+export function playStunned() {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = "triangle";
+  const t0 = audio.currentTime;
+  osc.frequency.setValueAtTime(500, t0);
+  osc.frequency.exponentialRampToValueAtTime(180, t0 + 0.35);
+  gain.gain.setValueAtTime(0.1, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+  osc.connect(gain);
+  gain.connect(audio.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.45);
+}
+
 /** Self took damage — bullet, trap, or terrain hazard. */
 export function playTankHit() {
   tone(160, 0, 0.12, 0.1, "square");

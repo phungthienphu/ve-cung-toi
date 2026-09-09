@@ -20,7 +20,7 @@ import {
   type TankClientMessage,
   type TankPublicState,
 } from "@shared/tankTypes";
-import { playTankBigShot, playTankShoot } from "@/lib/sound";
+import { playSandWave, playTankBigShot, playTankShoot } from "@/lib/sound";
 import { DIR_ANGLE } from "./render/sprite-utils";
 
 const KEY_MAP: Record<string, "up" | "down" | "left" | "right"> = {
@@ -167,7 +167,8 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
           if (self.sniperChargingSince === null) send({ type: "charge_ultimate" });
         } else {
           send({ type: "shoot", big: true });
-          playTankBigShot();
+          if (skin === "sand") playSandWave();
+          else playTankBigShot();
         }
         e.preventDefault();
       }

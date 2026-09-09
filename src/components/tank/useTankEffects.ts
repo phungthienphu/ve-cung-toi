@@ -14,7 +14,9 @@ import {
   playBombWhistle,
   playFireIgnite,
   playPlaneRoar,
+  playSandWave,
   playShieldBlock,
+  playStunned,
   playTankBigExplosion,
   playTankDestroyed,
   playTankExplosion,
@@ -23,7 +25,17 @@ import {
   playTankPickup,
   playUltimateReady,
 } from "@/lib/sound";
-import { BOMB_EXPLOSION_FRAMES, EXPLOSION_FRAMES, type Explosion, type LeafParticle, type MuzzleFlash, type OilSpill, type SkidMark, spawnLeafBurst } from "./render/effects";
+import {
+  BOMB_EXPLOSION_FRAMES,
+  EXPLOSION_FRAMES,
+  type Explosion,
+  type LeafParticle,
+  type MuzzleFlash,
+  type OilSpill,
+  type SandWaveEffect,
+  type SkidMark,
+  spawnLeafBurst,
+} from "./render/effects";
 import { tileCharAt } from "./render/map-background";
 import { BOMB_FALL_MS, FALLING_BOMB_FRAMES, PLANE_FRAMES } from "./render/airstrike";
 
@@ -67,6 +79,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
   const oilSpillsRef = useRef<OilSpill[]>([]);
   const muzzleFlashesRef = useRef<MuzzleFlash[]>([]);
   const leavesRef = useRef<LeafParticle[]>([]);
+  const sandWavesRef = useRef<SandWaveEffect[]>([]);
   const prevBulletsRef = useRef<Map<string, Bullet>>(new Map());
 
   // Kick every sprite this screen could possibly need off loading the moment
@@ -172,6 +185,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     let sawShield = false;
     let sawCrate = false;
     let sawBomb = false;
+    let sawSandWave = false;
     for (const imp of state.impacts) {
       if (imp.kind === "shove") {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "shove" });
@@ -186,6 +200,9 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
       } else if (imp.kind === "bomb") {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "bomb", radius: imp.radius });
         sawBomb = true;
+      } else if (imp.kind === "sand_wave") {
+        sandWavesRef.current.push({ id: imp.id, x: imp.x, y: imp.y, angle: imp.angle ?? 0, start: now });
+        sawSandWave = true;
       } else {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "normal" });
         sawTrap = true;
@@ -196,6 +213,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     if (sawShield) playShieldBlock();
     if (sawCrate) playTankExplosion();
     if (sawBomb) playBombBoom();
+    if (sawSandWave) playSandWave();
   }, [state.impacts]);
 
   // Airstrike audio: an engine roar for the whole flight (played once, the
@@ -255,6 +273,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     hp: number;
     itemCount: number;
     burning: boolean;
+    stunned: boolean;
     alive: boolean;
     isBoosting: boolean;
     ultimateEnergy: number;
@@ -263,12 +282,14 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     const self = state.players.find((p) => p.id === selfId);
     if (!self) return;
     const isBurning = !!self.burningUntil && self.burningUntil > state.serverNow;
+    const isStunned = !!self.stunnedUntil && self.stunnedUntil > state.serverNow;
     const prev = prevSelfRef.current;
     if (prev) {
       if (!self.alive && prev.alive) playTankDestroyed();
       else if (self.hp < prev.hp) playTankHit();
       else if (self.hp > prev.hp || self.items.length > prev.itemCount) playTankPickup();
       if (isBurning && !prev.burning) playFireIgnite();
+      if (isStunned && !prev.stunned) playStunned();
       if (self.isBoosting && !prev.isBoosting) playBoostStart();
       const maxEnergy = ULTIMATE_CONFIG[skinForColor(self.color)].maxEnergy;
       if (self.ultimateEnergy >= maxEnergy && prev.ultimateEnergy < maxEnergy) playUltimateReady();
@@ -277,11 +298,12 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
       hp: self.hp,
       itemCount: self.items.length,
       burning: isBurning,
+      stunned: isStunned,
       alive: self.alive,
       isBoosting: self.isBoosting,
       ultimateEnergy: self.ultimateEnergy,
     };
   }, [state.players, selfId, state.serverNow]);
 
-  return { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, killFeed };
+  return { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, killFeed };
 }

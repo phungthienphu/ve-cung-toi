@@ -260,7 +260,7 @@ export const BUSH_REVEAL_RADIUS = 50;
 // (returns to wandering) once the target escapes the leash range, dies, or
 // the aggro timer lapses without being refreshed by another hit.
 export const MONSTER_COUNT = 2;
-export const MONSTER_HP = 2;
+export const MONSTER_HP = 3;
 export const MONSTER_SIZE = TANK_SIZE;
 export const MONSTER_SPEED = 1.3;
 export const MONSTER_CHASE_SPEED_MULTIPLIER = 1.4;
@@ -273,10 +273,14 @@ export const MONSTER_CHASE_LEASH_RADIUS = 170; // gives up the chase past this f
 export const MONSTER_REST_CHANCE = 0.4; // odds it pauses instead of picking a new direction
 export const MONSTER_REST_DURATION_MS = 2500;
 
-// A monster's nest is marked on the ground by a mud/water puddle — purely
-// visual, except stepping into it also douses a burning tank.
+// A monster's nest is marked on the ground by a mud/water puddle — stepping
+// into it douses a burning tank, and a monster resting in its own puddle (or
+// hiding in any bush) slowly heals back up.
 export const NEST_PUDDLE_RADIUS = 26;
 export const MONSTER_AGGRO_TIMEOUT_MS = 4000; // must be refreshed by another hit or it drops
+// MONSTER_HP is small (2) — a per-tick fractional regen wouldn't read as
+// anything, so it heals in whole-HP steps on an interval instead.
+export const MONSTER_HEAL_INTERVAL_MS = 4000;
 
 // Boost is a built-in ability every tank has (hold to sprint), gated by an
 // energy meter rather than a pickup — drains while boosting, regenerates
@@ -314,7 +318,9 @@ export const ULTIMATE_CONFIG: Record<TankSkin, UltimateEnergyConfig> = {
   dark: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
   green: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
   red: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
-  sand: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  // Stun is strong utility even at low damage — charges noticeably slower
+  // than the shared baseline to compensate (~14s instead of ~10s).
+  sand: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: 0.36 },
   bigRed: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
   darkLarge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
   huge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
@@ -420,6 +426,11 @@ export interface TankPlayer {
   // visible to every player, and auto-fires past SNIPER_MAX_CHARGE_MS if the
   // player never pulls the trigger themselves.
   sniperChargingSince: number | null;
+  // Sand's ultimate (and generically, anyone stunned in the future): can't
+  // move or act until this timestamp passes. Unlike the per-skin fields
+  // above, this is a status effect inflicted by someone else, so it's reset
+  // alongside blindedUntil/burningUntil rather than via resetSkillState.
+  stunnedUntil: number | null;
 }
 
 export interface Bullet {
@@ -538,6 +549,17 @@ export const RED_BARRAGE_BOMB_RADIUS = TILE_SIZE * 0.75;
 export const RED_BARRAGE_BOMB_DAMAGE = 22; // all 5 landing on a stationary target is ~lethal
 export const RED_BARRAGE_SPREAD_RADIUS = TILE_SIZE * 1.8; // how scattered the impacts are around the aim point
 
+// Sand's ultimate: an instant sinking-sand shockwave fanned out from the
+// tank along its current aim — a rectangle SAND_WAVE_RANGE long by
+// SAND_WAVE_WIDTH wide (roughly 3 bullets' worth of lane), low damage but
+// knocks anyone caught in it back and stuns them, both cheap to land and
+// cheap to eat since the payoff is control, not raw damage.
+export const SAND_WAVE_DAMAGE = 10;
+export const SAND_WAVE_RANGE = TILE_SIZE * 4;
+export const SAND_WAVE_WIDTH = TILE_SIZE * 2.25;
+export const SAND_WAVE_KNOCKBACK_DIST = TILE_SIZE * 1.5;
+export const SAND_WAVE_STUN_MS = 1000;
+
 export interface Monster {
   id: string;
   x: number;
@@ -558,10 +580,13 @@ export interface TankImpact {
   id: string;
   x: number;
   y: number;
-  kind: "shove" | "trap" | "shield" | "crate" | "bomb";
+  kind: "shove" | "trap" | "shield" | "crate" | "bomb" | "sand_wave";
   // Only set for "bomb" — the blast radius that hit, so the client's
   // explosion visual scales to match instead of always looking the same size.
   radius?: number;
+  // Only set for "sand_wave" — the direction it fanned out in, so the client
+  // can draw the same cone shape the server used to resolve hits.
+  angle?: number;
 }
 
 /** A single-tick elimination event — consumed client-side to show a

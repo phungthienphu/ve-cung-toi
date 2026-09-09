@@ -10,19 +10,21 @@ import {
   MONSTER_CONTACT_COOLDOWN_MS,
   MONSTER_DAMAGE,
   MONSTER_DIR_CHANGE_MS,
+  MONSTER_HEAL_INTERVAL_MS,
   MONSTER_HP,
   MONSTER_NEST_RADIUS,
   MONSTER_REST_CHANCE,
   MONSTER_REST_DURATION_MS,
   MONSTER_SIZE,
   MONSTER_SPEED,
+  NEST_PUDDLE_RADIUS,
   TANK_SIZE,
   type Direction,
   type Monster,
   type TankMapDef,
 } from "../../shared/tankTypes";
-import { type CombatCtx, damagePlayer } from "./combat";
-import { DIR_VECTOR, makeId, randomOpenTile, spawnPixel, tankBlocked } from "./geometry";
+import { type CombatCtx, damageThroughShield } from "./combat";
+import { DIR_VECTOR, makeId, randomOpenTile, spawnPixel, tankBlocked, tileAt } from "./geometry";
 
 export function spawnMonster(map: TankMapDef): Monster {
   const tile = randomOpenTile(map);
@@ -46,6 +48,7 @@ export interface MonstersTickCtx extends CombatCtx {
   monsters: Monster[];
   lastMonsterDirChangeAt: Map<string, number>;
   lastMonsterContactAt: Map<string, number>;
+  lastMonsterHealAt: Map<string, number>;
   monsterAggroUntil: Map<string, number>;
   monsterRestUntil: Map<string, number>;
 }
@@ -131,9 +134,24 @@ export function stepMonsters(ctx: MonstersTickCtx, map: TankMapDef, now: number)
       const last = ctx.lastMonsterContactAt.get(key) ?? 0;
       if (now - last >= MONSTER_CONTACT_COOLDOWN_MS) {
         ctx.lastMonsterContactAt.set(key, now);
-        damagePlayer(ctx, player, MONSTER_DAMAGE, null);
+        damageThroughShield(ctx, player, MONSTER_DAMAGE, null);
         monster.aggroPlayerId = player.id;
         ctx.monsterAggroUntil.set(monster.id, now + MONSTER_AGGRO_TIMEOUT_MS);
+      }
+    }
+
+    // Resting in its own puddle or hiding in any bush slowly heals a
+    // monster back up — whole-HP steps on an interval, since MONSTER_HP is
+    // too small for a per-tick fractional regen to read as anything.
+    if (monster.hp < MONSTER_HP) {
+      const inNest = Math.hypot(monster.x - monster.nestX, monster.y - monster.nestY) < NEST_PUDDLE_RADIUS;
+      const inBush = tileAt(map, monster.x, monster.y) === "B";
+      if (inNest || inBush) {
+        const lastHeal = ctx.lastMonsterHealAt.get(monster.id) ?? 0;
+        if (now - lastHeal >= MONSTER_HEAL_INTERVAL_MS) {
+          ctx.lastMonsterHealAt.set(monster.id, now);
+          monster.hp = Math.min(MONSTER_HP, monster.hp + 1);
+        }
       }
     }
   }

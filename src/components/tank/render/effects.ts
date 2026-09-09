@@ -4,7 +4,7 @@
 // own tracked-list item type + duration constant, consumed by TankCanvas's
 // draw loop via a `useRef<T[]>` per effect kind.
 
-import { TANK_SIZE } from "@shared/tankTypes";
+import { SAND_WAVE_RANGE, SAND_WAVE_WIDTH, TANK_SIZE } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
 import { getTintedSprite } from "./sprite-utils";
 
@@ -208,6 +208,45 @@ export interface LeafParticle {
   spin: number;
   sprite: string;
   start: number;
+}
+
+// Sand's ultimate: a trapezoid shockwave rushing out from the tank along its
+// aim, matching the exact SAND_WAVE_RANGE/SAND_WAVE_WIDTH hitbox the server
+// resolved hits against — so the visual never lies about what actually got
+// hit.
+export const SAND_WAVE_EFFECT_DURATION_MS = 420;
+export interface SandWaveEffect {
+  id: string;
+  x: number;
+  y: number;
+  angle: number;
+  start: number;
+}
+
+export function drawSandWave(ctx: CanvasRenderingContext2D, effect: SandWaveEffect, progress: number) {
+  const alpha = 1 - progress;
+  const reach = SAND_WAVE_RANGE * Math.min(1, progress * 1.8); // rushes out fast, then holds near full length
+  const nearHalfWidth = 6;
+  const farHalfWidth = SAND_WAVE_WIDTH / 2;
+  const ux = Math.cos(effect.angle);
+  const uy = Math.sin(effect.angle);
+  const px = -uy;
+  const py = ux;
+
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.75;
+  ctx.fillStyle = "#b45309";
+  ctx.beginPath();
+  ctx.moveTo(effect.x + px * nearHalfWidth, effect.y + py * nearHalfWidth);
+  ctx.lineTo(effect.x + ux * reach + px * farHalfWidth, effect.y + uy * reach + py * farHalfWidth);
+  ctx.lineTo(effect.x + ux * reach - px * farHalfWidth, effect.y + uy * reach - py * farHalfWidth);
+  ctx.lineTo(effect.x - px * nearHalfWidth, effect.y - py * nearHalfWidth);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = `rgba(217,119,6,${alpha * 0.6})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
 }
 
 export function spawnLeafBurst(ref: { current: LeafParticle[] }, x: number, y: number) {
