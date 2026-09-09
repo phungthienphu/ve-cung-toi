@@ -4,6 +4,8 @@ import {
   BOOST_DRAIN_PER_TICK,
   BOOST_REGEN_PER_TICK,
   BOOST_SPEED_MULTIPLIER,
+  CRATE_MAX_HP,
+  CRATE_SIZE,
   BULLET_DAMAGE,
   BULLET_SIZE,
   BULLET_SPEED,
@@ -72,6 +74,7 @@ import {
   type TankRoomMode,
   type TankRoomStatus,
   type TankServerMessage,
+  type Crate,
   type Trap,
 } from "../shared/tankTypes";
 
@@ -143,6 +146,39 @@ function winsShovingContest(mover: TankPlayer, moverBoosting: boolean, blocker: 
   return mover.boostEnergy >= blocker.boostEnergy;
 }
 
+function crateBlocked(map: TankMapDef, x: number, y: number): boolean {
+  const half = CRATE_SIZE / 2;
+  return (
+    tileAt(map, x - half, y - half) === "#" ||
+    tileAt(map, x + half, y - half) === "#" ||
+    tileAt(map, x - half, y + half) === "#" ||
+    tileAt(map, x + half, y + half) === "#"
+  );
+}
+
+function findOverlappingCrate(crates: Crate[], x: number, y: number): Crate | null {
+  for (const c of crates) {
+    if (Math.hypot(x - c.x, y - c.y) < (TANK_SIZE + CRATE_SIZE) / 2) return c;
+  }
+  return null;
+}
+
+/** Same idea as tryPushTank — a crate rammed by a tank slides in that
+ * direction unless it would land in a wall, another crate, or another tank. */
+function tryPushCrate(crate: Crate, dx: number, dy: number, map: TankMapDef, crates: Crate[], players: Map<string, TankPlayer>): boolean {
+  const nx = crate.x + dx;
+  const ny = crate.y + dy;
+  if (crateBlocked(map, nx, ny)) return false;
+  for (const other of crates) {
+    if (other === crate) continue;
+    if (Math.hypot(nx - other.x, ny - other.y) < CRATE_SIZE) return false;
+  }
+  if (findOverlappingTank(players.values(), new Set(), nx, ny)) return false;
+  crate.x = nx;
+  crate.y = ny;
+  return true;
+}
+
 function randomPickupKind(): ItemKind {
   const r = Math.random();
   let acc = 0;
@@ -189,6 +225,7 @@ export default class TankRoom implements Party.Server {
   bullets: Bullet[] = [];
   pickups: Pickup[] = [];
   traps: Trap[] = [];
+  crates: Crate[] = [];
   monsters: Monster[] = [];
   impacts: TankImpact[] = [];
   kills: TankKillEvent[] = [];
@@ -410,6 +447,7 @@ export default class TankRoom implements Party.Server {
     this.bullets = [];
     this.pickups = [];
     this.traps = [];
+    this.crates = this.spawnCratesFromLayout();
     this.impacts = [];
     this.kills = [];
     this.lastPickupSpawnAt = Date.now();
@@ -426,6 +464,19 @@ export default class TankRoom implements Party.Server {
     this.status = "playing";
     this.ensureTicking();
     this.broadcastState();
+  }
+
+  private spawnCratesFromLayout(): Crate[] {
+    const map = this.map;
+    const crates: Crate[] = [];
+    for (let row = 0; row < map.layout.length; row++) {
+      for (let col = 0; col < map.layout[row].length; col++) {
+        if (map.layout[row][col] !== "C") continue;
+        const pos = spawnPixel({ x: col, y: row });
+        crates.push({ id: makeId(), x: pos.x, y: pos.y, kind: "wood", hp: CRATE_MAX_HP });
+      }
+    }
+    return crates;
   }
 
   private spawnMonster(): Monster {
@@ -453,6 +504,7 @@ export default class TankRoom implements Party.Server {
     this.bullets = [];
     this.pickups = [];
     this.traps = [];
+    this.crates = [];
     this.monsters = [];
     this.impacts = [];
     this.kills = [];
@@ -708,12 +760,20 @@ export default class TankRoom implements Party.Server {
 
           if (!tankBlocked(map, nx, player.y)) {
             const blocker = findOverlappingTank(this.players.values(), new Set([player.id]), nx, player.y);
-            if (!blocker) {
+            const crateBlocker = !blocker ? findOverlappingCrate(this.crates, nx, player.y) : null;
+            if (!blocker && !crateBlocker) {
               player.x = nx;
-            } else if (winsShovingContest(player, wantsBoost, blocker)) {
+            } else if (blocker && winsShovingContest(player, wantsBoost, blocker)) {
               const impactX = blocker.x;
               const impactY = blocker.y;
               if (tryPushTank(blocker, v.dx * speed, v.dy * speed, map, this.players, player.id)) {
+                player.x = nx;
+                this.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
+              }
+            } else if (crateBlocker) {
+              const impactX = crateBlocker.x;
+              const impactY = crateBlocker.y;
+              if (tryPushCrate(crateBlocker, v.dx * speed, v.dy * speed, map, this.crates, this.players)) {
                 player.x = nx;
                 this.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
               }
@@ -721,12 +781,20 @@ export default class TankRoom implements Party.Server {
           }
           if (!tankBlocked(map, player.x, ny)) {
             const blocker = findOverlappingTank(this.players.values(), new Set([player.id]), player.x, ny);
-            if (!blocker) {
+            const crateBlocker = !blocker ? findOverlappingCrate(this.crates, player.x, ny) : null;
+            if (!blocker && !crateBlocker) {
               player.y = ny;
-            } else if (winsShovingContest(player, wantsBoost, blocker)) {
+            } else if (blocker && winsShovingContest(player, wantsBoost, blocker)) {
               const impactX = blocker.x;
               const impactY = blocker.y;
               if (tryPushTank(blocker, v.dx * speed, v.dy * speed, map, this.players, player.id)) {
+                player.y = ny;
+                this.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
+              }
+            } else if (crateBlocker) {
+              const impactX = crateBlocker.x;
+              const impactY = crateBlocker.y;
+              if (tryPushCrate(crateBlocker, v.dx * speed, v.dy * speed, map, this.crates, this.players)) {
                 player.y = ny;
                 this.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
               }
@@ -904,6 +972,16 @@ export default class TankRoom implements Party.Server {
 
       if (tileAt(map, bullet.x, bullet.y) === "#") continue; // hit a wall
 
+      const hitCrate = this.crates.find((c) => Math.hypot(bullet.x - c.x, bullet.y - c.y) < CRATE_SIZE / 2);
+      if (hitCrate) {
+        hitCrate.hp -= 1;
+        if (hitCrate.hp <= 0) {
+          this.crates = this.crates.filter((c) => c.id !== hitCrate.id);
+        }
+        this.impacts.push({ id: makeId(), x: hitCrate.x, y: hitCrate.y, kind: "crate" });
+        continue;
+      }
+
       let hit = false;
       for (const target of this.players.values()) {
         if (!target.alive || target.id === bullet.ownerId) continue;
@@ -961,6 +1039,7 @@ export default class TankRoom implements Party.Server {
       bullets: this.bullets,
       pickups: this.pickups,
       traps: this.traps,
+      crates: this.crates,
       monsters: this.monsters,
       impacts: this.impacts,
       kills: this.kills,

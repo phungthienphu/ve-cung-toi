@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { TANK_COLORS } from "@shared/tankTypes";
+import { TANK_COLORS, TANK_SKINS, TANK_SKIN_LABELS } from "@shared/tankTypes";
 import TankGameRoom from "@/components/tank/TankGameRoom";
 import TankPreview from "@/components/tank/TankPreview";
 
@@ -59,16 +59,21 @@ export default function TankRoomPage({ params }: { params: Promise<{ roomId: str
             <TankPreview color={color} />
           </div>
 
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Màu xe tăng</label>
-          <div className="mb-6 flex flex-wrap gap-3">
-            {TANK_COLORS.map((c) => (
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Loại xe tăng</label>
+          <div className="mb-6 grid grid-cols-4 gap-2">
+            {TANK_COLORS.map((c, i) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`h-10 w-10 rounded-lg border-2 transition ${color === c ? "scale-110 border-slate-800" : "border-transparent"}`}
-                style={{ backgroundColor: c }}
-                aria-label={`Màu ${c}`}
-              />
+                className={`flex flex-col items-center gap-1 rounded-lg border-2 p-1.5 transition ${
+                  color === c ? "border-slate-800 bg-slate-50" : "border-transparent hover:border-slate-200"
+                }`}
+                aria-label={TANK_SKIN_LABELS[TANK_SKINS[i]]}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/Retina/tank_${TANK_SKINS[i]}.png`} alt="" className="h-9 w-9 object-contain" />
+                <span className="truncate text-[10px] font-medium text-ink/60">{TANK_SKIN_LABELS[TANK_SKINS[i]]}</span>
+              </button>
             ))}
           </div>
 

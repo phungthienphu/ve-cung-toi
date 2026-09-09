@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BUSH_REVEAL_RADIUS,
+  CRATE_MAX_HP,
+  CRATE_SIZE,
   FIRE_COOLDOWN_MS,
   MAX_BOOST_ENERGY,
   MAX_HP,
@@ -11,7 +13,11 @@ import {
   MONSTER_SIZE,
   NEST_PUDDLE_RADIUS,
   PICKUP_SIZE,
+  TANK_COLORS,
   TANK_SIZE,
+  TANK_SKINS,
+  TANK_SKINS_WITH_TURRET,
+  TICK_MS,
   TILE_SIZE,
   TRAP_SIZE,
   VIEWPORT_H,
@@ -20,11 +26,13 @@ import {
   getMap,
   mapCanvasSize,
   type Bullet,
+  type Crate,
   type Direction,
   type Monster,
   type TankClientMessage,
   type TankPlayer,
   type TankPublicState,
+  type TankSkin,
 } from "@shared/tankTypes";
 import {
   playTankBigExplosion,
@@ -37,6 +45,7 @@ import {
   playShieldBlock,
   playFireIgnite,
 } from "@/lib/sound";
+import { getSprite } from "@/lib/imageCache";
 
 interface Props {
   state: TankPublicState;
@@ -66,23 +75,32 @@ const DIR_ANGLE: Record<Direction, number> = {
   up: -Math.PI / 2,
 };
 
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire";
-const EXPLOSION_DURATION_MS = 320;
+type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire" | "crate";
+const EXPLOSION_DURATION_MS = 380;
 function explosionDurationFor(kind: ExplosionKind): number {
-  if (kind === "big") return 480;
+  if (kind === "big") return 520;
   if (kind === "shield") return 220;
   return EXPLOSION_DURATION_MS;
 }
+
+// The pack's explosion1..5 are a flipbook (small flash -> big starburst ->
+// cooling ring -> dissipating embers), not standalone icons — playing them
+// in order over an explosion's lifetime is what makes it read as one blast.
+const EXPLOSION_FRAMES = [
+  "/Retina/explosion1.png",
+  "/Retina/explosion2.png",
+  "/Retina/explosion3.png",
+  "/Retina/explosion4.png",
+  "/Retina/explosion5.png",
+];
+// explosion1 is a plain white flash silhouette; the rest already ship their
+// own orange/yellow color, so only tint kinds that need a different palette.
+const EXPLOSION_TINT: Partial<Record<ExplosionKind, string>> = {
+  blind: "#a855f7",
+  shove: "#fde68a",
+  crate: "#c2825a",
+  big: "#ef4444",
+};
 const MINIMAP_W = 110;
 const MINIMAP_H = 82;
 
@@ -113,6 +131,36 @@ function mulberry32(seed: number) {
 
 function isWallTile(m: ReturnType<typeof getMap>, row: number, col: number): boolean {
   return (m.layout[row]?.[col] ?? "#") === "#";
+}
+
+function isRoadTile(m: ReturnType<typeof getMap>, row: number, col: number): boolean {
+  return m.layout[row]?.[col] === "R";
+}
+
+/** Picks the right connected-road sprite name (Kenney "Tanks" pack naming)
+ * for a road tile based on which of its 4 orthogonal neighbors are also
+ * road — a straight, corner, T-junction ("Split"), or 4-way crossing. */
+function roadTileName(n: boolean, s: boolean, e: boolean, w: boolean): string {
+  const count = [n, s, e, w].filter(Boolean).length;
+  if (count >= 4) return "roadCrossing";
+  if (count === 3) {
+    if (!s) return "roadSplitN";
+    if (!n) return "roadSplitS";
+    if (!w) return "roadSplitE";
+    return "roadSplitW";
+  }
+  if (count === 2) {
+    if (n && s) return "roadNorth";
+    if (e && w) return "roadEast";
+    if (n && w) return "roadCornerUL";
+    if (n && e) return "roadCornerUR";
+    if (s && w) return "roadCornerLL";
+    if (s && e) return "roadCornerLR";
+  }
+  // Dead-end or isolated tile: fall back to whichever straight piece matches
+  // the one connection it does have (the pack has no dedicated end-cap art).
+  if (n || s) return "roadNorth";
+  return "roadEast";
 }
 
 function drawEdgeTufts(
@@ -158,22 +206,37 @@ function drawEdgeTufts(
 
 /**
  * Pre-renders the whole map's static ground/walls to an offscreen canvas
- * once per map (cached by mapId) — smooth gradients + speckle texture + soft
- * ambient occlusion where floor meets wall, no per-tile grid lines. Bushes
- * and hazard glow are animated, so those are drawn live every frame instead.
+ * once per map (cached by mapId) — real Kenney floor tiles (grass or sand,
+ * per the map's `terrain`) plus procedural wall shading and hazard tint, no
+ * per-tile grid lines. Bushes/trees and hazard glow are animated, so those
+ * are drawn live every frame instead. Returns null (and draws nothing) if
+ * the floor tile sprites haven't finished loading yet — the caller should
+ * fall back to a plain fill and retry next frame rather than cache a blank.
  */
-function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement {
+function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement | null {
+  const floorSrcs =
+    m.terrain === "sand" ? ["/Retina/tileSand1.png", "/Retina/tileSand2.png"] : ["/Retina/tileGrass1.png", "/Retina/tileGrass2.png"];
+  const floorTiles = floorSrcs.map(getSprite);
+  if (floorTiles.some((img) => !img)) return null;
+
+  // Only this map's actually-used road variants need to be ready — gating on
+  // the full 18-sprite set would delay every map's first paint needlessly.
+  const roadPrefix = m.terrain === "sand" ? "tileSand" : "tileGrass";
+  const neededRoadSrcs = new Set<string>();
+  for (let row = 0; row < m.layout.length; row++) {
+    for (let col = 0; col < m.layout[row].length; col++) {
+      if (!isRoadTile(m, row, col)) continue;
+      const name = roadTileName(isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
+      neededRoadSrcs.add(`/Retina/${roadPrefix}_${name}.png`);
+    }
+  }
+  if ([...neededRoadSrcs].some((src) => !getSprite(src))) return null;
+
   const { w, h } = mapCanvasSize(m);
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
-
-  const base = ctx.createLinearGradient(0, 0, w, h);
-  base.addColorStop(0, "#e8d9ae");
-  base.addColorStop(1, "#dcc794");
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, w, h);
 
   for (let row = 0; row < m.layout.length; row++) {
     for (let col = 0; col < m.layout[row].length; col++) {
@@ -183,50 +246,36 @@ function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement {
       const rng = mulberry32(row * 7919 + col * 104729);
 
       if (tile === "#") {
-        const grad = ctx.createLinearGradient(x, y, x, y + TILE_SIZE);
-        grad.addColorStop(0, "#8a7355");
-        grad.addColorStop(1, "#5c4a34");
-        ctx.fillStyle = grad;
-        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-        // Sandbag-style seam lines for a bit of "obstacle", not "brick grid".
-        ctx.strokeStyle = "rgba(0,0,0,0.15)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x + 3, y + TILE_SIZE * 0.38);
-        ctx.lineTo(x + TILE_SIZE - 3, y + TILE_SIZE * 0.34);
-        ctx.moveTo(x + 3, y + TILE_SIZE * 0.7);
-        ctx.lineTo(x + TILE_SIZE - 3, y + TILE_SIZE * 0.74);
-        ctx.stroke();
+        // Ground shows underneath (sandbag art doesn't fill a perfect square),
+        // then a real sandbag sprite as the obstacle itself.
+        ctx.drawImage(floorTiles[rng() > 0.5 ? 1 : 0]!, x, y, TILE_SIZE, TILE_SIZE);
+        const wallImg = getSprite(rng() > 0.5 ? "/Retina/sandbagBeige.png" : "/Retina/sandbagBrown.png");
+        if (wallImg) {
+          ctx.drawImage(wallImg, x - 1, y - 1, TILE_SIZE + 2, TILE_SIZE + 2);
+        } else {
+          ctx.fillStyle = "#8a7355";
+          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        }
+        // Soft contact shadow where this wall meets open floor, for depth.
         if (!isWallTile(m, row - 1, col)) {
           ctx.fillStyle = "rgba(255,255,255,0.14)";
           ctx.fillRect(x, y, TILE_SIZE, 3);
-        }
-        if (!isWallTile(m, row, col - 1)) {
-          ctx.fillStyle = "rgba(255,255,255,0.08)";
-          ctx.fillRect(x, y, 3, TILE_SIZE);
         }
         if (!isWallTile(m, row + 1, col)) {
           ctx.fillStyle = "rgba(0,0,0,0.28)";
           ctx.fillRect(x, y + TILE_SIZE - 4, TILE_SIZE, 4);
         }
-        if (!isWallTile(m, row, col + 1)) {
-          ctx.fillStyle = "rgba(0,0,0,0.2)";
-          ctx.fillRect(x + TILE_SIZE - 3, y, 3, TILE_SIZE);
-        }
-        for (let i = 0; i < 2; i++) {
-          ctx.fillStyle = "rgba(0,0,0,0.12)";
-          ctx.beginPath();
-          ctx.arc(x + rng() * TILE_SIZE, y + rng() * TILE_SIZE, 1.4 + rng(), 0, Math.PI * 2);
-          ctx.fill();
-        }
         continue;
       }
 
-      for (let i = 0; i < 5; i++) {
-        ctx.fillStyle = rng() > 0.5 ? "rgba(154,120,66,0.3)" : "rgba(237,222,178,0.4)";
-        ctx.beginPath();
-        ctx.arc(x + rng() * TILE_SIZE, y + rng() * TILE_SIZE, 1 + rng() * 1.6, 0, Math.PI * 2);
-        ctx.fill();
+      const floorImg = floorTiles[rng() > 0.75 ? 1 : 0]!;
+      ctx.drawImage(floorImg, x, y, TILE_SIZE, TILE_SIZE);
+
+      if (tile === "R") {
+        const prefix = m.terrain === "sand" ? "tileSand" : "tileGrass";
+        const name = roadTileName(isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
+        const roadImg = getSprite(`/Retina/${prefix}_${name}.png`);
+        if (roadImg) ctx.drawImage(roadImg, x, y, TILE_SIZE, TILE_SIZE);
       }
 
       if (tile === "H") {
@@ -240,8 +289,27 @@ function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement {
       if (isWallTile(m, row + 1, col)) drawEdgeTufts(ctx, x, y, "bottom", rng);
       if (isWallTile(m, row, col - 1)) drawEdgeTufts(ctx, x, y, "left", rng);
       if (isWallTile(m, row, col + 1)) drawEdgeTufts(ctx, x, y, "right", rng);
+
+      // Scattered twig/pebble litter on plain floor tiles — purely decorative
+      // ground clutter, baked into the static background so it costs nothing
+      // per frame. Sparse (~1 in 9 tiles) so it reads as texture, not noise.
+      if (tile === "." && rng() < 0.11) {
+        const twigImg = getSprite(m.terrain === "sand" ? "/Retina/treeBrown_twigs.png" : "/Retina/treeGreen_twigs.png");
+        if (twigImg) {
+          const size = TILE_SIZE * 0.7;
+          ctx.save();
+          ctx.translate(x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+          ctx.rotate(rng() * Math.PI * 2);
+          ctx.drawImage(twigImg, -size / 2, -size / 2, size, size);
+          ctx.restore();
+        }
+      }
     }
   }
+  // A light overall darkening so bright foreground elements (bullets, tanks,
+  // pickups) read clearly against the floor art instead of blending into it.
+  ctx.fillStyle = "rgba(15,23,42,0.12)";
+  ctx.fillRect(0, 0, w, h);
   return canvas;
 }
 
@@ -255,6 +323,37 @@ function isBushHidden(m: ReturnType<typeof getMap>, target: TankPlayer, self: Ta
 
 /** Small always-visible overview of the whole map — walls, hazards, every
  * tank's dot, and a frame showing the main camera's current viewport. */
+// The minimap's walls/hazards/bushes never change during a match — pre-
+// render them once per map instead of re-scanning every tile every frame.
+const minimapBgCache = new Map<string, HTMLCanvasElement>();
+function getMinimapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement {
+  const cached = minimapBgCache.get(m.id);
+  if (cached) return cached;
+
+  const { w: mapW, h: mapH } = mapCanvasSize(m);
+  const scaleX = MINIMAP_W / mapW;
+  const scaleY = MINIMAP_H / mapH;
+  const off = document.createElement("canvas");
+  off.width = MINIMAP_W;
+  off.height = MINIMAP_H;
+  const octx = off.getContext("2d")!;
+  octx.fillStyle = "#0f172a";
+  octx.fillRect(0, 0, MINIMAP_W, MINIMAP_H);
+
+  for (let row = 0; row < m.layout.length; row++) {
+    for (let col = 0; col < m.layout[row].length; col++) {
+      const tile = m.layout[row][col];
+      if (tile === "#") octx.fillStyle = "#475569";
+      else if (tile === "H") octx.fillStyle = "#dc2626";
+      else if (tile === "B") octx.fillStyle = "#166534";
+      else continue;
+      octx.fillRect(col * TILE_SIZE * scaleX, row * TILE_SIZE * scaleY, TILE_SIZE * scaleX + 0.5, TILE_SIZE * scaleY + 0.5);
+    }
+  }
+  minimapBgCache.set(m.id, off);
+  return off;
+}
+
 function drawMinimap(
   canvas: HTMLCanvasElement | null,
   s: TankPublicState,
@@ -271,23 +370,16 @@ function drawMinimap(
   const scaleY = MINIMAP_H / mapH;
 
   ctx.clearRect(0, 0, MINIMAP_W, MINIMAP_H);
-  ctx.fillStyle = "#0f172a";
-  ctx.fillRect(0, 0, MINIMAP_W, MINIMAP_H);
-
-  for (let row = 0; row < m.layout.length; row++) {
-    for (let col = 0; col < m.layout[row].length; col++) {
-      const tile = m.layout[row][col];
-      if (tile === "#") ctx.fillStyle = "#475569";
-      else if (tile === "H") ctx.fillStyle = "#dc2626";
-      else if (tile === "B") ctx.fillStyle = "#166534";
-      else continue;
-      ctx.fillRect(col * TILE_SIZE * scaleX, row * TILE_SIZE * scaleY, TILE_SIZE * scaleX + 0.5, TILE_SIZE * scaleY + 0.5);
-    }
-  }
+  ctx.drawImage(getMinimapBackground(m), 0, 0);
 
   ctx.strokeStyle = "rgba(255,255,255,0.55)";
   ctx.lineWidth = 1;
   ctx.strokeRect((camX - VIEWPORT_W / 2) * scaleX, (camY - VIEWPORT_H / 2) * scaleY, VIEWPORT_W * scaleX, VIEWPORT_H * scaleY);
+
+  ctx.fillStyle = "#92400e";
+  for (const crate of s.crates) {
+    ctx.fillRect(crate.x * scaleX - 1.5, crate.y * scaleY - 1.5, 3, 3);
+  }
 
   for (const monster of s.monsters) {
     if (!monster.alive) continue;
@@ -333,6 +425,114 @@ interface SkidMark {
   start: number;
 }
 
+const OIL_SPILL_DURATION_MS = 6500;
+interface OilSpill {
+  id: string;
+  x: number;
+  y: number;
+  start: number;
+}
+
+const MUZZLE_FLASH_DURATION_MS = 110;
+interface MuzzleFlash {
+  id: string;
+  x: number;
+  y: number;
+  angle: number;
+  start: number;
+}
+
+function drawMuzzleFlash(ctx: CanvasRenderingContext2D, flash: MuzzleFlash, progress: number) {
+  const alpha = 1 - progress;
+  const len = 12 * (1 - progress * 0.4);
+  ctx.save();
+  ctx.translate(flash.x, flash.y);
+  ctx.rotate(flash.angle);
+  ctx.globalAlpha = alpha;
+  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, len);
+  grad.addColorStop(0, "rgba(255,255,255,0.95)");
+  grad.addColorStop(0.4, "rgba(254,240,138,0.8)");
+  grad.addColorStop(1, "rgba(251,191,36,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(len, -4);
+  ctx.lineTo(len * 1.4, 0);
+  ctx.lineTo(len, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+const LEAF_PARTICLE_DURATION_MS = 900;
+interface LeafParticle {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  spin: number;
+  sprite: string;
+  start: number;
+}
+
+function spawnLeafBurst(ref: { current: LeafParticle[] }, x: number, y: number) {
+  const count = 5 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 25 + Math.random() * 35;
+    ref.current.push({
+      id: `${x}-${y}-${i}-${Math.random()}`,
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 30, // a little upward pop before gravity takes over
+      spin: (Math.random() - 0.5) * 10,
+      sprite: Math.random() > 0.5 ? "/Retina/treeGreen_leaf.png" : "/Retina/treeBrown_leaf.png",
+      start: performance.now(),
+    });
+  }
+}
+
+function drawLeafParticle(ctx: CanvasRenderingContext2D, leaf: LeafParticle, progress: number) {
+  const t = (progress * LEAF_PARTICLE_DURATION_MS) / 1000;
+  const gravity = 160;
+  const px = leaf.x + leaf.vx * t;
+  const py = leaf.y + leaf.vy * t + 0.5 * gravity * t * t;
+  const img = getSprite(leaf.sprite);
+  const size = 9;
+  ctx.save();
+  ctx.globalAlpha = 1 - progress;
+  ctx.translate(px, py);
+  ctx.rotate(leaf.spin * t);
+  if (img) {
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+  } else {
+    ctx.fillStyle = "#4ade80";
+    ctx.fillRect(-2, -2, 4, 4);
+  }
+  ctx.restore();
+}
+
+function drawOilSpill(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number) {
+  const img = getSprite("/Retina/oilSpill_small.png");
+  const growIn = Math.min(1, progress * 6); // pops in quickly, then lingers and fades
+  const fadeOut = progress < 0.7 ? 1 : 1 - (progress - 0.7) / 0.3;
+  const alpha = growIn * fadeOut * 0.85;
+  const size = TANK_SIZE * 1.4;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (img) {
+    ctx.drawImage(img, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+  } else {
+    ctx.fillStyle = "#292524";
+    ctx.beginPath();
+    ctx.arc(x, y, size / 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, isAlly: boolean) {
   const width = TANK_SIZE + 6;
   const height = 4;
@@ -351,6 +551,15 @@ function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: 
   ctx.strokeRect(left + 0.5, barY + 0.5, width - 1, height - 1);
 }
 
+function skinForColor(color: string): TankSkin {
+  const idx = TANK_COLORS.indexOf(color);
+  return TANK_SKINS[idx >= 0 ? idx : 0];
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function drawTank(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -363,8 +572,7 @@ function drawTank(
   isAlly: boolean,
   isBoosting: boolean,
   shieldHitsLeft: number,
-  aimAngle: number | null,
-  time: number
+  aimAngle: number | null
 ) {
   const half = TANK_SIZE / 2;
   drawHealthBar(ctx, x, y, hp, isAlly);
@@ -390,88 +598,64 @@ function drawTank(
     ctx.restore();
   }
 
-  // Tracks — dashed treads like the color-pick preview, but oriented to
-  // whichever way the tank is actually driving: mounted on the two sides
-  // running parallel to the travel direction (left/right sides when moving
-  // vertically, top/bottom when moving horizontally) so they read as real
-  // tracks instead of always facing the same way regardless of movement.
-  const treadOffset = (time / 60) % 12;
-  const horizontalMove = dir === "left" || dir === "right";
-  for (const side of [-1, 1]) {
-    ctx.fillStyle = "#1e293b";
-    ctx.strokeStyle = "rgba(255,255,255,0.25)";
-    ctx.lineWidth = 1.5;
-    if (horizontalMove) {
-      const ty0 = y + side * (half + 4);
-      ctx.fillRect(Math.round(x - half - 3), Math.round(ty0 - 4), TANK_SIZE + 6, 8);
-      for (let o = -treadOffset; o < TANK_SIZE + 6; o += 8) {
-        ctx.beginPath();
-        ctx.moveTo(x - half - 3 + o, ty0 - 4);
-        ctx.lineTo(x - half - 3 + o, ty0 + 4);
-        ctx.stroke();
-      }
-    } else {
-      const tx0 = x + side * (half + 4);
-      ctx.fillRect(Math.round(tx0 - 4), Math.round(y - half - 3), 8, TANK_SIZE + 6);
-      for (let o = -treadOffset; o < TANK_SIZE + 6; o += 8) {
-        ctx.beginPath();
-        ctx.moveTo(tx0 - 4, y - half - 3 + o);
-        ctx.lineTo(tx0 + 4, y - half - 3 + o);
-        ctx.stroke();
-      }
+  if (isBoosting) {
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 150);
+    ctx.strokeStyle = `rgba(251,191,36,${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, half + 10, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Real Kenney "Tanks" sprites (public/Retina): the sprite's own art is
+  // drawn facing "up" by default, so rotating by (angle + 90°) points it the
+  // right way for our atan2-style angle convention (0 = right, 90° = down).
+  const skin = skinForColor(color);
+  const bodyAngle = DIR_ANGLE[dir];
+  const renderSize = TANK_SIZE * 1.7;
+
+  if (TANK_SKINS_WITH_TURRET.has(skin)) {
+    const body = getSprite(`/Retina/tankBody_${skin}.png`);
+    if (body) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(bodyAngle + Math.PI / 2);
+      const h = renderSize;
+      const w = h * (body.width / body.height);
+      ctx.drawImage(body, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+    const barrel = getSprite(`/Retina/tank${capitalize(skin)}_barrel1.png`);
+    if (barrel) {
+      const turretAngle = aimAngle ?? bodyAngle;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(turretAngle + Math.PI / 2);
+      const h = renderSize * 0.7;
+      const w = h * (barrel.width / barrel.height);
+      ctx.drawImage(barrel, -w / 2, -h, w, h);
+      ctx.restore();
+    }
+  } else {
+    // Heavy skins (bigRed/darkLarge/huge) ship one fused body+turret sprite
+    // with no independent aim — the whole vehicle turns to face movement.
+    const composed = getSprite(`/Retina/tank_${skin}.png`);
+    if (composed) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(bodyAngle + Math.PI / 2);
+      const h = renderSize * 1.3;
+      const w = h * (composed.width / composed.height);
+      ctx.drawImage(composed, -w / 2, -h / 2, w, h);
+      ctx.restore();
     }
   }
 
-  // Body: same gradient-shaded, rounded-corner look as the color-pick preview.
-  const corner = 4;
-  const grad = ctx.createLinearGradient(x, y - half, x, y + half);
-  grad.addColorStop(0, color);
-  grad.addColorStop(1, "rgba(0,0,0,0.28)");
-  ctx.fillStyle = grad;
-  roundRectPath(ctx, x - half, y - half, TANK_SIZE, TANK_SIZE, corner);
-  ctx.fill();
-  ctx.strokeStyle = isSelf ? "#ffffff" : "rgba(255,255,255,0.55)";
-  ctx.lineWidth = isSelf ? 2 : 1.5;
-  roundRectPath(ctx, x - half + 1, y - half + 1, TANK_SIZE - 2, TANK_SIZE - 2, corner);
-  ctx.stroke();
-
-  // Turret: round base + a barrel aimed at the mouse angle (desktop) or the
-  // movement facing (touch/keyboard) — a thick dark shaft with a lighter
-  // highlight stripe and a muzzle cap, matching the preview's turret.
-  const angle = aimAngle ?? DIR_ANGLE[dir];
-  const barrelLen = half + 14;
-  const bx = x + Math.cos(angle) * barrelLen;
-  const by = y + Math.sin(angle) * barrelLen;
-  ctx.strokeStyle = "#1e293b";
-  ctx.lineWidth = 7;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(bx, by);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(bx, by);
-  ctx.stroke();
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.arc(bx, by, 2.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  const turretGrad = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, half * 0.6);
-  turretGrad.addColorStop(0, "#334155");
-  turretGrad.addColorStop(1, "#0f172a");
-  ctx.fillStyle = turretGrad;
-  ctx.beginPath();
-  ctx.arc(x, y, half * 0.58, 0, Math.PI * 2);
-  ctx.fill();
-
-  if (isBoosting) {
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 3;
-    roundRectPath(ctx, x - half - 9, y - half - 5, TANK_SIZE + 18, TANK_SIZE + 10, corner + 4);
+  if (isSelf) {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, half + 4, 0, Math.PI * 2);
     ctx.stroke();
   }
 
@@ -544,13 +728,64 @@ function drawHazardSpikes(ctx: CanvasRenderingContext2D, tileX: number, tileY: n
   }
 }
 
-function drawTrap(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const half = TRAP_SIZE / 2;
-  ctx.strokeStyle = "#b45309";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([3, 2]);
-  ctx.strokeRect(Math.round(x - half), Math.round(y - half), TRAP_SIZE, TRAP_SIZE);
-  ctx.setLineDash([]);
+function drawCrate(ctx: CanvasRenderingContext2D, crate: Crate) {
+  const img = getSprite("/Retina/crateWood.png");
+  const size = CRATE_SIZE * 1.5;
+  if (img) {
+    ctx.drawImage(img, Math.round(crate.x - size / 2), Math.round(crate.y - size / 2), size, size);
+  } else {
+    ctx.fillStyle = "#92400e";
+    ctx.fillRect(Math.round(crate.x - CRATE_SIZE / 2), Math.round(crate.y - CRATE_SIZE / 2), CRATE_SIZE, CRATE_SIZE);
+  }
+  if (crate.hp < CRATE_MAX_HP) {
+    const barY = crate.y - size / 2 - 8;
+    for (let i = 0; i < CRATE_MAX_HP; i++) {
+      ctx.fillStyle = i < crate.hp ? "#a16207" : "#334155";
+      ctx.fillRect(Math.round(crate.x - size / 2 + i * (size / CRATE_MAX_HP) + 1), barY, Math.round(size / CRATE_MAX_HP - 2), 3);
+    }
+  }
+}
+
+const tintedSpriteCache = new Map<string, HTMLCanvasElement>();
+
+/** Tints a white-on-transparent icon a solid color, cached per (src, color)
+ * pair. Compositing happens on a small offscreen buffer — doing it directly
+ * on the main canvas would tint whatever's already drawn underneath too. */
+function getTintedSprite(src: string, color: string): HTMLCanvasElement | null {
+  const key = `${src}|${color}`;
+  const cached = tintedSpriteCache.get(key);
+  if (cached) return cached;
+  const img = getSprite(src);
+  if (!img) return null;
+  const off = document.createElement("canvas");
+  off.width = img.naturalWidth;
+  off.height = img.naturalHeight;
+  const octx = off.getContext("2d")!;
+  octx.drawImage(img, 0, 0);
+  octx.globalCompositeOperation = "source-atop";
+  octx.fillStyle = color;
+  octx.fillRect(0, 0, off.width, off.height);
+  tintedSpriteCache.set(key, off);
+  return off;
+}
+
+function drawTrap(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  const tinted = getTintedSprite("/trap_scope.png", "#f59e0b");
+  const pulse = 0.75 + 0.25 * Math.sin(time / 260);
+  const size = TRAP_SIZE * 1.5;
+  if (tinted) {
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.drawImage(tinted, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+    ctx.restore();
+  } else {
+    const half = TRAP_SIZE / 2;
+    ctx.strokeStyle = "#b45309";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 2]);
+    ctx.strokeRect(Math.round(x - half), Math.round(y - half), TRAP_SIZE, TRAP_SIZE);
+    ctx.setLineDash([]);
+  }
 }
 
 /** The default "big shot" skill's heavy round — a glowing red-orange ember
@@ -577,23 +812,79 @@ function drawNestPuddle(ctx: CanvasRenderingContext2D, x: number, y: number, tim
   ctx.restore();
 }
 
+/** Draws `src` centered at (x, y), rotated to face `angle` — the sprite's own
+ * art points "up" by default, matching the tank body/turret convention.
+ * Returns false (drawing nothing) if the sprite hasn't loaded yet. */
+function drawRotatedSprite(ctx: CanvasRenderingContext2D, src: string, x: number, y: number, angle: number, height: number): boolean {
+  const img = getSprite(src);
+  if (!img) return false;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle + Math.PI / 2);
+  const w = height * (img.width / img.height);
+  ctx.drawImage(img, -w / 2, -height / 2, w, height);
+  ctx.restore();
+  return true;
+}
+
+const BULLET_SKIN_MAP: Record<TankSkin, "Blue" | "Dark" | "Green" | "Red" | "Sand"> = {
+  blue: "Blue",
+  dark: "Dark",
+  green: "Green",
+  red: "Red",
+  sand: "Sand",
+  bigRed: "Red",
+  darkLarge: "Dark",
+  huge: "Dark",
+};
+
+/** A normal shot — colored to match the shooter's own tank skin. Uses the
+ * pack's "_outline" variant (a dark ring around the bullet) so it still
+ * reads clearly even against a same-colored floor, e.g. sand bullets over
+ * sand terrain. */
+function drawNormalBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, skin: TankSkin) {
+  const ok = drawRotatedSprite(ctx, `/Retina/bullet${BULLET_SKIN_MAP[skin]}1_outline.png`, x, y, angle, 20);
+  if (!ok) {
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(Math.round(x - 3), Math.round(y - 3), 6, 6);
+  }
+}
+
+/** The blind item's shot — a generic bullet shape tinted purple. */
+function drawBlindBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {
+  const tinted = getTintedSprite("/Retina/bulletDark1_outline.png", "#a855f7");
+  if (tinted) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2);
+    const h = 18;
+    const w = h * (tinted.width / tinted.height);
+    ctx.drawImage(tinted, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#a855f7";
+    ctx.fillRect(Math.round(x - 3), Math.round(y - 3), 6, 6);
+  }
+}
+
 /** Flame projectile fired while a fire item's charges are active. */
-function drawFireBullet(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+function drawFireBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, time: number) {
   const flicker = 0.75 + 0.25 * Math.sin(time / 40);
   ctx.save();
-  const glow = ctx.createRadialGradient(x, y, 0, x, y, 8);
-  glow.addColorStop(0, `rgba(254,240,138,${0.9 * flicker})`);
-  glow.addColorStop(0.6, `rgba(251,146,60,${0.6 * flicker})`);
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, 9);
+  glow.addColorStop(0, `rgba(254,240,138,${0.8 * flicker})`);
   glow.addColorStop(1, "rgba(251,146,60,0)");
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(x, y, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#ea580c";
-  ctx.beginPath();
-  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.arc(x, y, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+  if (!drawRotatedSprite(ctx, "/Retina/shotOrange.png", x, y, angle, 20)) {
+    ctx.fillStyle = "#ea580c";
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 /** Small flame flicker drawn over a burning tank. */
@@ -615,27 +906,23 @@ function drawBurningOverlay(ctx: CanvasRenderingContext2D, x: number, y: number,
   }
 }
 
-function drawBigBullet(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+function drawBigBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, time: number) {
   const flicker = 0.75 + 0.25 * Math.sin(time / 45);
   ctx.save();
-  const glow = ctx.createRadialGradient(x, y, 0, x, y, 11);
-  glow.addColorStop(0, `rgba(254,215,170,${0.9 * flicker})`);
-  glow.addColorStop(0.5, `rgba(239,68,68,${0.55 * flicker})`);
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, 13);
+  glow.addColorStop(0, `rgba(254,215,170,${0.8 * flicker})`);
   glow.addColorStop(1, "rgba(239,68,68,0)");
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(x, y, 11, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#fed7aa";
-  ctx.beginPath();
-  ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#b91c1c";
-  ctx.beginPath();
-  ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+  ctx.arc(x, y, 13, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+  if (!drawRotatedSprite(ctx, "/Retina/shotRed.png", x, y, angle, 26)) {
+    ctx.fillStyle = "#b91c1c";
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawExplosion(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number, kind: ExplosionKind) {
@@ -652,48 +939,22 @@ function drawExplosion(ctx: CanvasRenderingContext2D, x: number, y: number, prog
     ctx.restore();
     return;
   }
-  const maxRadius = kind === "big" ? 34 : kind === "shove" ? 22 : 18;
-  const radius = maxRadius * progress;
+  const maxSize = kind === "big" ? 46 : kind === "shove" ? 30 : 24;
+  const size = maxSize * (0.4 + 0.6 * Math.min(1, progress * 1.6));
   const alpha = 1 - progress;
-  const colors =
-    kind === "blind"
-      ? ["168,85,247", "216,180,254"]
-      : kind === "shove"
-        ? ["250,204,21", "255,247,204"]
-        : kind === "big"
-          ? ["239,68,68", "255,214,153"]
-          : ["251,146,60", "254,240,138"];
+  const frameIdx = Math.min(EXPLOSION_FRAMES.length - 1, Math.floor(progress * EXPLOSION_FRAMES.length));
+  const tint = EXPLOSION_TINT[kind];
+  const sprite = tint ? getTintedSprite(EXPLOSION_FRAMES[frameIdx], tint) : getSprite(EXPLOSION_FRAMES[frameIdx]);
+
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = `rgb(${colors[0]})`;
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = `rgb(${colors[1]})`;
-  ctx.beginPath();
-  ctx.arc(x, y, radius * 0.5, 0, Math.PI * 2);
-  ctx.fill();
-  if (kind === "shove" || kind === "big") {
-    // A few radiating spark lines on top of the burst — sells the "clang"
-    // (or, for a big shot, a proper shockwave burst).
-    ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-    ctx.lineWidth = kind === "big" ? 3 : 2;
-    const rayCount = kind === "big" ? 10 : 6;
-    for (let i = 0; i < rayCount; i++) {
-      const ang = (i / rayCount) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(ang) * radius * 1.3, y + Math.sin(ang) * radius * 1.3);
-      ctx.stroke();
-    }
-  }
-  if (kind === "big") {
-    // Expanding shockwave ring for extra "oomph".
-    ctx.strokeStyle = `rgba(254,240,138,${alpha * 0.8})`;
-    ctx.lineWidth = 2.5;
+  if (sprite) {
+    ctx.drawImage(sprite, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+  } else {
+    ctx.fillStyle = "#fb923c";
     ctx.beginPath();
-    ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -731,13 +992,15 @@ function bushNeighborBias(m: ReturnType<typeof getMap>, row: number, col: number
   };
 }
 
+const BUSH_SPRITES = ["/Retina/treeGreen_large.png", "/Retina/treeGreen_small.png", "/Retina/treeBrown_large.png"];
+
 /**
- * Organic, animated bush clump. Deterministically seeded per tile (row/col)
- * so the shape stays stable frame to frame — only the `time`-driven sway
- * moves. `bias` pulls the clump toward any adjacent wall so bushes read as
- * growing out of the terrain instead of floating alone mid-tile. `opacity`
- * lets the same drawing be reused as a lighter "foliage in front" overlay
- * for whichever tank is currently standing in this tile.
+ * Real tree/bush sprite, deterministically picked+placed per tile (row/col)
+ * so it stays stable frame to frame — only the `time`-driven sway moves.
+ * `bias` nudges it toward any adjacent wall so it reads as growing out of
+ * the terrain instead of floating mid-tile. `opacity` lets the same call be
+ * reused as a lighter "foliage in front" overlay for whichever tank is
+ * currently standing in this tile (so you can see yourself under the leaves).
  */
 function drawBush(
   ctx: CanvasRenderingContext2D,
@@ -750,37 +1013,26 @@ function drawBush(
   opacity: number
 ) {
   const rng = mulberry32(row * 7919 + col * 104729 + 17);
+  const img = getSprite(BUSH_SPRITES[Math.floor(rng() * BUSH_SPRITES.length)]);
+  const dx = bias.left ? -4 : bias.right ? 4 : 0;
+  const dy = bias.top ? -4 : bias.bottom ? 4 : 0;
+  const cx = tileX + TILE_SIZE / 2 + dx;
+  const cy = tileY + TILE_SIZE / 2 + dy;
+  const sway = Math.sin(time / 650 + row * 2.1 + col * 1.7) * 0.06;
+
   ctx.save();
   ctx.globalAlpha = opacity;
-
-  for (let i = 0; i < 7; i++) {
-    let px = rng() * TILE_SIZE;
-    let py = rng() * TILE_SIZE;
-    if (bias.top) py *= 0.55;
-    if (bias.bottom) py = TILE_SIZE - (TILE_SIZE - py) * 0.55;
-    if (bias.left) px *= 0.55;
-    if (bias.right) px = TILE_SIZE - (TILE_SIZE - px) * 0.55;
-    const sway = Math.sin(time / 480 + row * 2.1 + col * 1.7 + i) * 2;
-    const r = 4.5 + rng() * 3.5;
-    ctx.fillStyle = i % 2 === 0 ? "#15803d" : "#166534";
+  if (img) {
+    const size = TILE_SIZE * 1.2;
+    ctx.translate(cx, cy + size * 0.3);
+    ctx.rotate(sway);
+    ctx.drawImage(img, -size / 2, -size * 0.8, size, size);
+  } else {
+    ctx.fillStyle = "#166534";
     ctx.beginPath();
-    ctx.ellipse(tileX + px + sway, tileY + py, r, r * 0.75, 0, 0, Math.PI * 2);
+    ctx.arc(cx, cy, TILE_SIZE * 0.4, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  ctx.strokeStyle = "#4ade80";
-  ctx.lineWidth = 1.4;
-  ctx.lineCap = "round";
-  for (let i = 0; i < 5; i++) {
-    const bx = rng() * TILE_SIZE;
-    const by = rng() * TILE_SIZE;
-    const sway = Math.sin(time / 380 + row * 3 + col * 1.3 + i * 2) * 3.5;
-    ctx.beginPath();
-    ctx.moveTo(tileX + bx, tileY + by + 5);
-    ctx.quadraticCurveTo(tileX + bx + sway, tileY + by - 4, tileX + bx + sway * 1.6, tileY + by - 10);
-    ctx.stroke();
-  }
-
   ctx.restore();
 }
 
@@ -831,12 +1083,97 @@ export default function TankCanvas({ state, selfId, send }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const minimapRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef(state);
-  stateRef.current = state;
+  // The previous server snapshot + when the current one arrived — lets the
+  // draw loop smoothly slide tanks between the two instead of them sitting
+  // still for ~3 rendered frames and then jumping, which is what a server
+  // tick rate of 20Hz looks like on a ~60fps screen with no interpolation.
+  const prevStateRef = useRef<TankPublicState | null>(null);
+  const stateChangedAtRef = useRef(performance.now());
+  if (stateRef.current !== state) {
+    prevStateRef.current = stateRef.current;
+    stateChangedAtRef.current = performance.now();
+    stateRef.current = state;
+  }
+
+  // Kick every sprite this screen could possibly need off loading the moment
+  // the match starts, instead of discovering each one lazily mid-frame (which
+  // was making buildMapBackground/etc. redo their full tile scan on every
+  // rAF tick until each image happened to finish loading).
+  useEffect(() => {
+    const roadNames = ["North", "East", "CornerUL", "CornerUR", "CornerLL", "CornerLR", "SplitN", "SplitS", "SplitE", "SplitW", "Crossing"];
+    const skins: string[] = [...TANK_SKINS];
+    const srcs = [
+      "/Retina/tileGrass1.png",
+      "/Retina/tileGrass2.png",
+      "/Retina/tileSand1.png",
+      "/Retina/tileSand2.png",
+      "/Retina/sandbagBeige.png",
+      "/Retina/sandbagBrown.png",
+      "/Retina/crateWood.png",
+      "/Retina/treeGreen_large.png",
+      "/Retina/treeGreen_small.png",
+      "/Retina/treeBrown_large.png",
+      "/Retina/treeGreen_leaf.png",
+      "/Retina/treeBrown_leaf.png",
+      "/Retina/treeGreen_twigs.png",
+      "/Retina/treeBrown_twigs.png",
+      "/Retina/oilSpill_small.png",
+      "/trap_scope.png",
+      "/Retina/shotOrange.png",
+      "/Retina/shotRed.png",
+      "/Retina/bulletDark1_outline.png",
+      ...roadNames.flatMap((n) => [`/Retina/tileGrass_road${n}.png`, `/Retina/tileSand_road${n}.png`]),
+      ...skins.flatMap((s) => [`/Retina/tankBody_${s}.png`, `/Retina/tank_${s}.png`]),
+      ...["Blue", "Dark", "Green", "Red", "Sand"].flatMap((s) => [`/Retina/tank${s}_barrel1.png`, `/Retina/bullet${s}1_outline.png`]),
+      ...EXPLOSION_FRAMES,
+    ];
+    for (const src of srcs) getSprite(src);
+  }, []);
 
   const explosionsRef = useRef<Explosion[]>([]);
   const marksRef = useRef<SkidMark[]>([]);
+  const oilSpillsRef = useRef<OilSpill[]>([]);
+  const muzzleFlashesRef = useRef<MuzzleFlash[]>([]);
+  const leavesRef = useRef<LeafParticle[]>([]);
   const prevBulletsRef = useRef<Map<string, Bullet>>(new Map());
   const bgCacheRef = useRef<{ mapId: string; canvas: HTMLCanvasElement } | null>(null);
+
+  // A tank driving into a bush kicks up a little burst of leaves — purely
+  // cosmetic, detected client-side the same way as everything else here.
+  const prevBushByPlayerRef = useRef<Map<string, boolean>>(new Map());
+  useEffect(() => {
+    const m = getMap(state.mapId);
+    const prevBush = prevBushByPlayerRef.current;
+    const seenIds = new Set<string>();
+    for (const p of state.players) {
+      seenIds.add(p.id);
+      if (!p.alive) {
+        prevBush.set(p.id, false);
+        continue;
+      }
+      const onBush = tileCharAt(m, p.x, p.y) === "B";
+      if (onBush && !prevBush.get(p.id)) spawnLeafBurst(leavesRef, p.x, p.y);
+      prevBush.set(p.id, onBush);
+    }
+    for (const id of prevBush.keys()) {
+      if (!seenIds.has(id)) prevBush.delete(id);
+    }
+  }, [state.players, state.mapId]);
+
+  // Any tank losing HP (not just self) leaves an oil spill on the ground
+  // where it was hit — a lingering scar of the fight, not tied to whichever
+  // client happens to be watching.
+  const prevHpByPlayerRef = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    const prevHp = prevHpByPlayerRef.current;
+    for (const p of state.players) {
+      const last = prevHp.get(p.id);
+      if (last !== undefined && p.hp < last) {
+        oilSpillsRef.current.push({ id: `${p.id}-${p.hp}-${performance.now()}`, x: p.x, y: p.y, start: performance.now() });
+      }
+      prevHp.set(p.id, p.hp);
+    }
+  }, [state.players]);
 
   // Detect bullets that vanished between broadcasts (hit a wall or a tank —
   // the server doesn't distinguish, it just stops including them) and spawn
@@ -853,6 +1190,13 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         else playTankExplosion();
       }
     }
+    // A bullet that's brand new this broadcast just left the barrel — flash
+    // the muzzle at its spawn spot.
+    for (const [id, b] of now) {
+      if (!prev.has(id)) {
+        muzzleFlashesRef.current.push({ id, x: b.x, y: b.y, angle: b.angle, start: performance.now() });
+      }
+    }
     prevBulletsRef.current = now;
   }, [state.bullets]);
 
@@ -865,6 +1209,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     let sawShove = false;
     let sawTrap = false;
     let sawShield = false;
+    let sawCrate = false;
     for (const imp of state.impacts) {
       if (imp.kind === "shove") {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "shove" });
@@ -873,6 +1218,9 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       } else if (imp.kind === "shield") {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "shield" });
         sawShield = true;
+      } else if (imp.kind === "crate") {
+        explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "crate" });
+        sawCrate = true;
       } else {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "normal" });
         sawTrap = true;
@@ -881,6 +1229,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     if (sawShove) playTankImpact();
     if (sawTrap) playTankExplosion();
     if (sawShield) playShieldBlock();
+    if (sawCrate) playTankExplosion();
   }, [state.impacts]);
 
   // PUBG-style kill feed: each elimination event gets a line in the top-right
@@ -943,17 +1292,32 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     function draw() {
       if (!ctx) return;
       const s = stateRef.current;
+      const prevS = prevStateRef.current;
       const m = getMap(s.mapId);
       const { w: mapW, h: mapH } = mapCanvasSize(m);
       const self = s.players.find((p) => p.id === selfId);
       const isBlinded = !!self && !!self.blindedUntil && self.blindedUntil > s.serverNow;
 
+      // Server ticks at 20Hz but the screen paints at ~60fps — without this,
+      // every tank (and the camera that follows the local one) would sit
+      // still for ~3 frames and then jump, reading as constant stutter while
+      // moving. Slide smoothly from each entity's last known spot toward its
+      // current one instead, snapping only on a big jump (e.g. a respawn).
+      const tickT = Math.min(1, (performance.now() - stateChangedAtRef.current) / TICK_MS);
+      function renderPos(id: string, curX: number, curY: number): { x: number; y: number } {
+        const prev = prevS?.players.find((p) => p.id === id);
+        if (!prev) return { x: curX, y: curY };
+        if (Math.hypot(curX - prev.x, curY - prev.y) > TANK_SIZE * 3) return { x: curX, y: curY };
+        return { x: prev.x + (curX - prev.x) * tickT, y: prev.y + (curY - prev.y) * tickT };
+      }
+      const selfRender = self ? renderPos(self.id, self.x, self.y) : null;
+
       // Follow-camera: center on the local player, clamped so the viewport
       // never scrolls past the map edge. Everything below is drawn in world
       // coordinates inside this translate — only the visible slice ends up
       // on screen, matching a MOBA-style zoomed-in view.
-      const camX = clampCamera(self ? self.x : mapW / 2, VIEWPORT_W, mapW);
-      const camY = clampCamera(self ? self.y : mapH / 2, VIEWPORT_H, mapH);
+      const camX = clampCamera(selfRender ? selfRender.x : mapW / 2, VIEWPORT_W, mapW);
+      const camY = clampCamera(selfRender ? selfRender.y : mapH / 2, VIEWPORT_H, mapH);
       const offsetX = Math.round(VIEWPORT_W / 2 - camX);
       const offsetY = Math.round(VIEWPORT_H / 2 - camY);
       cameraOffsetRef.current.x = offsetX;
@@ -964,9 +1328,16 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       ctx.translate(offsetX, offsetY);
 
       if (!bgCacheRef.current || bgCacheRef.current.mapId !== s.mapId) {
-        bgCacheRef.current = { mapId: s.mapId, canvas: buildMapBackground(m) };
+        const built = buildMapBackground(m);
+        if (built) bgCacheRef.current = { mapId: s.mapId, canvas: built };
       }
-      ctx.drawImage(bgCacheRef.current.canvas, 0, 0);
+      if (bgCacheRef.current && bgCacheRef.current.mapId === s.mapId) {
+        ctx.drawImage(bgCacheRef.current.canvas, 0, 0);
+      } else {
+        // Floor sprites still loading — flat fallback so the frame isn't blank.
+        ctx.fillStyle = m.terrain === "sand" ? "#dcc794" : "#dde9c9";
+        ctx.fillRect(0, 0, mapCanvasSize(m).w, mapCanvasSize(m).h);
+      }
 
       const now = performance.now();
 
@@ -989,10 +1360,19 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         drawSkidMark(ctx, mk.x, mk.y, (now - mk.start) / MARK_DURATION_MS);
       }
 
+      oilSpillsRef.current = oilSpillsRef.current.filter((o) => now - o.start < OIL_SPILL_DURATION_MS);
+      for (const o of oilSpillsRef.current) {
+        drawOilSpill(ctx, o.x, o.y, (now - o.start) / OIL_SPILL_DURATION_MS);
+      }
+
+      for (const crate of s.crates) {
+        drawCrate(ctx, crate);
+      }
+
       // Traps are only ever drawn for their own owner — everyone else's
       // client received the same data but simply chooses not to render it.
       for (const trap of s.traps) {
-        if (trap.ownerId === selfId) drawTrap(ctx, trap.x, trap.y);
+        if (trap.ownerId === selfId) drawTrap(ctx, trap.x, trap.y, now);
       }
 
       for (const pu of s.pickups) {
@@ -1002,12 +1382,14 @@ export default function TankCanvas({ state, selfId, send }: Props) {
 
       for (const b of s.bullets) {
         if (b.kind === "big") {
-          drawBigBullet(ctx, b.x, b.y, now);
+          drawBigBullet(ctx, b.x, b.y, b.angle, now);
         } else if (b.kind === "fire") {
-          drawFireBullet(ctx, b.x, b.y, now);
+          drawFireBullet(ctx, b.x, b.y, b.angle, now);
+        } else if (b.kind === "blind") {
+          drawBlindBullet(ctx, b.x, b.y, b.angle);
         } else {
-          ctx.fillStyle = b.kind === "blind" ? "#a855f7" : "#facc15";
-          ctx.fillRect(Math.round(b.x - 3), Math.round(b.y - 3), 6, 6);
+          const owner = s.players.find((p) => p.id === b.ownerId);
+          drawNormalBullet(ctx, b.x, b.y, b.angle, owner ? skinForColor(owner.color) : "blue");
         }
       }
 
@@ -1018,8 +1400,9 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       const visiblePlayers = s.players.filter((p) => p.alive && (p.id === selfId || !self || !isBushHidden(m, p, self)));
       for (const p of visiblePlayers) {
         const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
-        drawTank(ctx, p.x, p.y, p.color, p.dir, p.name, p.hp, p.id === selfId, isAlly, p.isBoosting, p.shieldHitsLeft, p.aimAngle, now);
-        if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, p.x, p.y, now);
+        const rp = renderPos(p.id, p.x, p.y);
+        drawTank(ctx, rp.x, rp.y, p.color, p.dir, p.name, p.hp, p.id === selfId, isAlly, p.isBoosting, p.shieldHitsLeft, p.aimAngle);
+        if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, rp.x, rp.y, now);
       }
 
       // Whoever's standing in a bush (self included) gets a second, lighter
@@ -1036,6 +1419,16 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       for (const ex of explosionsRef.current) {
         const duration = explosionDurationFor(ex.kind);
         drawExplosion(ctx, ex.x, ex.y, (now - ex.start) / duration, ex.kind);
+      }
+
+      leavesRef.current = leavesRef.current.filter((l) => now - l.start < LEAF_PARTICLE_DURATION_MS);
+      for (const l of leavesRef.current) {
+        drawLeafParticle(ctx, l, (now - l.start) / LEAF_PARTICLE_DURATION_MS);
+      }
+
+      muzzleFlashesRef.current = muzzleFlashesRef.current.filter((f) => now - f.start < MUZZLE_FLASH_DURATION_MS);
+      for (const f of muzzleFlashesRef.current) {
+        drawMuzzleFlash(ctx, f, (now - f.start) / MUZZLE_FLASH_DURATION_MS);
       }
 
       ctx.restore();

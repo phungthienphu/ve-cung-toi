@@ -7,7 +7,14 @@ export const TILE_SIZE = 32;
 export interface TankMapDef {
   id: string;
   name: string;
-  // '#' = wall, '.' = empty floor, 'H' = natural hazard (spikes), 'B' = bush (hides tanks standing in it).
+  // Which real tile art to use for floor rendering — purely a client
+  // concern, but kept on the map def so it travels with mapId.
+  terrain: "grass" | "sand";
+  // '#' = wall, '.' = empty floor, 'H' = natural hazard (spikes), 'B' = bush
+  // (hides tanks standing in it), 'C' = wooden crate (blocks movement/bullets
+  // until rammed — then it gets shoved like a tank being pushed), 'R' = road
+  // (purely cosmetic — walkable exactly like '.', just rendered as a path
+  // auto-tiled from its 'R' neighbors).
   layout: string[];
 }
 
@@ -18,26 +25,27 @@ export const TANK_MAPS: TankMapDef[] = [
   {
     id: "arena",
     name: "Đấu trường nhỏ",
+    terrain: "grass",
 
     layout: [
       "###############################",
       "#B.B..........................#",
-      "#.............................#",
-      "#B.B.....#####................#",
-      "#........#...#................#",
-      "#........#...#####............#",
-      "#....##..#.........##.........#",
-      "#....##......HHH....##........#",
-      "#..............H..............#",
-      "#........####..H....#####.....#",
-      "#........#...........#........#",
-      "#..#####.#..###......#........#",
-      "#..#.....#..#........#....##..#",
-      "#..#.........#..####......##..#",
-      "#..###.......#................#",
-      "#...........#####.............#",
-      "#.........H......###.......B.B#",
-      "#.............................#",
+      "#.R............C..............#",
+      "#BRB.....#####................#",
+      "#.R......#...#................#",
+      "#.R......#...#####............#",
+      "#.R..##..#.........##.........#",
+      "#.R..##......HHH....##........#",
+      "#.R............H......C.......#",
+      "#.R......####..H....#####.....#",
+      "#.R......#...........#........#",
+      "#.R#####.#..###......#........#",
+      "#.R#.....#..#....C...#....##..#",
+      "#.R#.........#..####......##..#",
+      "#.R###.......#................#",
+      "#.RRRRRRRRRR#####.............#",
+      "#.........HRRRRRR###.......B.B#",
+      "#..............CRRRRRRRRRRRRR.#",
       "#..........................B.B#",
       "###############################",
     ],
@@ -45,29 +53,30 @@ export const TANK_MAPS: TankMapDef[] = [
   {
     id: "maze",
     name: "Mê cung",
+    terrain: "grass",
 
     layout: [
       "#####################################",
       "#B.B..............#.................#",
-      "#.....####........#......###........#",
-      "#B.B...##.........#......###........#",
-      "#..####...........#.................#",
-      "#..####.....###...#####.............#",
-      "#............#.........#............#",
-      "#....###.....#..HHH....#....####....#",
-      "#....#.......#....H....#....#.......#",
-      "#....#..#####.....H....#....#.......#",
-      "#....#..#..................###......#",
-      "#.......#....#######.......###......#",
-      "#..###..#....#.............#........#",
-      "#..#....#....#....###......#........#",
-      "#..#.........#....#........####.....#",
-      "#..#####.....#....#.................#",
-      "#.................#.................#",
-      "#.....###.........#####.............#",
-      "#.....###.........................#.#",
-      "#..............H.............H...B.B#",
-      "#...................................#",
+      "#.R...####........#......###........#",
+      "#BRB...##.........#......###........#",
+      "#.R####...........#.C...............#",
+      "#.R####.....###...#####.............#",
+      "#.R..........#.........#............#",
+      "#.R..###.....#..HHH....#....####....#",
+      "#.R..#.......#....H....#....#.......#",
+      "#.R..#..#####.....H....#....#.......#",
+      "#.R..#..#......C...........###......#",
+      "#.R.....#....#######.......###......#",
+      "#.R###..#....#.............#........#",
+      "#.R#....#....#....###......#........#",
+      "#.R#.........#....#........####.....#",
+      "#.R#####.....#....#.................#",
+      "#.R...............#......C..........#",
+      "#.R...###.........#####.............#",
+      "#.R...###.........................#.#",
+      "#.RRRRRRRRRR...H.............H...B.B#",
+      "#.........CRRRRRRRRRRRRRRRRRRRRRRRR.#",
       "#................................B.B#",
       "#####################################",
     ],
@@ -75,31 +84,32 @@ export const TANK_MAPS: TankMapDef[] = [
   {
     id: "field",
     name: "Sa mạc mở",
+    terrain: "sand",
 
     layout: [
       "#######################################",
       "#B.B..................................#",
-      "#........######.......................#",
-      "#B.B.....######....H..................#",
-      "#..........................#####......#",
-      "#....###...............H....#####.....#",
-      "#....###....####.............#........#",
-      "#.........H..####............#........#",
-      "#...........#####.....................#",
-      "#....................######...........#",
-      "#..######............######...........#",
-      "#..######..H..........................#",
-      "#...............###...................#",
-      "#.....#####.....###...................#",
-      "#.....#####..............####.........#",
-      "#...............H........####.........#",
-      "#..###...................####.........#",
-      "#..###......######....................#",
-      "#.........H..######..............H....#",
-      "#...........######....................#",
-      "#.....................................#",
-      "#..................................B.B#",
-      "#.....................................#",
+      "#.R......######.......................#",
+      "#BRB.....######....H..................#",
+      "#.R.................C......#####......#",
+      "#.R..###...............H....#####.....#",
+      "#.R..###....####.............#........#",
+      "#.R.......H..####............#........#",
+      "#.R.........#####.....................#",
+      "#.R..................######...C.......#",
+      "#.R######............######...........#",
+      "#.R######..H..........................#",
+      "#.R.............###...................#",
+      "#.R...#####.....###...................#",
+      "#.R...#####..............####.........#",
+      "#.R............CH........####.........#",
+      "#.R###...................####.........#",
+      "#.R###......######....................#",
+      "#.R.......H..######..............H....#",
+      "#.R.........######....................#",
+      "#.R......................C............#",
+      "#.R................................B.B#",
+      "#.RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR.#",
       "#..................................B.B#",
       "#######################################",
     ],
@@ -143,16 +153,37 @@ export function getSpawnPoints(map: TankMapDef): { x: number; y: number }[] {
   ];
 }
 
+// Each entry pairs a swatch color with a real Kenney "Tanks" sprite skin
+// (see public/Retina) — index-aligned with TANK_SKINS below. The 5 small
+// skins (blue/dark/green/red/sand) have a separately-rotatable turret; the 3
+// heavy skins (bigRed/darkLarge/huge) only ship a single fused body+turret
+// sprite, so their whole tank rotates to face movement instead.
 export const TANK_COLORS = [
-  "#3854ff", // blue
-  "#e0453f", // red
+  "#3b82f6", // blue
+  "#475569", // dark
   "#22c55e", // green
-  "#f59e0b", // amber
-  "#a855f7", // purple
-  "#06b6d4", // cyan
-  "#ec4899", // pink
-  "#78350f", // brown
+  "#ef4444", // red
+  "#d9b872", // sand
+  "#b91c1c", // bigRed (heavy)
+  "#1e293b", // darkLarge (heavy)
+  "#78716c", // huge (heavy)
 ];
+
+export const TANK_SKINS = ["blue", "dark", "green", "red", "sand", "bigRed", "darkLarge", "huge"] as const;
+export type TankSkin = (typeof TANK_SKINS)[number];
+export const TANK_SKIN_LABELS: Record<TankSkin, string> = {
+  blue: "Xanh dương",
+  dark: "Đen",
+  green: "Lục",
+  red: "Đỏ",
+  sand: "Cát",
+  bigRed: "Đỏ hạng nặng",
+  darkLarge: "Đen hạng nặng",
+  huge: "Khổng lồ",
+};
+// Only these 5 skins ship a separate barrel sprite that can aim independent
+// of the body's facing; the rest render as one fixed fused sprite.
+export const TANK_SKINS_WITH_TURRET: ReadonlySet<TankSkin> = new Set<TankSkin>(["blue", "dark", "green", "red", "sand"]);
 
 export type Team = "A" | "B";
 
@@ -262,8 +293,8 @@ export const ULTIMATE_DAMAGE_MULTIPLIER = 2;
 // only visible through the minimap. Purely a client rendering concern (the
 // server always simulates/broadcasts full map state), but kept here so the
 // tile-size math stays in one place.
-export const VIEWPORT_COLS = 11;
-export const VIEWPORT_ROWS = 8;
+export const VIEWPORT_COLS = 19;
+export const VIEWPORT_ROWS = 16;
 export const VIEWPORT_W = VIEWPORT_COLS * TILE_SIZE;
 export const VIEWPORT_H = VIEWPORT_ROWS * TILE_SIZE;
 
@@ -326,6 +357,19 @@ export interface Trap {
   y: number;
 }
 
+/** A wooden crate baked into a map's layout ('C') — blocks movement and
+ * bullets like a wall until a tank rams it, at which point it gets shoved
+ * exactly like a tank pushing another tank (same physics, different sprite). */
+export interface Crate {
+  id: string;
+  x: number;
+  y: number;
+  kind: "wood";
+  hp: number;
+}
+export const CRATE_SIZE = 24;
+export const CRATE_MAX_HP = 3; // ~3 shots to blow one apart
+
 export interface Monster {
   id: string;
   x: number;
@@ -346,7 +390,7 @@ export interface TankImpact {
   id: string;
   x: number;
   y: number;
-  kind: "shove" | "trap" | "shield";
+  kind: "shove" | "trap" | "shield" | "crate";
 }
 
 /** A single-tick elimination event — consumed client-side to show a
@@ -371,6 +415,7 @@ export interface TankPublicState {
   bullets: Bullet[];
   pickups: Pickup[];
   traps: Trap[];
+  crates: Crate[];
   monsters: Monster[];
   impacts: TankImpact[];
   kills: TankKillEvent[];
