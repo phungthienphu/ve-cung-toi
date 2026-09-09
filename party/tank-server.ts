@@ -1,6 +1,7 @@
 import type * as Party from "partykit/server";
 import {
   BULLET_SIZE,
+  BULLET_SPEED,
   DEFAULT_MAP_ID,
   FIRE_COOLDOWN_MS,
   FIRE_SHOTS_PER_ITEM,
@@ -8,15 +9,18 @@ import {
   MATCH_DURATION_MS,
   MAX_BOOST_ENERGY,
   MAX_TANK_PLAYERS,
-  MAX_ULTIMATE_ENERGY,
   MIN_TANK_PLAYERS,
   MAX_HP,
   MONSTER_COUNT,
+  RAPID_FIRE_COOLDOWN_MS,
   SHIELD_MAX_HITS,
   TANK_SIZE,
   TICK_MS,
+  ULTIMATE_ACTIVATION_MODE,
+  ULTIMATE_CONFIG,
   getMap,
   getSpawnPoints,
+  skinForColor,
   type Airstrike,
   type Bullet,
   type Crate,
@@ -42,6 +46,7 @@ import { aimAngleOf, makeId, spawnPixel } from "./tank/geometry";
 import { spawnMonster, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
+import { activateRapidFire, fireSniperShot } from "./tank/skills";
 import type { InputState } from "./tank/types";
 
 export default class TankRoom implements Party.Server {
@@ -140,6 +145,8 @@ export default class TankRoom implements Party.Server {
         return this.handleInput(msg, sender);
       case "shoot":
         return this.handleShoot(sender, !!msg.big);
+      case "charge_ultimate":
+        return this.handleChargeUltimate(sender);
       case "use_item":
         return this.handleUseItem(msg.kind, sender);
       case "leave_room":
@@ -208,6 +215,8 @@ export default class TankRoom implements Party.Server {
         burningUntil: null,
         burnOwnerId: null,
         aimAngle: null,
+        rapidFireUntil: null,
+        sniperChargingSince: null,
       };
       this.players.set(playerId, player);
       if (player.isHost) this.hostId = playerId;
@@ -274,6 +283,8 @@ export default class TankRoom implements Party.Server {
       p.fireShotsLeft = 0;
       p.burningUntil = null;
       p.burnOwnerId = null;
+      p.rapidFireUntil = null;
+      p.sniperChargingSince = null;
     });
     this.bullets = [];
     this.pickups = [];
@@ -354,15 +365,40 @@ export default class TankRoom implements Party.Server {
     player.aimAngle = typeof msg.aimAngle === "number" ? msg.aimAngle : null;
   }
 
+  /**
+   * Dispatches a "shoot" message. `big` requests the local skin's ultimate —
+   * for a "charge" skin (see ULTIMATE_ACTIVATION_MODE) this message means
+   * "release the charge and fire", handled entirely separately from the
+   * normal cooldown-gated path below (charging itself already gated when
+   * this could happen); every other skin fires/activates immediately.
+   */
   private handleShoot(sender: Party.Connection, big: boolean) {
     const player = this.players.get(sender.id);
     if (!player || !player.alive || this.status !== "playing") return;
-    if (big && player.ultimateEnergy < MAX_ULTIMATE_ENERGY) return;
+    const skin = skinForColor(player.color);
+
+    if (big && ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
+      if (player.sniperChargingSince === null) return;
+      fireSniperShot(this, player);
+      return;
+    }
+
+    const ultimateConfig = ULTIMATE_CONFIG[skin];
+    if (big && player.ultimateEnergy < ultimateConfig.maxEnergy) return;
 
     const now = Date.now();
     const last = this.lastShotAt.get(sender.id) ?? 0;
-    if (now - last < FIRE_COOLDOWN_MS) return;
+    const isRapidFiring = player.rapidFireUntil !== null && now < player.rapidFireUntil;
+    const cooldown = isRapidFiring ? RAPID_FIRE_COOLDOWN_MS : FIRE_COOLDOWN_MS;
+    if (now - last < cooldown) return;
     this.lastShotAt.set(sender.id, now);
+
+    // Ultimates that are a self-buff rather than a projectile stop here
+    // instead of falling through to spawn a bullet.
+    if (big && skin === "blue") {
+      activateRapidFire(player, now);
+      return;
+    }
 
     const isFire = !big && player.fireShotsLeft > 0;
     if (big) {
@@ -380,7 +416,22 @@ export default class TankRoom implements Party.Server {
       y: player.y + Math.sin(angle) * offset,
       angle,
       kind: big ? "big" : isFire ? "fire" : "normal",
+      speed: BULLET_SPEED,
     });
+  }
+
+  /** Starts a "charge" skin's hold-to-charge ultimate (currently just Dark's
+   * sniper — see fireSniperShot for the release/auto-fire side). The client
+   * is expected to only send this for a charge-mode skin, but this re-checks
+   * server-side to be safe. */
+  private handleChargeUltimate(sender: Party.Connection) {
+    const player = this.players.get(sender.id);
+    if (!player || !player.alive || this.status !== "playing") return;
+    const skin = skinForColor(player.color);
+    if (ULTIMATE_ACTIVATION_MODE[skin] !== "charge") return;
+    if (player.sniperChargingSince !== null) return;
+    if (player.ultimateEnergy < ULTIMATE_CONFIG[skin].maxEnergy) return;
+    player.sniperChargingSince = Date.now();
   }
 
   private handleUseItem(kind: ItemKind, sender: Party.Connection) {
@@ -401,6 +452,7 @@ export default class TankRoom implements Party.Server {
         y: player.y + Math.sin(angle) * offset,
         angle,
         kind: "blind",
+        speed: BULLET_SPEED,
       });
     } else if (kind === "shield") {
       player.shieldHitsLeft = SHIELD_MAX_HITS;

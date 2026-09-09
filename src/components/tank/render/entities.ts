@@ -48,10 +48,24 @@ export function drawTank(
   isAlly: boolean,
   isBoosting: boolean,
   shieldHitsLeft: number,
-  aimAngle: number | null
+  aimAngle: number | null,
+  isRapidFiring: boolean
 ) {
   const half = TANK_SIZE / 2;
   drawHealthBar(ctx, x, y, hp, isAlly);
+
+  // Blue's rapid-fire ultimate: a fast-flickering cyan ring, distinct from
+  // the slower amber boost ring so both stay readable if they ever overlap.
+  if (isRapidFiring) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 70);
+    ctx.save();
+    ctx.strokeStyle = `rgba(34,211,238,${0.5 + 0.5 * pulse})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, y, half + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   if (shieldHitsLeft > 0) {
     const radius = half + 8;

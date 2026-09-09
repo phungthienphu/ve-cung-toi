@@ -9,7 +9,17 @@
 // camera-clamp math itself.
 
 import { useCallback, useEffect, useRef } from "react";
-import { FIRE_COOLDOWN_MS, MAX_ULTIMATE_ENERGY, VIEWPORT_H, VIEWPORT_W, type TankClientMessage, type TankPublicState } from "@shared/tankTypes";
+import {
+  FIRE_COOLDOWN_MS,
+  RAPID_FIRE_COOLDOWN_MS,
+  ULTIMATE_ACTIVATION_MODE,
+  ULTIMATE_CONFIG,
+  VIEWPORT_H,
+  VIEWPORT_W,
+  skinForColor,
+  type TankClientMessage,
+  type TankPublicState,
+} from "@shared/tankTypes";
 import { playTankBigShot, playTankShoot } from "@/lib/sound";
 
 const KEY_MAP: Record<string, "up" | "down" | "left" | "right"> = {
@@ -95,7 +105,10 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
         e.preventDefault();
       } else if ((e.key === "r" || e.key === "R") && !e.repeat) {
         const self = stateRef.current.players.find((p) => p.id === selfId);
-        if (self && self.ultimateEnergy >= MAX_ULTIMATE_ENERGY) {
+        if (!self || self.ultimateEnergy < ULTIMATE_CONFIG[skinForColor(self.color)].maxEnergy) return;
+        if (ULTIMATE_ACTIVATION_MODE[skinForColor(self.color)] === "charge") {
+          send({ type: "charge_ultimate" });
+        } else {
           send({ type: "shoot", big: true });
           playTankBigShot();
         }
@@ -110,6 +123,15 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
       } else if (e.key === "Shift") {
         held.boost = false;
         sendInput();
+      } else if (e.key === "r" || e.key === "R") {
+        // Only meaningful for a "charge" skin (see ULTIMATE_ACTIVATION_MODE)
+        // that's actually mid-charge — releasing R for every other skin is a
+        // no-op since onKeyDown already fired/activated on press.
+        const self = stateRef.current.players.find((p) => p.id === selfId);
+        if (self && self.sniperChargingSince !== null) {
+          send({ type: "shoot", big: true });
+          playTankBigShot();
+        }
       }
     }
     function onBlur() {
@@ -181,20 +203,32 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
     updateJoystick(e.clientX, e.clientY);
   }
 
-  const shootIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  function startShooting() {
+  // A self-rescheduling timeout rather than a fixed setInterval — each shot
+  // re-checks whether the local tank's rapid-fire buff (Blue's ultimate) is
+  // currently active and picks the matching cadence, so held-fire speeds up
+  // and slows back down automatically without restarting the loop.
+  const shootTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isShootingRef = useRef(false);
+  function fireOnce() {
     send({ type: "shoot" });
     playTankShoot();
-    if (shootIntervalRef.current) return;
-    shootIntervalRef.current = setInterval(() => {
-      send({ type: "shoot" });
-      playTankShoot();
-    }, FIRE_COOLDOWN_MS);
+    const self = stateRef.current.players.find((p) => p.id === selfId);
+    const isRapidFiring = !!self?.rapidFireUntil && self.rapidFireUntil > Date.now();
+    const delay = isRapidFiring ? RAPID_FIRE_COOLDOWN_MS : FIRE_COOLDOWN_MS;
+    shootTimeoutRef.current = setTimeout(() => {
+      if (isShootingRef.current) fireOnce();
+    }, delay);
+  }
+  function startShooting() {
+    if (isShootingRef.current) return;
+    isShootingRef.current = true;
+    fireOnce();
   }
   function stopShooting() {
-    if (shootIntervalRef.current) {
-      clearInterval(shootIntervalRef.current);
-      shootIntervalRef.current = null;
+    isShootingRef.current = false;
+    if (shootTimeoutRef.current) {
+      clearTimeout(shootTimeoutRef.current);
+      shootTimeoutRef.current = null;
     }
   }
 

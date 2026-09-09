@@ -6,7 +6,7 @@
 // TankCanvas's draw loop reads the ref lists this returns every frame.
 
 import { useEffect, useRef, useState } from "react";
-import { MAX_ULTIMATE_ENERGY, TANK_SKINS, getMap, type Bullet, type TankPublicState } from "@shared/tankTypes";
+import { TANK_SKINS, ULTIMATE_CONFIG, getMap, skinForColor, type Bullet, type TankPublicState } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
 import {
   playBoostStart,
@@ -98,6 +98,28 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
       if (!seenIds.has(id)) prevBush.delete(id);
     }
   }, [state.players, state.mapId]);
+
+  // A burst ring the instant any tank's ultimate activates (currently just
+  // Blue's rapid-fire buff) — visible to everyone watching, not just an
+  // optimistic echo for whoever pressed the button, matching how other
+  // impact effects (shove, trap) are shared state rather than a local-only
+  // cue. Future per-skin ultimates just need to be added to this check.
+  const prevUltimateActiveByPlayerRef = useRef<Map<string, boolean>>(new Map());
+  useEffect(() => {
+    const prevActive = prevUltimateActiveByPlayerRef.current;
+    const seenIds = new Set<string>();
+    for (const p of state.players) {
+      seenIds.add(p.id);
+      const isActive = !!p.rapidFireUntil && p.rapidFireUntil > state.serverNow;
+      if (isActive && !prevActive.get(p.id)) {
+        explosionsRef.current.push({ id: `ultimate-${p.id}-${performance.now()}`, x: p.x, y: p.y, start: performance.now(), kind: "ultimate" });
+      }
+      prevActive.set(p.id, isActive);
+    }
+    for (const id of prevActive.keys()) {
+      if (!seenIds.has(id)) prevActive.delete(id);
+    }
+  }, [state.players, state.serverNow]);
 
   // Any tank losing HP (not just self) leaves an oil spill on the ground
   // where it was hit — a lingering scar of the fight, not tied to whichever
@@ -248,7 +270,8 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
       else if (self.hp > prev.hp || self.items.length > prev.itemCount) playTankPickup();
       if (isBurning && !prev.burning) playFireIgnite();
       if (self.isBoosting && !prev.isBoosting) playBoostStart();
-      if (self.ultimateEnergy >= MAX_ULTIMATE_ENERGY && prev.ultimateEnergy < MAX_ULTIMATE_ENERGY) playUltimateReady();
+      const maxEnergy = ULTIMATE_CONFIG[skinForColor(self.color)].maxEnergy;
+      if (self.ultimateEnergy >= maxEnergy && prev.ultimateEnergy < maxEnergy) playUltimateReady();
     }
     prevSelfRef.current = {
       hp: self.hp,

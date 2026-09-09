@@ -13,16 +13,18 @@ import {
   MAX_BOOST_ENERGY,
   MAX_HELD_ITEMS,
   MAX_HP,
-  MAX_ULTIMATE_ENERGY,
   NEST_PUDDLE_RADIUS,
   PICKUP_HEAL_AMOUNT,
   PICKUP_SIZE,
+  SNIPER_MAX_CHARGE_MS,
   TANK_SIZE,
   TANK_SPEED,
   TRAP_DAMAGE,
   TRAP_SIZE,
-  ULTIMATE_REGEN_PER_TICK,
+  ULTIMATE_CONFIG,
   getSpawnPoints,
+  skinForColor,
+  type Bullet,
   type Crate,
   type Direction,
   type Monster,
@@ -33,6 +35,7 @@ import {
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
 import { DIR_VECTOR, findOverlappingCrate, findOverlappingTank, makeId, spawnPixel, tankBlocked, tileAt, tryPushCrate, tryPushTank, winsShovingContest } from "./geometry";
+import { fireSniperShot } from "./skills";
 import type { InputState } from "./types";
 
 export interface PlayersTickCtx extends CombatCtx {
@@ -41,6 +44,7 @@ export interface PlayersTickCtx extends CombatCtx {
   pickups: Pickup[];
   traps: Trap[];
   monsters: Monster[];
+  bullets: Bullet[];
   lastHazardDamageAt: Map<string, number>;
   lastBurnDamageAt: Map<string, number>;
 }
@@ -65,10 +69,19 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.fireShotsLeft = 0;
         player.burningUntil = null;
         player.burnOwnerId = null;
+        player.rapidFireUntil = null;
+        player.sniperChargingSince = null;
       }
       continue;
     }
-    player.ultimateEnergy = Math.min(MAX_ULTIMATE_ENERGY, player.ultimateEnergy + ULTIMATE_REGEN_PER_TICK);
+    const ultimateConfig = ULTIMATE_CONFIG[skinForColor(player.color)];
+    player.ultimateEnergy = Math.min(ultimateConfig.maxEnergy, player.ultimateEnergy + ultimateConfig.regenPerTick);
+    if (player.rapidFireUntil !== null && now >= player.rapidFireUntil) {
+      player.rapidFireUntil = null;
+    }
+    if (player.sniperChargingSince !== null && now - player.sniperChargingSince >= SNIPER_MAX_CHARGE_MS) {
+      fireSniperShot(ctx, player);
+    }
 
     const input = ctx.inputs.get(player.id);
     if (!input) {

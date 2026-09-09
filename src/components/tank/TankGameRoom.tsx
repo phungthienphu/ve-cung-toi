@@ -6,7 +6,18 @@ import { useRouter } from "next/navigation";
 import { useTankRoom } from "@/lib/useTankRoom";
 import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw } from "@/lib/sound";
 import { fireworks } from "@/lib/confetti";
-import { DEFAULT_MAP_ID, KILL_TARGET, MAX_ULTIMATE_ENERGY, MIN_TANK_PLAYERS, TANK_MAPS, type ItemKind, type Team } from "@shared/tankTypes";
+import {
+  DEFAULT_MAP_ID,
+  KILL_TARGET,
+  MIN_TANK_PLAYERS,
+  TANK_MAPS,
+  ULTIMATE_ACTIVATION_MODE,
+  ULTIMATE_CONFIG,
+  skinForColor,
+  type ItemKind,
+  type TankSkin,
+  type Team,
+} from "@shared/tankTypes";
 import TankCanvas from "./TankCanvas";
 
 interface Props {
@@ -15,6 +26,44 @@ interface Props {
   name: string;
   color: string;
 }
+
+interface UltimateUi {
+  icon: string;
+  label: string;
+  activeClasses: string;
+  barClass: string;
+}
+
+// One entry per skin so the "R" button's icon/tooltip/color stays a single
+// table edit away instead of a growing pile of `isBlue`/`isDark`-style
+// booleans in the JSX below. Skins without a custom skill yet share the
+// original "big shot" look.
+const DEFAULT_ULTIMATE_UI: UltimateUi = {
+  icon: "💥",
+  label: "Đạn to (R) — sát thương gấp đôi, cần đầy năng lượng",
+  activeClasses: "border-red-400 bg-red-50 text-red-700 hover:bg-red-100",
+  barClass: "bg-red-500",
+};
+const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
+  blue: {
+    icon: "🔥",
+    label: "Xả đạn liên hoàn (R) — bắn nhanh trong 2s, cần đầy năng lượng",
+    activeClasses: "border-cyan-400 bg-cyan-50 text-cyan-700 hover:bg-cyan-100",
+    barClass: "bg-cyan-500",
+  },
+  dark: {
+    icon: "🎯",
+    label: "Bắn tỉa (giữ R để ngắm, thả để bắn) — sát thương gấp đôi, đạn bay rất nhanh",
+    activeClasses: "border-red-400 bg-red-50 text-red-700 hover:bg-red-100",
+    barClass: "bg-red-500",
+  },
+  green: DEFAULT_ULTIMATE_UI,
+  red: DEFAULT_ULTIMATE_UI,
+  sand: DEFAULT_ULTIMATE_UI,
+  bigRed: DEFAULT_ULTIMATE_UI,
+  darkLarge: DEFAULT_ULTIMATE_UI,
+  huge: DEFAULT_ULTIMATE_UI,
+};
 
 export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
   const router = useRouter();
@@ -392,26 +441,55 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
               );
             })}
             <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
-            <button
-              type="button"
-              disabled={self.ultimateEnergy < MAX_ULTIMATE_ENERGY}
-              onClick={() => send({ type: "shoot", big: true })}
-              title="Đạn to (R) — sát thương gấp đôi, cần đầy năng lượng"
-              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-base transition ${
-                self.ultimateEnergy >= MAX_ULTIMATE_ENERGY
-                  ? "border-red-400 bg-red-50 text-red-700 hover:bg-red-100"
-                  : "border-slate-200 text-slate-300"
-              }`}
-            >
-              💥
-              <span className="h-1.5 w-8 overflow-hidden rounded-full bg-slate-100">
-                <span
-                  className="block h-full bg-red-500 transition-[width]"
-                  style={{ width: `${Math.max(0, Math.min(100, (self.ultimateEnergy / MAX_ULTIMATE_ENERGY) * 100))}%` }}
-                />
-              </span>
-              <span className="text-[10px] font-bold">R</span>
-            </button>
+            {(() => {
+              const skin = skinForColor(self.color);
+              const ultimateConfig = ULTIMATE_CONFIG[skin];
+              const ui = ULTIMATE_UI[skin];
+              const ready = self.ultimateEnergy >= ultimateConfig.maxEnergy;
+              const isCharging = self.sniperChargingSince !== null;
+              const className = `flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-base transition ${
+                ready ? ui.activeClasses : "border-slate-200 text-slate-300"
+              } ${isCharging ? "ring-2 ring-red-400" : ""}`;
+              const bar = (
+                <span className="h-1.5 w-8 overflow-hidden rounded-full bg-slate-100">
+                  <span
+                    className={`block h-full transition-[width] ${ui.barClass}`}
+                    style={{ width: `${Math.max(0, Math.min(100, (self.ultimateEnergy / ultimateConfig.maxEnergy) * 100))}%` }}
+                  />
+                </span>
+              );
+
+              // "charge" skins fire on release, not on click — see
+              // ULTIMATE_ACTIVATION_MODE. Everything else keeps the simple
+              // tap-to-fire button it's always had.
+              if (ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
+                return (
+                  <button
+                    type="button"
+                    disabled={!ready}
+                    onPointerDown={(e) => {
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      send({ type: "charge_ultimate" });
+                    }}
+                    onPointerUp={() => isCharging && send({ type: "shoot", big: true })}
+                    onPointerCancel={() => isCharging && send({ type: "shoot", big: true })}
+                    title={ui.label}
+                    className={className}
+                  >
+                    {ui.icon}
+                    {bar}
+                    <span className="text-[10px] font-bold">R</span>
+                  </button>
+                );
+              }
+              return (
+                <button type="button" disabled={!ready} onClick={() => send({ type: "shoot", big: true })} title={ui.label} className={className}>
+                  {ui.icon}
+                  {bar}
+                  <span className="text-[10px] font-bold">R</span>
+                </button>
+              );
+            })()}
           </div>
         )}
         {self?.blindedUntil && self.blindedUntil > state.serverNow && (

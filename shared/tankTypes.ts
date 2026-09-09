@@ -185,6 +185,15 @@ export const TANK_SKIN_LABELS: Record<TankSkin, string> = {
 // of the body's facing; the rest render as one fixed fused sprite.
 export const TANK_SKINS_WITH_TURRET: ReadonlySet<TankSkin> = new Set<TankSkin>(["blue", "dark", "green", "red", "sand"]);
 
+/** A player's chosen tank skin is only ever stored as a swatch color
+ * (`TankPlayer.color`) — this recovers the skin id from it. Shared between
+ * client (rendering) and server (per-skin skill logic), so both always agree
+ * on which skin a given color maps to. */
+export function skinForColor(color: string): TankSkin {
+  const idx = TANK_COLORS.indexOf(color);
+  return TANK_SKINS[idx >= 0 ? idx : 0];
+}
+
 export type Team = "A" | "B";
 
 export const MAX_TANK_PLAYERS = 8;
@@ -196,7 +205,7 @@ export const TANK_SIZE = 22;
 export const TANK_SPEED = 2.4; // px/tick
 export const BULLET_SIZE = 6;
 export const BULLET_SPEED = 6.5; // px/tick
-export const FIRE_COOLDOWN_MS = 350;
+export const FIRE_COOLDOWN_MS = 400;
 export const RESPAWN_DELAY_MS = 1500;
 export const TICK_MS = 50; // 20Hz
 
@@ -283,10 +292,66 @@ export const MAX_HELD_ITEMS = 3;
 
 // Default built-in skill every tank has regardless of pickups: a heavy shot
 // worth double normal bullet damage, gated by its own energy meter that only
-// fills passively over time — separate from the boost meter.
+// fills passively over time — separate from the boost meter. This is the
+// fallback for any skin that doesn't (yet) have its own entry in
+// ULTIMATE_CONFIG below.
 export const MAX_ULTIMATE_ENERGY = 100;
 export const ULTIMATE_REGEN_PER_TICK = 0.5; // ~10s to charge from empty at 20Hz
 export const ULTIMATE_DAMAGE_MULTIPLIER = 2;
+
+/** Per-skin "R" ultimate energy meter — every skin gets its own unique skill
+ * built on this same slot/button, so a skill's power level is balanced by how
+ * fast its meter fills rather than all 8 sharing one fixed cooldown. Skins
+ * not yet redesigned fall back to the historical shared defaults above. */
+export interface UltimateEnergyConfig {
+  maxEnergy: number;
+  regenPerTick: number;
+}
+export const ULTIMATE_CONFIG: Record<TankSkin, UltimateEnergyConfig> = {
+  // Rapid fire is low-power/low-risk (no burst damage, no CC) — charges
+  // faster than the shared baseline so it's worth using often.
+  blue: { maxEnergy: 100, regenPerTick: 0.625 }, // ~8s to charge from empty
+  dark: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  green: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  red: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  sand: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  bigRed: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  darkLarge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  huge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+};
+
+/** How pressing "R" behaves for each skin — "instant" fires/activates the
+ * moment the button goes down (and only that one message is ever sent);
+ * "charge" starts a hold-then-release window instead: a `charge_ultimate`
+ * message on press, then the existing `shoot: {big: true}` on release to
+ * actually fire. Both client input code and the server consult this table
+ * instead of hardcoding which skin(s) currently work which way, so adding
+ * another charge-based skill later is a one-line table edit, not a new
+ * `skin === "..."` check scattered across input/HUD/server files. */
+export type UltimateActivationMode = "instant" | "charge";
+export const ULTIMATE_ACTIVATION_MODE: Record<TankSkin, UltimateActivationMode> = {
+  blue: "instant",
+  dark: "charge",
+  green: "instant",
+  red: "instant",
+  sand: "instant",
+  bigRed: "instant",
+  darkLarge: "instant",
+  huge: "instant",
+};
+
+// Blue's ultimate: hold-to-fire cooldown drops sharply for a short window
+// instead of firing one heavy shot.
+export const RAPID_FIRE_DURATION_MS = 2000;
+export const RAPID_FIRE_COOLDOWN_MS = 140; // vs. the normal FIRE_COOLDOWN_MS (350ms)
+
+// Dark's ultimate: hold to charge a sniper shot (shows a telegraphed scope
+// line everyone can see and react to), release to fire. Damage stays the
+// same as a normal ultimate (ULTIMATE_DAMAGE_MULTIPLIER), but the round
+// travels much faster than any other bullet.
+export const SNIPER_BULLET_SPEED = 12; // vs. the normal BULLET_SPEED (6.5)
+export const SNIPER_MAX_CHARGE_MS = 3000; // auto-fires if held this long
+export const SNIPER_SCOPE_RANGE = 600; // px — how far the telegraph line reaches if it hits no wall first
 
 // Follow-camera viewport (MOBA-style zoomed-in view) — the client only ever
 // renders this many pixels around the local player; the rest of the map is
@@ -329,6 +394,14 @@ export interface TankPlayer {
   // Mouse-aim angle in radians, sent only by desktop clients tracking the
   // cursor; null falls back to firing along the 4-directional `dir`.
   aimAngle: number | null;
+  // Blue's ultimate: non-null while its rapid-fire buff is active (the
+  // timestamp it expires at) — shortens the normal shot cooldown and drives
+  // the client's glow effect.
+  rapidFireUntil: number | null;
+  // Dark's ultimate: non-null while charging a sniper shot (the timestamp
+  // charging started) — drives the client's telegraphed scope-line effect,
+  // visible to every player, and auto-fires past SNIPER_MAX_CHARGE_MS.
+  sniperChargingSince: number | null;
 }
 
 export interface Bullet {
@@ -341,6 +414,10 @@ export interface Bullet {
   // being locked to the 4-directional movement grid.
   angle: number;
   kind: BulletKind;
+  // Per-bullet travel speed (px/tick) — lets a skill's own bullet (e.g.
+  // Dark's sniper round) fly faster than the shared BULLET_SPEED default
+  // without needing a whole separate bullet kind.
+  speed: number;
 }
 
 export interface Pickup {
@@ -494,6 +571,9 @@ export type TankClientMessage =
   | { type: "end_game" }
   | { type: "input"; up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number }
   | { type: "shoot"; big?: boolean }
+  // Starts charging a hold-then-release ultimate (currently just Dark's
+  // sniper) — releasing sends the existing "shoot" message with big: true.
+  | { type: "charge_ultimate" }
   | { type: "use_item"; kind: ItemKind }
   | { type: "leave_room" };
 

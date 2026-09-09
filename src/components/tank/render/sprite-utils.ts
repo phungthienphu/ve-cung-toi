@@ -1,10 +1,15 @@
 // Small sprite-drawing primitives shared across every other render/*.ts
 // module: tinting white-silhouette icons, rotating a sprite to face a world
-// angle, mapping a tank color back to its Kenney skin name, and a
-// deterministic per-tile PRNG for stable-but-varied ground texture.
+// angle, and a deterministic per-tile PRNG for stable-but-varied ground
+// texture.
 
-import { TANK_COLORS, TANK_SKINS, type Direction, type TankSkin } from "@shared/tankTypes";
+import { skinForColor, type Direction, type TankSkin } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
+
+// Re-exported so render/* call sites only need one import source for sprite
+// helpers — the real implementation lives in shared/tankTypes.ts since the
+// server needs it too (to run per-skin skill logic from a player's color).
+export { skinForColor };
 
 /** Deterministic per-tile PRNG — same tile always gets the same "random"
  * texture/foliage layout, so nothing flickers or reshuffles between frames. */
@@ -25,11 +30,6 @@ export const DIR_ANGLE: Record<Direction, number> = {
   left: Math.PI,
   up: -Math.PI / 2,
 };
-
-export function skinForColor(color: string): TankSkin {
-  const idx = TANK_COLORS.indexOf(color);
-  return TANK_SKINS[idx >= 0 ? idx : 0];
-}
 
 export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

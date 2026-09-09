@@ -3,7 +3,6 @@
 // just the survivors, same as the original inline tick logic did.
 
 import {
-  BULLET_SPEED,
   CRATE_SIZE,
   MONSTER_AGGRO_TIMEOUT_MS,
   MONSTER_RESPAWN_DELAY_MS,
@@ -30,8 +29,8 @@ export interface BulletsTickCtx extends CombatCtx {
 export function stepBullets(ctx: BulletsTickCtx, map: TankMapDef, now: number) {
   const survivors: Bullet[] = [];
   for (const bullet of ctx.bullets) {
-    bullet.x += Math.cos(bullet.angle) * BULLET_SPEED;
-    bullet.y += Math.sin(bullet.angle) * BULLET_SPEED;
+    bullet.x += Math.cos(bullet.angle) * bullet.speed;
+    bullet.y += Math.sin(bullet.angle) * bullet.speed;
 
     if (tileAt(map, bullet.x, bullet.y) === "#") continue; // hit a wall
 

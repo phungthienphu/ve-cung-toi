@@ -14,7 +14,8 @@ import {
   type TankClientMessage,
   type TankPublicState,
 } from "@shared/tankTypes";
-import { skinForColor } from "./render/sprite-utils";
+import { DIR_ANGLE, skinForColor } from "./render/sprite-utils";
+import { computeScopeEndpoint, drawScopeLine } from "./render/sniper";
 import {
   buildMapBackground,
   bushNeighborBias,
@@ -229,7 +230,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       for (const p of visiblePlayers) {
         const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
         const rp = renderPos(p.id, p.x, p.y);
-        drawTank(ctx, rp.x, rp.y, p.color, p.dir, p.name, p.hp, p.id === selfId, isAlly, p.isBoosting, p.shieldHitsLeft, p.aimAngle);
+        const isRapidFiring = !!p.rapidFireUntil && p.rapidFireUntil > s.serverNow;
+        drawTank(ctx, rp.x, rp.y, p.color, p.dir, p.name, p.hp, p.id === selfId, isAlly, p.isBoosting, p.shieldHitsLeft, p.aimAngle, isRapidFiring);
         if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, rp.x, rp.y, now);
       }
 
@@ -243,10 +245,21 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         drawBush(ctx, col * TILE_SIZE, row * TILE_SIZE, row, col, bushNeighborBias(m, row, col), now, 0.5);
       }
 
+      // Dark's charging sniper telegraph — only for players currently
+      // visible (same bush-hiding rules as everything else), on top of
+      // tanks so it always reads clearly.
+      for (const p of visiblePlayers) {
+        if (p.sniperChargingSince === null) continue;
+        const rp = renderPos(p.id, p.x, p.y);
+        const angle = p.aimAngle ?? DIR_ANGLE[p.dir];
+        const end = computeScopeEndpoint(m, rp.x, rp.y, angle);
+        drawScopeLine(ctx, rp.x, rp.y, end.x, end.y, now);
+      }
+
       explosionsRef.current = explosionsRef.current.filter((ex) => now - ex.start < explosionDurationFor(ex.kind));
       for (const ex of explosionsRef.current) {
         const duration = explosionDurationFor(ex.kind);
-        drawExplosion(ctx, ex.x, ex.y, (now - ex.start) / duration, ex.kind, ex.radius);
+        drawExplosion(ctx, ex.x, ex.y, (now - ex.start) / duration, ex.kind, ex.radius, ex.color);
       }
 
       leavesRef.current = leavesRef.current.filter((l) => now - l.start < LEAF_PARTICLE_DURATION_MS);

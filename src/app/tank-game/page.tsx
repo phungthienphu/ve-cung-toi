@@ -32,7 +32,7 @@ export default function TankGameHomePage() {
         </div>
 
         <h1 className="mb-1 text-2xl font-bold text-ink">Bắn nhau cùng hội bạn</h1>
-        <p className="mb-6 text-sm text-ink/60">Tối đa 4 người, ai đủ {KILL_TARGET} điểm tiêu diệt trước thì thắng.</p>
+        <p className="mb-6 text-sm text-ink/60">Tối đa 8 người, ai đủ {KILL_TARGET} điểm tiêu diệt trước thì thắng.</p>
 
         <button
           onClick={handleCreate}

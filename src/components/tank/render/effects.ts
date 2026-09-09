@@ -8,12 +8,13 @@ import { TANK_SIZE } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
 import { getTintedSprite } from "./sprite-utils";
 
-export type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire" | "crate" | "bomb";
+export type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire" | "crate" | "bomb" | "ultimate";
 const EXPLOSION_DURATION_MS = 380;
 export function explosionDurationFor(kind: ExplosionKind): number {
   if (kind === "bomb") return 560;
   if (kind === "big") return 520;
   if (kind === "shield") return 220;
+  if (kind === "ultimate") return 450;
   return EXPLOSION_DURATION_MS;
 }
 
@@ -47,9 +48,10 @@ export interface Explosion {
   start: number;
   kind: ExplosionKind;
   radius?: number; // only set for "bomb" — scales the visual to the real blast size
+  color?: string; // only set for "ultimate" — matches whichever skin activated it
 }
 
-export function drawExplosion(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number, kind: ExplosionKind, radius?: number) {
+export function drawExplosion(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number, kind: ExplosionKind, radius?: number, color?: string) {
   if (kind === "shield") {
     // A quick blue ripple — a shield absorbing a hit, not an explosion.
     const alpha = 1 - progress;
@@ -60,6 +62,32 @@ export function drawExplosion(ctx: CanvasRenderingContext2D, x: number, y: numbe
     ctx.beginPath();
     ctx.arc(x, y, (TANK_SIZE / 2 + 8) * (0.6 + 0.4 * progress), 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (kind === "ultimate") {
+    // Two outward-racing rings + a quick flash — a clear "a skill just fired"
+    // cue, distinct from a normal explosion, that reads for every player
+    // watching (not just whoever pressed the button).
+    const tint = color ?? "#22d3ee";
+    const alpha = 1 - progress;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.fillStyle = tint;
+    ctx.beginPath();
+    ctx.arc(x, y, (TANK_SIZE / 2) * (1 - progress), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = tint;
+    ctx.lineWidth = 2.5;
+    for (const ringDelay of [0, 0.18]) {
+      const ringProgress = Math.max(0, Math.min(1, progress - ringDelay));
+      if (ringProgress <= 0) continue;
+      ctx.beginPath();
+      ctx.arc(x, y, (TANK_SIZE / 2 + 4) + ringProgress * 26, 0, Math.PI * 2);
+      ctx.globalAlpha = alpha * (1 - ringProgress);
+      ctx.stroke();
+    }
     ctx.restore();
     return;
   }
