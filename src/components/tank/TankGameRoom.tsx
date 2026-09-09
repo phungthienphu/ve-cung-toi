@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTankRoom } from "@/lib/useTankRoom";
 import { playClick } from "@/lib/sound";
 import { fireworks } from "@/lib/confetti";
-import { DEFAULT_MAP_ID, KILL_TARGET, MAX_ULTIMATE_ENERGY, MIN_TANK_PLAYERS, TANK_MAPS, type ItemKind } from "@shared/tankTypes";
+import { DEFAULT_MAP_ID, KILL_TARGET, MAX_ULTIMATE_ENERGY, MIN_TANK_PLAYERS, TANK_MAPS, type ItemKind, type Team } from "@shared/tankTypes";
 import TankCanvas from "./TankCanvas";
 
 interface Props {
@@ -49,6 +49,17 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
   }
 
   if (state.status === "lobby") {
+    const teamA = state.players.filter((p) => p.team === "A");
+    const teamB = state.players.filter((p) => p.team === "B");
+
+    const playerRow = (p: (typeof state.players)[number]) => (
+      <div key={p.id} className={`flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ${!p.connected ? "opacity-40" : ""}`}>
+        <span className="h-4 w-4 shrink-0 rounded" style={{ backgroundColor: p.color }} />
+        <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+        {p.isHost && <span className="shrink-0">👑</span>}
+      </div>
+    );
+
     return (
       <main className="flex min-h-app items-center justify-center bg-tank-scene px-4 py-10">
         <div className="w-full max-w-md min-w-0 rounded-xl border border-cream-200 bg-white p-6 shadow-xl">
@@ -59,18 +70,56 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             </span>
           </div>
 
-          <div className="mb-5 space-y-1.5">
-            {state.players.map((p) => (
-              <div
-                key={p.id}
-                className={`flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ${!p.connected ? "opacity-40" : ""}`}
-              >
-                <span className="h-4 w-4 shrink-0 rounded" style={{ backgroundColor: p.color }} />
-                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                {p.isHost && <span className="shrink-0">👑</span>}
+          {isHost && (
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Chế độ chơi</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => send({ type: "set_mode", mode: "ffa" })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    state.mode === "ffa" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Đấu tự do
+                </button>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "set_mode", mode: "team" })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    state.mode === "team" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Đấu đội
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {state.mode === "team" ? (
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <div>
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-blue-600">Đội A ({teamA.length})</div>
+                <div className="space-y-1">{teamA.map(playerRow)}</div>
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-red-600">Đội B ({teamB.length})</div>
+                <div className="space-y-1">{teamB.map(playerRow)}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-5 space-y-1.5">{state.players.map(playerRow)}</div>
+          )}
+
+          {state.mode === "team" && self && (
+            <button
+              type="button"
+              onClick={() => send({ type: "choose_team", team: self.team === "A" ? "B" : "A" })}
+              className="mb-5 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-500"
+            >
+              Chuyển sang Đội {self.team === "A" ? "B" : "A"}
+            </button>
+          )}
 
           {isHost && (
             <div className="mb-5">
@@ -122,13 +171,74 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
   }
 
   if (state.status === "ended") {
+    const playAgainButtons = (
+      <div className="flex flex-wrap justify-center gap-3">
+        {isHost && (
+          <button
+            onClick={() => {
+              playClick();
+              send({ type: "play_again" });
+            }}
+            className="rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900"
+          >
+            Chơi lại
+          </button>
+        )}
+        <Link
+          href="/tank-game"
+          className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-500"
+        >
+          Về trang chủ
+        </Link>
+      </div>
+    );
+
+    if (state.mode === "team") {
+      const rosterFor = (team: Team) => [...state.players].filter((p) => p.team === team).sort((a, b) => b.score - a.score);
+      const teamA = rosterFor("A");
+      const teamB = rosterFor("B");
+      const title =
+        state.winningTeam === "A" ? "🏆 Đội A thắng!" : state.winningTeam === "B" ? "🏆 Đội B thắng!" : "🤝 Hòa!";
+      const roster = (players: typeof teamA, label: string, colorClass: string) => (
+        <div>
+          <div className={`mb-1.5 text-xs font-semibold uppercase tracking-wide ${colorClass}`}>{label}</div>
+          <div className="space-y-1">
+            {players.map((p) => (
+              <div key={p.id} className="flex min-w-0 items-center justify-between gap-1 rounded-lg px-2 py-1 text-xs">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="h-3 w-3 shrink-0 rounded" style={{ backgroundColor: p.color }} />
+                  <span className="min-w-0 truncate font-medium">{p.name}</span>
+                </span>
+                <span className="shrink-0 text-slate-500">{p.score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+      return (
+        <main className="flex min-h-app items-center justify-center bg-tank-scene px-4 py-10">
+          <div className="w-full max-w-md min-w-0 rounded-xl border border-cream-200 bg-white p-6 text-center shadow-xl">
+            <h2 className="mb-1 truncate text-2xl font-bold text-ink">{title}</h2>
+            <p className="mb-6 text-sm text-ink/50">
+              Tỉ số: {state.teamScores.A} - {state.teamScores.B} (mục tiêu {KILL_TARGET} điểm hoặc hết giờ)
+            </p>
+            <div className="mb-6 grid grid-cols-2 gap-3 text-left">
+              {roster(teamA, "Đội A", "text-blue-600")}
+              {roster(teamB, "Đội B", "text-red-600")}
+            </div>
+            {playAgainButtons}
+          </div>
+        </main>
+      );
+    }
+
     const ranking = [...state.players].sort((a, b) => b.score - a.score);
     const winner = state.players.find((p) => p.id === state.winnerId);
     return (
       <main className="flex min-h-app items-center justify-center bg-tank-scene px-4 py-10">
         <div className="w-full max-w-md min-w-0 rounded-xl border border-cream-200 bg-white p-6 text-center shadow-xl">
-          <h2 className="mb-1 truncate text-2xl font-bold text-ink">🏆 {winner?.name ?? "?"} thắng!</h2>
-          <p className="mb-6 text-sm text-ink/50">Đạt {KILL_TARGET} điểm tiêu diệt trước tiên.</p>
+          <h2 className="mb-1 truncate text-2xl font-bold text-ink">{winner ? `🏆 ${winner.name} thắng!` : "🤝 Hòa!"}</h2>
+          <p className="mb-6 text-sm text-ink/50">Đạt {KILL_TARGET} điểm tiêu diệt trước, hoặc điểm cao nhất khi hết giờ.</p>
 
           <div className="mb-6 space-y-1.5 text-left">
             {ranking.map((p, i) => (
@@ -143,41 +253,43 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             ))}
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3">
-            {isHost && (
-              <button
-                onClick={() => {
-                  playClick();
-                  send({ type: "play_again" });
-                }}
-                className="rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900"
-              >
-                Chơi lại
-              </button>
-            )}
-            <Link
-              href="/tank-game"
-              className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-500"
-            >
-              Về trang chủ
-            </Link>
-          </div>
+          {playAgainButtons}
         </div>
       </main>
     );
   }
+
+  const remainingMs =
+    typeof state.matchEndsAt === "number" && typeof state.serverNow === "number"
+      ? Math.max(0, state.matchEndsAt - state.serverNow)
+      : null;
+  const remainingLabel =
+    remainingMs !== null
+      ? `${Math.floor(remainingMs / 60000)}:${String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}`
+      : null;
 
   return (
     <div className="min-h-app bg-tank-scene">
       <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-3 px-3 py-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-xl">
           <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
-            {state.players.map((p) => (
-              <span key={p.id} className="flex min-w-0 items-center gap-1.5 font-medium">
-                <span className="h-3 w-3 shrink-0 rounded" style={{ backgroundColor: p.color }} />
-                <span className="max-w-[8rem] truncate">{p.name}</span>: {p.score}
+            {remainingLabel && (
+              <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-mono font-semibold text-slate-700">⏱ {remainingLabel}</span>
+            )}
+            {state.mode === "team" ? (
+              <span className="shrink-0 font-semibold">
+                <span className="text-blue-600">Đội A: {state.teamScores.A}</span>
+                <span className="mx-1.5 text-slate-300">·</span>
+                <span className="text-red-600">Đội B: {state.teamScores.B}</span>
               </span>
-            ))}
+            ) : (
+              state.players.map((p) => (
+                <span key={p.id} className="flex min-w-0 items-center gap-1.5 font-medium">
+                  <span className="h-3 w-3 shrink-0 rounded" style={{ backgroundColor: p.color }} />
+                  <span className="max-w-[8rem] truncate">{p.name}</span>: {p.score}
+                </span>
+              ))
+            )}
           </div>
           <button
             onClick={handleLeave}
@@ -259,7 +371,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
         <TankCanvas state={state} selfId={playerId} send={send} />
 
         <p className="text-center text-xs text-ink/40">
-          Di chuyển: mũi tên / WASD · Bắn: phím cách · Dùng vật phẩm: 1/2/3 · Đạn to: R · Giữ Shift để tăng tốc
+          Di chuyển: mũi tên / WASD · Bắn: phím cách hoặc click chuột trái (ngắm theo chuột) · Dùng vật phẩm: 1/2/3 · Đạn to: R · Giữ Shift để tăng tốc
           {self && !self.alive && " · Bạn vừa bị bắn, hồi sinh sau ít giây..."}
         </p>
       </div>

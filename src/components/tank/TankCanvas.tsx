@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BUSH_REVEAL_RADIUS,
+  FIRE_COOLDOWN_MS,
   MAX_BOOST_ENERGY,
   MAX_HP,
   MAX_ULTIMATE_ENERGY,
@@ -19,6 +20,7 @@ import {
   getMap,
   mapCanvasSize,
   type Bullet,
+  type Direction,
   type Monster,
   type TankClientMessage,
   type TankPlayer,
@@ -56,6 +58,23 @@ const KEY_MAP: Record<string, "up" | "down" | "left" | "right"> = {
   A: "left",
   D: "right",
 };
+
+const DIR_ANGLE: Record<Direction, number> = {
+  right: 0,
+  down: Math.PI / 2,
+  left: Math.PI,
+  up: -Math.PI / 2,
+};
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 
 type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire";
 const EXPLOSION_DURATION_MS = 320;
@@ -314,7 +333,7 @@ interface SkidMark {
   start: number;
 }
 
-function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number) {
+function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, isAlly: boolean) {
   const width = TANK_SIZE + 6;
   const height = 4;
   const barY = y - TANK_SIZE / 2 - 14;
@@ -324,7 +343,7 @@ function drawHealthBar(ctx: CanvasRenderingContext2D, x: number, y: number, hp: 
   ctx.fillStyle = "#1e293b";
   ctx.fillRect(left, barY, width, height);
 
-  ctx.fillStyle = pct > 0.5 ? "#22c55e" : pct > 0.25 ? "#f59e0b" : "#ef4444";
+  ctx.fillStyle = isAlly ? "#22c55e" : "#ef4444";
   ctx.fillRect(left, barY, Math.round(width * pct), height);
 
   ctx.strokeStyle = "rgba(0,0,0,0.45)";
@@ -337,15 +356,18 @@ function drawTank(
   x: number,
   y: number,
   color: string,
-  dir: string,
+  dir: Direction,
   name: string,
   hp: number,
   isSelf: boolean,
+  isAlly: boolean,
   isBoosting: boolean,
-  shieldHitsLeft: number
+  shieldHitsLeft: number,
+  aimAngle: number | null,
+  time: number
 ) {
   const half = TANK_SIZE / 2;
-  drawHealthBar(ctx, x, y, hp);
+  drawHealthBar(ctx, x, y, hp, isAlly);
 
   if (shieldHitsLeft > 0) {
     const radius = half + 8;
@@ -368,31 +390,90 @@ function drawTank(
     ctx.restore();
   }
 
+  // Tracks — dashed treads like the color-pick preview, but oriented to
+  // whichever way the tank is actually driving: mounted on the two sides
+  // running parallel to the travel direction (left/right sides when moving
+  // vertically, top/bottom when moving horizontally) so they read as real
+  // tracks instead of always facing the same way regardless of movement.
+  const treadOffset = (time / 60) % 12;
+  const horizontalMove = dir === "left" || dir === "right";
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = "#1e293b";
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 1.5;
+    if (horizontalMove) {
+      const ty0 = y + side * (half + 4);
+      ctx.fillRect(Math.round(x - half - 3), Math.round(ty0 - 4), TANK_SIZE + 6, 8);
+      for (let o = -treadOffset; o < TANK_SIZE + 6; o += 8) {
+        ctx.beginPath();
+        ctx.moveTo(x - half - 3 + o, ty0 - 4);
+        ctx.lineTo(x - half - 3 + o, ty0 + 4);
+        ctx.stroke();
+      }
+    } else {
+      const tx0 = x + side * (half + 4);
+      ctx.fillRect(Math.round(tx0 - 4), Math.round(y - half - 3), 8, TANK_SIZE + 6);
+      for (let o = -treadOffset; o < TANK_SIZE + 6; o += 8) {
+        ctx.beginPath();
+        ctx.moveTo(tx0 - 4, y - half - 3 + o);
+        ctx.lineTo(tx0 + 4, y - half - 3 + o);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Body: same gradient-shaded, rounded-corner look as the color-pick preview.
+  const corner = 4;
+  const grad = ctx.createLinearGradient(x, y - half, x, y + half);
+  grad.addColorStop(0, color);
+  grad.addColorStop(1, "rgba(0,0,0,0.28)");
+  ctx.fillStyle = grad;
+  roundRectPath(ctx, x - half, y - half, TANK_SIZE, TANK_SIZE, corner);
+  ctx.fill();
+  ctx.strokeStyle = isSelf ? "#ffffff" : "rgba(255,255,255,0.55)";
+  ctx.lineWidth = isSelf ? 2 : 1.5;
+  roundRectPath(ctx, x - half + 1, y - half + 1, TANK_SIZE - 2, TANK_SIZE - 2, corner);
+  ctx.stroke();
+
+  // Turret: round base + a barrel aimed at the mouse angle (desktop) or the
+  // movement facing (touch/keyboard) — a thick dark shaft with a lighter
+  // highlight stripe and a muzzle cap, matching the preview's turret.
+  const angle = aimAngle ?? DIR_ANGLE[dir];
+  const barrelLen = half + 14;
+  const bx = x + Math.cos(angle) * barrelLen;
+  const by = y + Math.sin(angle) * barrelLen;
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 7;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath();
+  ctx.arc(bx, by, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  const turretGrad = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, half * 0.6);
+  turretGrad.addColorStop(0, "#334155");
+  turretGrad.addColorStop(1, "#0f172a");
+  ctx.fillStyle = turretGrad;
+  ctx.beginPath();
+  ctx.arc(x, y, half * 0.58, 0, Math.PI * 2);
+  ctx.fill();
+
   if (isBoosting) {
     ctx.strokeStyle = "#fbbf24";
     ctx.lineWidth = 3;
-    ctx.strokeRect(Math.round(x - half) - 2, Math.round(y - half) - 2, TANK_SIZE + 4, TANK_SIZE + 4);
+    roundRectPath(ctx, x - half - 9, y - half - 5, TANK_SIZE + 18, TANK_SIZE + 10, corner + 4);
+    ctx.stroke();
   }
-
-  ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x - half), Math.round(y - half), TANK_SIZE, TANK_SIZE);
-
-  if (isSelf) {
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(Math.round(x - half) + 1, Math.round(y - half) + 1, TANK_SIZE - 2, TANK_SIZE - 2);
-  }
-
-  const turretSize = 8;
-  const offset = half - 2;
-  let tx = x;
-  let ty = y;
-  if (dir === "up") ty -= offset;
-  else if (dir === "down") ty += offset;
-  else if (dir === "left") tx -= offset;
-  else tx += offset;
-  ctx.fillStyle = "#1e293b";
-  ctx.fillRect(Math.round(tx - turretSize / 2), Math.round(ty - turretSize / 2), turretSize, turretSize);
 
   ctx.fillStyle = "#1e293b";
   ctx.font = "10px monospace";
@@ -875,6 +956,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       const camY = clampCamera(self ? self.y : mapH / 2, VIEWPORT_H, mapH);
       const offsetX = Math.round(VIEWPORT_W / 2 - camX);
       const offsetY = Math.round(VIEWPORT_H / 2 - camY);
+      cameraOffsetRef.current.x = offsetX;
+      cameraOffsetRef.current.y = offsetY;
 
       ctx.clearRect(0, 0, VIEWPORT_W, VIEWPORT_H);
       ctx.save();
@@ -934,7 +1017,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
 
       const visiblePlayers = s.players.filter((p) => p.alive && (p.id === selfId || !self || !isBushHidden(m, p, self)));
       for (const p of visiblePlayers) {
-        drawTank(ctx, p.x, p.y, p.color, p.dir, p.name, p.hp, p.id === selfId, p.isBoosting, p.shieldHitsLeft);
+        const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
+        drawTank(ctx, p.x, p.y, p.color, p.dir, p.name, p.hp, p.id === selfId, isAlly, p.isBoosting, p.shieldHitsLeft, p.aimAngle, now);
         if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, p.x, p.y, now);
       }
 
@@ -980,16 +1064,30 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [selfId]);
 
-  useEffect(() => {
-    const held = { up: false, down: false, left: false, right: false, boost: false };
-    let lastSent = "";
+  // Shared with the touch joystick/boost button below — both the keyboard
+  // listener and the touch handlers mutate this same object so either input
+  // method (or a mix, e.g. keyboard + touch on a hybrid device) works.
+  const heldRef = useRef({ up: false, down: false, left: false, right: false, boost: false });
+  const lastSentInputRef = useRef("");
+  // Desktop-only mouse aim: null means "no mouse aim active, fire along the
+  // 4-directional facing instead" (touch devices never set this).
+  const aimAngleRef = useRef<number | null>(null);
+  // Updated every draw() frame so the mousemove handler (which runs outside
+  // the rAF loop) can convert a screen-space mouse position into a world
+  // angle without redoing the camera-clamp math itself.
+  const cameraOffsetRef = useRef({ x: 0, y: 0 });
+  const sendInput = useCallback(() => {
+    const held = heldRef.current;
+    const angle = aimAngleRef.current;
+    const angleBucket = angle === null ? "n" : Math.round(angle * 40);
+    const key = `${held.up}${held.down}${held.left}${held.right}${held.boost}:${angleBucket}`;
+    if (key === lastSentInputRef.current) return;
+    lastSentInputRef.current = key;
+    send({ type: "input", ...held, aimAngle: angle ?? undefined });
+  }, [send]);
 
-    function sendInput() {
-      const key = `${held.up}${held.down}${held.left}${held.right}${held.boost}`;
-      if (key === lastSent) return;
-      lastSent = key;
-      send({ type: "input", ...held });
-    }
+  useEffect(() => {
+    const held = heldRef.current;
 
     function onKeyDown(e: KeyboardEvent) {
       const dir = KEY_MAP[e.key];
@@ -1046,7 +1144,126 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       window.removeEventListener("blur", onBlur);
       send({ type: "input", up: false, down: false, left: false, right: false, boost: false });
     };
-  }, [send, selfId]);
+  }, [send, selfId, sendInput]);
+
+  // Touch controls: a virtual joystick (resolved to the same 4-directional
+  // input the server understands — no diagonal movement in this game) plus
+  // hold-to-fire and hold-to-boost buttons. Hidden on pointer:fine devices
+  // via the `sm:hidden` classes below; a touch/mouse drag on a hybrid device
+  // works too since these use Pointer Events.
+  const joyBaseRef = useRef<HTMLDivElement | null>(null);
+  const joyKnobRef = useRef<HTMLDivElement | null>(null);
+  const joyActiveRef = useRef(false);
+  const JOY_DEAD_ZONE = 12;
+
+  function angleToDir(dx: number, dy: number): "up" | "down" | "left" | "right" {
+    const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    if (deg >= -45 && deg < 45) return "right";
+    if (deg >= 45 && deg < 135) return "down";
+    if (deg >= -135 && deg < -45) return "up";
+    return "left";
+  }
+
+  function updateJoystick(clientX: number, clientY: number) {
+    const base = joyBaseRef.current;
+    if (!base) return;
+    const rect = base.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    const maxDist = rect.width / 2;
+    if (dist > maxDist) {
+      dx = (dx / dist) * maxDist;
+      dy = (dy / dist) * maxDist;
+    }
+    if (joyKnobRef.current) {
+      joyKnobRef.current.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    }
+    const dir = dist < JOY_DEAD_ZONE ? null : angleToDir(dx, dy);
+    const held = heldRef.current;
+    held.up = dir === "up";
+    held.down = dir === "down";
+    held.left = dir === "left";
+    held.right = dir === "right";
+    sendInput();
+  }
+
+  function resetJoystick() {
+    joyActiveRef.current = false;
+    const held = heldRef.current;
+    held.up = held.down = held.left = held.right = false;
+    if (joyKnobRef.current) joyKnobRef.current.style.transform = "translate(-50%, -50%)";
+    sendInput();
+  }
+
+  function handleJoyPointerDown(e: React.PointerEvent) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    joyActiveRef.current = true;
+    updateJoystick(e.clientX, e.clientY);
+  }
+  function handleJoyPointerMove(e: React.PointerEvent) {
+    if (!joyActiveRef.current) return;
+    updateJoystick(e.clientX, e.clientY);
+  }
+
+  const shootIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  function startShooting() {
+    send({ type: "shoot" });
+    playTankShoot();
+    if (shootIntervalRef.current) return;
+    shootIntervalRef.current = setInterval(() => {
+      send({ type: "shoot" });
+      playTankShoot();
+    }, FIRE_COOLDOWN_MS);
+  }
+  function stopShooting() {
+    if (shootIntervalRef.current) {
+      clearInterval(shootIntervalRef.current);
+      shootIntervalRef.current = null;
+    }
+  }
+
+  function setBoost(active: boolean) {
+    heldRef.current.boost = active;
+    sendInput();
+  }
+
+  // Desktop mouse-aim: shots fire toward the cursor instead of only the 4
+  // movement directions. Converts the mouse's CSS-pixel position into the
+  // canvas's logical VIEWPORT coordinate space (which can differ from the
+  // canvas's displayed size on a responsive layout), then into a world
+  // angle using the local tank's last-known world position.
+  function handleAimMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    const self = stateRef.current.players.find((p) => p.id === selfId);
+    if (!canvas || !self) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const mouseX = ((e.clientX - rect.left) / rect.width) * VIEWPORT_W;
+    const mouseY = ((e.clientY - rect.top) / rect.height) * VIEWPORT_H;
+    const selfScreenX = self.x + cameraOffsetRef.current.x;
+    const selfScreenY = self.y + cameraOffsetRef.current.y;
+    aimAngleRef.current = Math.atan2(mouseY - selfScreenY, mouseX - selfScreenX);
+    sendInput();
+  }
+  function handleAimLeave() {
+    aimAngleRef.current = null;
+    sendInput();
+    stopShooting();
+  }
+
+  // Left-click to fire, in addition to Space — held down keeps firing at the
+  // same cooldown-respecting rate as the touch fire button.
+  function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (e.button !== 0) return;
+    startShooting();
+  }
+  function handleMouseUp(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (e.button !== 0) return;
+    stopShooting();
+  }
 
   const self = state.players.find((p) => p.id === selfId);
 
@@ -1057,6 +1274,10 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           ref={canvasRef}
           width={VIEWPORT_W}
           height={VIEWPORT_H}
+          onMouseMove={handleAimMove}
+          onMouseLeave={handleAimLeave}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
           className="block w-full touch-none rounded-xl border border-slate-200 bg-white shadow-xl"
           style={{ aspectRatio: `${VIEWPORT_W} / ${VIEWPORT_H}` }}
         />
@@ -1064,7 +1285,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           ref={minimapRef}
           width={MINIMAP_W}
           height={MINIMAP_H}
-          className="absolute bottom-2 right-2 rounded-md border border-white/50 shadow-lg"
+          className="absolute left-2 top-2 rounded-md border border-white/50 shadow-lg md:bottom-2 md:left-auto md:right-2 md:top-auto"
         />
         {killFeed.length > 0 && (
           <div className="pointer-events-none absolute right-2 top-2 flex max-w-[70%] flex-col items-end gap-1">
@@ -1075,6 +1296,46 @@ export default function TankCanvas({ state, selfId, send }: Props) {
             ))}
           </div>
         )}
+
+        {/* Touch controls — desktop has keyboard (WASD/arrows, space, Shift),
+            so these only render on small/touch-sized viewports. */}
+        <div
+          ref={joyBaseRef}
+          onPointerDown={handleJoyPointerDown}
+          onPointerMove={handleJoyPointerMove}
+          onPointerUp={resetJoystick}
+          onPointerCancel={resetJoystick}
+          className="absolute bottom-3 left-3 h-24 w-24 touch-none rounded-full border border-white/40 bg-black/25 md:hidden"
+        >
+          <div
+            ref={joyKnobRef}
+            className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow"
+          />
+        </div>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            setBoost(true);
+          }}
+          onPointerUp={() => setBoost(false)}
+          onPointerCancel={() => setBoost(false)}
+          className="absolute bottom-24 right-3 flex h-14 w-14 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xl shadow-lg md:hidden"
+        >
+          ⚡
+        </button>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            startShooting();
+          }}
+          onPointerUp={stopShooting}
+          onPointerCancel={stopShooting}
+          className="absolute bottom-3 right-3 flex h-16 w-16 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg md:hidden"
+        >
+          BẮN
+        </button>
       </div>
       {self && (
         <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 shadow-xl">

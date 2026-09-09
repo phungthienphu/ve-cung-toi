@@ -18,80 +18,90 @@ export const TANK_MAPS: TankMapDef[] = [
   {
     id: "arena",
     name: "Đấu trường nhỏ",
-    // 'H' = natural hazard tile (spikes) — walkable but damages any tank
-    // standing on it, including one pushed there by an opponent.
+
     layout: [
-      "#########################",
-      "#.B...................B.#",
-      "#.#####.....#.....#####.#",
-      "#...........#...........#",
-      "#...........#...........#",
-      "#...........#...........#",
-      "#.......H.......H.......#",
-      "#.......................#",
-      "#.......................#",
-      "#.......H.......H.......#",
-      "#...........#...........#",
-      "#...........#...........#",
-      "#...........#...........#",
-      "#.#####.....#.....#####.#",
-      "#.B...................B.#",
-      "#########################",
+      "###############################",
+      "#B.B..........................#",
+      "#.............................#",
+      "#B.B.....#####................#",
+      "#........#...#................#",
+      "#........#...#####............#",
+      "#....##..#.........##.........#",
+      "#....##......HHH....##........#",
+      "#..............H..............#",
+      "#........####..H....#####.....#",
+      "#........#...........#........#",
+      "#..#####.#..###......#........#",
+      "#..#.....#..#........#....##..#",
+      "#..#.........#..####......##..#",
+      "#..###.......#................#",
+      "#...........#####.............#",
+      "#.........H......###.......B.B#",
+      "#.............................#",
+      "#..........................B.B#",
+      "###############################",
     ],
   },
   {
-    // Staggered 2x2 pillar blocks with 2-tile gaps everywhere — unlike a
-    // classic 1-wide-corridor maze, every path here is wide enough to dodge
-    // sideways, while the pillar density still reads as a "maze" visually.
     id: "maze",
     name: "Mê cung",
+
     layout: [
-      "#############################",
-      "#..........H.....H..........#",
-      "#..##...##...##...##...##...#",
-      "#..##...##...##...##...##...#",
-      "#...........................#",
-      "#..B.....................B..#",
-      "#....##...##...##...##...##.#",
-      "#....##...##...##...##...##.#",
-      "#...........................#",
-      "#...........................#",
-      "#..##...##...##...##...##...#",
-      "#..##...##...##...##...##...#",
-      "#...........................#",
-      "#..B.....................B..#",
-      "#....##...##...##...##...##.#",
-      "#....##...##...##...##...##.#",
-      "#...........................#",
-      "#..........H.....H..........#",
-      "#############################",
+      "#####################################",
+      "#B.B..............#.................#",
+      "#.....####........#......###........#",
+      "#B.B...##.........#......###........#",
+      "#..####...........#.................#",
+      "#..####.....###...#####.............#",
+      "#............#.........#............#",
+      "#....###.....#..HHH....#....####....#",
+      "#....#.......#....H....#....#.......#",
+      "#....#..#####.....H....#....#.......#",
+      "#....#..#..................###......#",
+      "#.......#....#######.......###......#",
+      "#..###..#....#.............#........#",
+      "#..#....#....#....###......#........#",
+      "#..#.........#....#........####.....#",
+      "#..#####.....#....#.................#",
+      "#.................#.................#",
+      "#.....###.........#####.............#",
+      "#.....###.........................#.#",
+      "#..............H.............H...B.B#",
+      "#...................................#",
+      "#................................B.B#",
+      "#####################################",
     ],
   },
   {
     id: "field",
     name: "Sa mạc mở",
+
     layout: [
-      "###############################",
-      "#.............................#",
-      "#..............B..............#",
-      "#...##.....##.....##.....##...#",
-      "#...##.....##.....##.....##...#",
-      "#.............................#",
-      "#.........H.........H.........#",
-      "#.............................#",
-      "#...##.....##.....##.....##...#",
-      "#...##.....##.....##.....##...#",
-      "#...B.....................B...#",
-      "#.............................#",
-      "#.............................#",
-      "#...##.....##.....##.....##...#",
-      "#...##....H##.....##H....##...#",
-      "#.............................#",
-      "#.............................#",
-      "#.............................#",
-      "#..............B..............#",
-      "#.............................#",
-      "###############################",
+      "#######################################",
+      "#B.B..................................#",
+      "#........######.......................#",
+      "#B.B.....######....H..................#",
+      "#..........................#####......#",
+      "#....###...............H....#####.....#",
+      "#....###....####.............#........#",
+      "#.........H..####............#........#",
+      "#...........#####.....................#",
+      "#....................######...........#",
+      "#..######............######...........#",
+      "#..######..H..........................#",
+      "#...............###...................#",
+      "#.....#####.....###...................#",
+      "#.....#####..............####.........#",
+      "#...............H........####.........#",
+      "#..###...................####.........#",
+      "#..###......######....................#",
+      "#.........H..######..............H....#",
+      "#...........######....................#",
+      "#.....................................#",
+      "#..................................B.B#",
+      "#.....................................#",
+      "#..................................B.B#",
+      "#######################################",
     ],
   },
 ];
@@ -114,24 +124,42 @@ export function mapCanvasSize(map: TankMapDef): { w: number; h: number } {
   return { w: mapCols(map) * TILE_SIZE, h: mapRows(map) * TILE_SIZE };
 }
 
-// Four corner-ish spawn points, inset one tile from the border, scaled to
-// whichever map is active.
+// 8 spawn points clustered into two corner quadrants — indices 0-3 sit near
+// the top-left corner, 4-7 near the bottom-right, so team A and team B land
+// on opposite sides of the map instead of interleaved. FFA just cycles
+// through all 8 in join order, same as before.
 export function getSpawnPoints(map: TankMapDef): { x: number; y: number }[] {
   const cols = mapCols(map);
   const rows = mapRows(map);
   return [
     { x: 1, y: 1 },
-    { x: cols - 2, y: 1 },
-    { x: 1, y: rows - 2 },
+    { x: 1, y: 3 },
+    { x: 3, y: 1 },
+    { x: 3, y: 3 },
     { x: cols - 2, y: rows - 2 },
+    { x: cols - 2, y: rows - 4 },
+    { x: cols - 4, y: rows - 2 },
+    { x: cols - 4, y: rows - 4 },
   ];
 }
 
-export const TANK_COLORS = ["#3854ff", "#e0453f", "#22c55e", "#f59e0b"];
+export const TANK_COLORS = [
+  "#3854ff", // blue
+  "#e0453f", // red
+  "#22c55e", // green
+  "#f59e0b", // amber
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#ec4899", // pink
+  "#78350f", // brown
+];
 
-export const MAX_TANK_PLAYERS = 4;
+export type Team = "A" | "B";
+
+export const MAX_TANK_PLAYERS = 8;
 export const MIN_TANK_PLAYERS = 2;
 export const KILL_TARGET = 5;
+export const MATCH_DURATION_MS = 4 * 60 * 1000; // 4-minute match clock
 
 export const TANK_SIZE = 22;
 export const TANK_SPEED = 2.4; // px/tick
@@ -247,6 +275,7 @@ export interface TankPlayer {
   id: string;
   name: string;
   color: string;
+  team: Team;
   x: number;
   y: number;
   dir: Direction;
@@ -266,6 +295,9 @@ export interface TankPlayer {
   fireShotsLeft: number;
   burningUntil: number | null;
   burnOwnerId: string | null;
+  // Mouse-aim angle in radians, sent only by desktop clients tracking the
+  // cursor; null falls back to firing along the 4-directional `dir`.
+  aimAngle: number | null;
 }
 
 export interface Bullet {
@@ -273,7 +305,10 @@ export interface Bullet {
   ownerId: string;
   x: number;
   y: number;
-  dir: Direction;
+  // Free-angle travel direction in radians (0 = right, increasing clockwise
+  // in screen space) — lets desktop players aim at the mouse instead of
+  // being locked to the 4-directional movement grid.
+  angle: number;
   kind: BulletKind;
 }
 
@@ -325,9 +360,12 @@ export interface TankKillEvent {
 
 export type TankRoomStatus = "lobby" | "playing" | "ended";
 
+export type TankRoomMode = "ffa" | "team";
+
 export interface TankPublicState {
   roomId: string;
   status: TankRoomStatus;
+  mode: TankRoomMode;
   hostId: string | null;
   players: TankPlayer[];
   bullets: Bullet[];
@@ -338,15 +376,20 @@ export interface TankPublicState {
   kills: TankKillEvent[];
   mapId: string;
   killTarget: number;
+  teamScores: Record<Team, number>;
   winnerId: string | null;
+  winningTeam: Team | null;
+  matchEndsAt: number | null;
   serverNow: number;
 }
 
 export type TankClientMessage =
   | { type: "join"; playerId: string; name: string; color: string }
+  | { type: "choose_team"; team: Team }
+  | { type: "set_mode"; mode: TankRoomMode }
   | { type: "start_game"; mapId: string }
   | { type: "play_again" }
-  | { type: "input"; up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean }
+  | { type: "input"; up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number }
   | { type: "shoot"; big?: boolean }
   | { type: "use_item"; kind: ItemKind }
   | { type: "leave_room" };

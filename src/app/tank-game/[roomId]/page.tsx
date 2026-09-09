@@ -5,6 +5,7 @@ import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player"
 import { playClick } from "@/lib/sound";
 import { TANK_COLORS } from "@shared/tankTypes";
 import TankGameRoom from "@/components/tank/TankGameRoom";
+import TankPreview from "@/components/tank/TankPreview";
 
 export default function TankRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -54,8 +55,12 @@ export default function TankRoomPage({ params }: { params: Promise<{ roomId: str
             onKeyDown={(e) => e.key === "Enter" && confirm()}
           />
 
+          <div className="mb-5 rounded-lg bg-slate-50 py-2">
+            <TankPreview color={color} />
+          </div>
+
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Màu xe tăng</label>
-          <div className="mb-6 flex gap-3">
+          <div className="mb-6 flex flex-wrap gap-3">
             {TANK_COLORS.map((c) => (
               <button
                 key={c}

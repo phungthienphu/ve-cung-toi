@@ -16,6 +16,7 @@ import {
   HAZARD_DAMAGE,
   HAZARD_DAMAGE_INTERVAL_MS,
   KILL_TARGET,
+  MATCH_DURATION_MS,
   MAX_BOOST_ENERGY,
   MAX_HELD_ITEMS,
   MAX_HP,
@@ -65,8 +66,10 @@ import {
   type TankImpact,
   type TankKillEvent,
   type TankMapDef,
+  type Team,
   type TankPlayer,
   type TankPublicState,
+  type TankRoomMode,
   type TankRoomStatus,
   type TankServerMessage,
   type Trap,
@@ -157,6 +160,20 @@ const DIR_VECTOR: Record<Direction, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 };
 
+const DIR_ANGLE: Record<Direction, number> = {
+  right: 0,
+  down: Math.PI / 2,
+  left: Math.PI,
+  up: -Math.PI / 2,
+};
+
+/** Where a shot from this player should travel: the desktop mouse-aim angle
+ * if the client is sending one, otherwise whichever of the 4 movement
+ * directions the tank is currently facing. */
+function aimAngleOf(player: TankPlayer): number {
+  return player.aimAngle ?? DIR_ANGLE[player.dir];
+}
+
 interface InputState {
   up: boolean;
   down: boolean;
@@ -185,7 +202,11 @@ export default class TankRoom implements Party.Server {
   mapId: string = DEFAULT_MAP_ID;
   hostId: string | null = null;
   status: TankRoomStatus = "lobby";
+  mode: TankRoomMode = "ffa";
+  teamScores: Record<Team, number> = { A: 0, B: 0 };
   winnerId: string | null = null;
+  winningTeam: Team | null = null;
+  matchEndsAt: number | null = null;
 
   tickHandle: ReturnType<typeof setInterval> | null = null;
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -239,6 +260,10 @@ export default class TankRoom implements Party.Server {
     switch (msg.type) {
       case "join":
         return this.handleJoin(msg.playerId, msg.name, msg.color, sender);
+      case "choose_team":
+        return this.handleChooseTeam(msg.team, sender);
+      case "set_mode":
+        return this.handleSetMode(msg.mode, sender);
       case "start_game":
         return this.handleStartGame(msg.mapId, sender);
       case "play_again":
@@ -254,20 +279,47 @@ export default class TankRoom implements Party.Server {
     }
   }
 
+  private leastFilledTeam(): Team {
+    let a = 0;
+    let b = 0;
+    for (const p of this.players.values()) {
+      if (p.team === "A") a += 1;
+      else b += 1;
+    }
+    return a <= b ? "A" : "B";
+  }
+
+  private handleChooseTeam(team: Team, sender: Party.Connection) {
+    if (this.status !== "lobby") return;
+    const player = this.players.get(sender.id);
+    if (!player) return;
+    player.team = team;
+    this.broadcastState();
+  }
+
+  private handleSetMode(mode: TankRoomMode, sender: Party.Connection) {
+    if (this.status !== "lobby" || sender.id !== this.hostId) return;
+    this.mode = mode;
+    this.broadcastState();
+  }
+
   private handleJoin(playerId: string, name: string, color: string, sender: Party.Connection) {
     const cleanName = name.trim().slice(0, 20) || "Người chơi";
     let player = this.players.get(playerId);
 
     if (!player) {
       if (this.players.size >= MAX_TANK_PLAYERS) {
-        sender.send(JSON.stringify({ type: "error", message: "Phòng đã đầy (tối đa 4 người)." } satisfies TankServerMessage));
+        sender.send(
+          JSON.stringify({ type: "error", message: `Phòng đã đầy (tối đa ${MAX_TANK_PLAYERS} người).` } satisfies TankServerMessage)
+        );
         return;
       }
-      const spawn = spawnPixel(getSpawnPoints(this.map)[this.players.size % 4]);
+      const spawn = spawnPixel(getSpawnPoints(this.map)[this.players.size % 8]);
       player = {
         id: playerId,
         name: cleanName,
         color,
+        team: this.leastFilledTeam(),
         x: spawn.x,
         y: spawn.y,
         dir: "down",
@@ -287,6 +339,7 @@ export default class TankRoom implements Party.Server {
         fireShotsLeft: 0,
         burningUntil: null,
         burnOwnerId: null,
+        aimAngle: null,
       };
       this.players.set(playerId, player);
       if (player.isHost) this.hostId = playerId;
@@ -323,8 +376,20 @@ export default class TankRoom implements Party.Server {
 
     this.mapId = getMap(mapId).id;
     const spawns = getSpawnPoints(this.map);
+    // In team mode, spawns 0-3 cluster near one corner and 4-7 near the
+    // opposite corner — walk each team's own counter through its 4 reserved
+    // slots so teammates land together on opposite sides of the map. FFA
+    // just cycles through all 8 in join order like before teams existed.
+    const teamIndex: Record<Team, number> = { A: 0, B: 0 };
     connected.forEach((p, i) => {
-      const spawn = spawnPixel(spawns[i % spawns.length]);
+      let spawn;
+      if (this.mode === "team") {
+        const base = p.team === "A" ? 0 : 4;
+        spawn = spawnPixel(spawns[base + (teamIndex[p.team] % 4)]);
+        teamIndex[p.team] += 1;
+      } else {
+        spawn = spawnPixel(spawns[i % spawns.length]);
+      }
       p.x = spawn.x;
       p.y = spawn.y;
       p.alive = true;
@@ -354,7 +419,10 @@ export default class TankRoom implements Party.Server {
     this.monsterAggroUntil.clear();
     this.monsterRestUntil.clear();
     this.monsters = Array.from({ length: MONSTER_COUNT }, () => this.spawnMonster());
+    this.teamScores = { A: 0, B: 0 };
     this.winnerId = null;
+    this.winningTeam = null;
+    this.matchEndsAt = Date.now() + MATCH_DURATION_MS;
     this.status = "playing";
     this.ensureTicking();
     this.broadcastState();
@@ -389,15 +457,19 @@ export default class TankRoom implements Party.Server {
     this.impacts = [];
     this.kills = [];
     this.winnerId = null;
+    this.winningTeam = null;
+    this.matchEndsAt = null;
     this.broadcastState();
   }
 
   private handleInput(
-    msg: { up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean },
+    msg: { up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number },
     sender: Party.Connection
   ) {
-    if (!this.players.has(sender.id)) return;
+    const player = this.players.get(sender.id);
+    if (!player) return;
     this.inputs.set(sender.id, { up: msg.up, down: msg.down, left: msg.left, right: msg.right, boost: msg.boost });
+    player.aimAngle = typeof msg.aimAngle === "number" ? msg.aimAngle : null;
   }
 
   private handleShoot(sender: Party.Connection, big: boolean) {
@@ -417,14 +489,14 @@ export default class TankRoom implements Party.Server {
       player.fireShotsLeft -= 1;
     }
 
-    const v = DIR_VECTOR[player.dir];
+    const angle = aimAngleOf(player);
     const offset = TANK_SIZE / 2 + BULLET_SIZE;
     this.bullets.push({
       id: makeId(),
       ownerId: player.id,
-      x: player.x + v.dx * offset,
-      y: player.y + v.dy * offset,
-      dir: player.dir,
+      x: player.x + Math.cos(angle) * offset,
+      y: player.y + Math.sin(angle) * offset,
+      angle,
       kind: big ? "big" : isFire ? "fire" : "normal",
     });
   }
@@ -438,14 +510,14 @@ export default class TankRoom implements Party.Server {
     if (kind === "trap") {
       this.traps.push({ id: makeId(), ownerId: player.id, x: player.x, y: player.y });
     } else if (kind === "blind") {
-      const v = DIR_VECTOR[player.dir];
+      const angle = aimAngleOf(player);
       const offset = TANK_SIZE / 2 + BULLET_SIZE;
       this.bullets.push({
         id: makeId(),
         ownerId: player.id,
-        x: player.x + v.dx * offset,
-        y: player.y + v.dy * offset,
-        dir: player.dir,
+        x: player.x + Math.cos(angle) * offset,
+        y: player.y + Math.sin(angle) * offset,
+        angle,
         kind: "blind",
       });
     } else if (kind === "shield") {
@@ -518,8 +590,19 @@ export default class TankRoom implements Party.Server {
     target.respawnAt = Date.now() + RESPAWN_DELAY_MS;
     const killer = killerId ? this.players.get(killerId) : undefined;
     if (killer) {
+      // Personal kill count still ticks up even on a teammate (per design:
+      // "phe đồng đội bắn nhau vẫn tính") — but in team mode, only an enemy
+      // kill advances the team's score toward the win condition.
       killer.score += 1;
-      if (killer.score >= KILL_TARGET) {
+      if (this.mode === "team") {
+        if (killer.team !== target.team) {
+          this.teamScores[killer.team] += 1;
+          if (this.teamScores[killer.team] >= KILL_TARGET) {
+            this.status = "ended";
+            this.winningTeam = killer.team;
+          }
+        }
+      } else if (killer.score >= KILL_TARGET) {
         this.status = "ended";
         this.winnerId = killer.id;
       }
@@ -559,11 +642,27 @@ export default class TankRoom implements Party.Server {
     this.impacts = [];
     this.kills = [];
 
+    if (this.matchEndsAt !== null && now >= this.matchEndsAt) {
+      this.status = "ended";
+      if (this.mode === "team") {
+        this.winningTeam = this.teamScores.A === this.teamScores.B ? null : this.teamScores.A > this.teamScores.B ? "A" : "B";
+      } else {
+        const ranked = [...this.players.values()].sort((a, b) => b.score - a.score);
+        const top = ranked[0];
+        this.winnerId = top && (!ranked[1] || ranked[1].score < top.score) ? top.id : null;
+      }
+      this.broadcastState();
+      this.stopTicking();
+      return;
+    }
+
     for (const player of this.players.values()) {
       if (!player.alive) {
         if (player.respawnAt !== null && now >= player.respawnAt) {
           const idx = [...this.players.values()].indexOf(player);
-          const spawn = spawnPixel(getSpawnPoints(map)[idx % 4]);
+          const spawns = getSpawnPoints(map);
+          const spawnPoint = this.mode === "team" ? spawns[(player.team === "A" ? 0 : 4) + (idx % 4)] : spawns[idx % spawns.length];
+          const spawn = spawnPixel(spawnPoint);
           player.x = spawn.x;
           player.y = spawn.y;
           player.alive = true;
@@ -800,9 +899,8 @@ export default class TankRoom implements Party.Server {
 
     const survivors: Bullet[] = [];
     for (const bullet of this.bullets) {
-      const v = DIR_VECTOR[bullet.dir];
-      bullet.x += v.dx * BULLET_SPEED;
-      bullet.y += v.dy * BULLET_SPEED;
+      bullet.x += Math.cos(bullet.angle) * BULLET_SPEED;
+      bullet.y += Math.sin(bullet.angle) * BULLET_SPEED;
 
       if (tileAt(map, bullet.x, bullet.y) === "#") continue; // hit a wall
 
@@ -857,6 +955,7 @@ export default class TankRoom implements Party.Server {
     return {
       roomId: this.party.id,
       status: this.status,
+      mode: this.mode,
       hostId: this.hostId,
       players: [...this.players.values()],
       bullets: this.bullets,
@@ -867,7 +966,10 @@ export default class TankRoom implements Party.Server {
       kills: this.kills,
       mapId: this.mapId,
       killTarget: KILL_TARGET,
+      teamScores: this.teamScores,
       winnerId: this.winnerId,
+      winningTeam: this.winningTeam,
+      matchEndsAt: this.matchEndsAt,
       serverNow: Date.now(),
     };
   }
