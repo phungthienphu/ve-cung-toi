@@ -73,7 +73,12 @@ const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
   },
   bigRed: DEFAULT_ULTIMATE_UI,
   darkLarge: DEFAULT_ULTIMATE_UI,
-  huge: DEFAULT_ULTIMATE_UI,
+  huge: {
+    icon: "🚀",
+    label: "Lao thẳng (R) — lao nhanh xuyên qua tank khác theo hướng ngắm, hất văng ai ở gần, không gây sát thương",
+    activeClasses: "border-stone-400 bg-stone-50 text-stone-700 hover:bg-stone-100",
+    barClass: "bg-stone-500",
+  },
 };
 
 export default function TankGameRoom({ roomId, playerId, name, color }: Props) {

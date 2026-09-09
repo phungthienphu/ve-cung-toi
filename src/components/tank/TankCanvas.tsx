@@ -260,7 +260,23 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
         const rp = renderPos(p.id, p.x, p.y);
         const isRapidFiring = !!p.rapidFireUntil && p.rapidFireUntil > s.serverNow;
-        drawTank(ctx, rp.x, rp.y, p.color, p.dir, p.name, p.hp, p.id === selfId, isAlly, p.isBoosting, p.shieldHitsLeft, p.aimAngle, isRapidFiring);
+        const isDashing = !!p.dashUntil && p.dashUntil > s.serverNow;
+        drawTank(
+          ctx,
+          rp.x,
+          rp.y,
+          p.color,
+          p.dir,
+          p.name,
+          p.hp,
+          p.id === selfId,
+          isAlly,
+          p.isBoosting,
+          p.shieldHitsLeft,
+          p.aimAngle,
+          isRapidFiring,
+          isDashing ? { isDashing, angle: p.dashAngle } : null
+        );
         if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, rp.x, rp.y, now);
         if (p.stunnedUntil && p.stunnedUntil > s.serverNow) drawStunnedOverlay(ctx, rp.x, rp.y, now);
       }

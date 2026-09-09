@@ -11,7 +11,6 @@ import {
   MAX_TANK_PLAYERS,
   MIN_TANK_PLAYERS,
   MAX_HP,
-  MONSTER_COUNT,
   RAPID_FIRE_COOLDOWN_MS,
   SHIELD_MAX_HITS,
   TANK_SIZE,
@@ -44,11 +43,11 @@ import { randomAirstrikeDelay, stepAirstrikes } from "./tank/airstrike";
 import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
 import { aimAngleOf, makeId, spawnPixel } from "./tank/geometry";
-import { spawnMonster, stepMonsters } from "./tank/monsters-tick";
+import { spawnMonsterPack, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
 import { stepRedBarrages } from "./tank/redBarrage";
-import { activateRapidFire, activateSandWave, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
+import { activateDash, activateRapidFire, activateSandWave, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
 import type { InputState } from "./tank/types";
 
 export default class TankRoom implements Party.Server {
@@ -72,6 +71,7 @@ export default class TankRoom implements Party.Server {
   lastMonsterDirChangeAt = new Map<string, number>();
   lastMonsterContactAt = new Map<string, number>();
   lastMonsterHealAt = new Map<string, number>();
+  lastDashHitAt = new Map<string, number>();
   monsterAggroUntil = new Map<string, number>();
   monsterRestUntil = new Map<string, number>();
   mapId: string = DEFAULT_MAP_ID;
@@ -302,10 +302,11 @@ export default class TankRoom implements Party.Server {
     this.lastMonsterDirChangeAt.clear();
     this.lastMonsterContactAt.clear();
     this.lastMonsterHealAt.clear();
+    this.lastDashHitAt.clear();
     this.lastBurnDamageAt.clear();
     this.monsterAggroUntil.clear();
     this.monsterRestUntil.clear();
-    this.monsters = Array.from({ length: MONSTER_COUNT }, () => spawnMonster(this.map));
+    this.monsters = spawnMonsterPack(this.map);
     this.teamScores = { A: 0, B: 0 };
     this.winnerId = null;
     this.winningTeam = null;
@@ -419,6 +420,10 @@ export default class TankRoom implements Party.Server {
     }
     if (big && skin === "sand") {
       activateSandWave(this, player, this.map, now);
+      return;
+    }
+    if (big && skin === "huge") {
+      activateDash(player, now);
       return;
     }
 

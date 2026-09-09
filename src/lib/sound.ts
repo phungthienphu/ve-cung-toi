@@ -234,6 +234,14 @@ export function playStunned() {
   osc.stop(t0 + 0.45);
 }
 
+/** Huge's ultimate firing — a heavy revving lurch, distinct from a shot or
+ * an explosion since it's pure momentum, not a projectile. */
+export function playDash() {
+  noiseBurst(0.3, 0.12, 350);
+  tone(80, 0, 0.22, 0.13, "sawtooth");
+  tone(140, 0, 0.15, 0.08, "square");
+}
+
 /** Self took damage — bullet, trap, or terrain hazard. */
 export function playTankHit() {
   tone(160, 0, 0.12, 0.1, "square");

@@ -8,6 +8,7 @@
 
 import {
   BULLET_SIZE,
+  DASH_DURATION_MS,
   MONSTER_AGGRO_TIMEOUT_MS,
   MONSTER_RESPAWN_DELAY_MS,
   RAPID_FIRE_DURATION_MS,
@@ -42,10 +43,12 @@ import { createRedBarrage } from "./redBarrage";
  * miss one of those by hand and a player can end up permanently stuck
  * "mid-skill" until they leave the room.
  */
-export function initialSkillState(): Pick<TankPlayer, "rapidFireUntil" | "sniperChargingSince"> {
+export function initialSkillState(): Pick<TankPlayer, "rapidFireUntil" | "sniperChargingSince" | "dashUntil" | "dashAngle"> {
   return {
     rapidFireUntil: null,
     sniperChargingSince: null,
+    dashUntil: null,
+    dashAngle: 0,
   };
 }
 
@@ -106,6 +109,17 @@ export function throwRedBomb(player: TankPlayer, x: number, y: number, now: numb
   }
   player.ultimateEnergy = 0;
   return createRedBarrage(player.id, tx, ty, now);
+}
+
+/** Huge: locks in a dash direction and duration — the actual forced
+ * movement + bulldozer knockback happens every tick while it's active, in
+ * players-tick.ts (kept there rather than here since it needs to run
+ * alongside/instead of normal per-tick movement resolution, not as a
+ * one-shot call). */
+export function activateDash(player: TankPlayer, now: number) {
+  player.ultimateEnergy = 0;
+  player.dashAngle = aimAngleOf(player);
+  player.dashUntil = now + DASH_DURATION_MS;
 }
 
 export interface SandWaveCtx extends CombatCtx {

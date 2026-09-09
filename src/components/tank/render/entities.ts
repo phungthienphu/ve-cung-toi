@@ -5,7 +5,6 @@ import {
   CRATE_MAX_HP,
   CRATE_SIZE,
   MAX_HP,
-  MONSTER_HP,
   MONSTER_SIZE,
   PICKUP_SIZE,
   TANK_SIZE,
@@ -49,7 +48,8 @@ export function drawTank(
   isBoosting: boolean,
   shieldHitsLeft: number,
   aimAngle: number | null,
-  isRapidFiring: boolean
+  isRapidFiring: boolean,
+  dashInfo: { isDashing: boolean; angle: number } | null
 ) {
   const half = TANK_SIZE / 2;
   drawHealthBar(ctx, x, y, hp, isAlly);
@@ -64,6 +64,29 @@ export function drawTank(
     ctx.beginPath();
     ctx.arc(x, y, half + 6, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
+  }
+
+  // Huge's dash: a few dust streaks trailing behind, opposite the dash
+  // direction — drawn before the tank sprite so it reads as being kicked up
+  // from underneath rather than floating on top.
+  if (dashInfo?.isDashing) {
+    const backX = Math.cos(dashInfo.angle + Math.PI);
+    const backY = Math.sin(dashInfo.angle + Math.PI);
+    const perpX = -Math.sin(dashInfo.angle);
+    const perpY = Math.cos(dashInfo.angle);
+    ctx.save();
+    ctx.strokeStyle = "rgba(120,113,108,0.6)";
+    ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const spread = (i - 1.5) * 4;
+      const len = 10 + (i % 2) * 6;
+      ctx.lineWidth = 2 - (i % 2);
+      ctx.beginPath();
+      ctx.moveTo(x + perpX * spread, y + perpY * spread);
+      ctx.lineTo(x + perpX * spread + backX * len, y + perpY * spread + backY * len);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -282,8 +305,9 @@ export function drawMonster(ctx: CanvasRenderingContext2D, monster: Monster) {
   const half = MONSTER_SIZE / 2;
   const wobble = Math.sin(performance.now() / 220 + monster.x) * 1.5;
 
-  // Health pips.
-  for (let i = 0; i < MONSTER_HP; i++) {
+  // Health pips — each monster's own maxHp, since a pack isn't all equally
+  // tough.
+  for (let i = 0; i < monster.maxHp; i++) {
     ctx.fillStyle = i < monster.hp ? "#a855f7" : "#334155";
     ctx.fillRect(Math.round(monster.x - half + i * (half / 1.2)), monster.y - half - 12, 6, 4);
   }

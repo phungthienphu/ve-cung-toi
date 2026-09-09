@@ -8,6 +8,10 @@ import {
   BOOST_SPEED_MULTIPLIER,
   BURN_DAMAGE_PER_TICK,
   BURN_TICK_INTERVAL_MS,
+  DASH_DURATION_MS,
+  DASH_KNOCKBACK_DIST,
+  DASH_KNOCKBACK_RADIUS,
+  DASH_SPEED,
   HAZARD_DAMAGE,
   HAZARD_DAMAGE_INTERVAL_MS,
   MAX_BOOST_ENERGY,
@@ -47,6 +51,7 @@ export interface PlayersTickCtx extends CombatCtx {
   bullets: Bullet[];
   lastHazardDamageAt: Map<string, number>;
   lastBurnDamageAt: Map<string, number>;
+  lastDashHitAt: Map<string, number>;
 }
 
 export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
@@ -86,8 +91,45 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       player.stunnedUntil = null;
     }
 
+    if (player.dashUntil !== null && now >= player.dashUntil) {
+      player.dashUntil = null;
+    }
+    const isDashing = player.dashUntil !== null;
+
     const input = ctx.inputs.get(player.id);
-    if (!input) {
+    if (isDashing) {
+      // Forced movement along the locked-in dash angle — normal input is
+      // ignored entirely for the duration. Unlike regular movement, a dash
+      // passes straight through other tanks (not blocked by them) but still
+      // can't cross a wall.
+      const dx = Math.cos(player.dashAngle) * DASH_SPEED;
+      const dy = Math.sin(player.dashAngle) * DASH_SPEED;
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+      if (!tankBlocked(map, nx, player.y)) player.x = nx;
+      if (!tankBlocked(map, player.x, ny)) player.y = ny;
+      player.moving = true;
+      player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
+      player.isBoosting = false;
+
+      // Bulldozer sweep: anyone caught nearby gets knocked outward, at most
+      // once per dash (DASH_DURATION_MS as the debounce window guarantees
+      // that, since a single dash never lasts longer than that).
+      for (const other of ctx.players.values()) {
+        if (other.id === player.id || !other.alive) continue;
+        if (Math.hypot(other.x - player.x, other.y - player.y) >= DASH_KNOCKBACK_RADIUS) continue;
+        const key = `${player.id}:${other.id}`;
+        const lastHit = ctx.lastDashHitAt.get(key) ?? 0;
+        if (now - lastHit < DASH_DURATION_MS) continue;
+        ctx.lastDashHitAt.set(key, now);
+        const angle = Math.atan2(other.y - player.y, other.x - player.x);
+        const kx = other.x + Math.cos(angle) * DASH_KNOCKBACK_DIST;
+        const ky = other.y + Math.sin(angle) * DASH_KNOCKBACK_DIST;
+        if (!tankBlocked(map, kx, other.y)) other.x = kx;
+        if (!tankBlocked(map, other.x, ky)) other.y = ky;
+        ctx.impacts.push({ id: makeId(), x: other.x, y: other.y, kind: "shove" });
+      }
+    } else if (!input) {
       player.moving = false;
       player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
       player.isBoosting = false;

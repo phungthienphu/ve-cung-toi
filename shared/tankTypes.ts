@@ -259,8 +259,11 @@ export const BUSH_REVEAL_RADIUS = 50;
 // only gives chase after a tank collides with it or shoots it, and gives up
 // (returns to wandering) once the target escapes the leash range, dies, or
 // the aggro timer lapses without being refreshed by another hit.
-export const MONSTER_COUNT = 2;
-export const MONSTER_HP = 3;
+// Monsters spawn as one pack sharing a single nest (see pickNestCluster in
+// monsters-tick.ts) rather than each wandering off completely independently.
+export const MONSTER_PACK_SIZE = 4;
+export const MONSTER_HP_MIN = 2; // each monster rolls its own max HP in this range at spawn —
+export const MONSTER_HP_MAX = 4; // not every one of the pack is equally tough.
 export const MONSTER_SIZE = TANK_SIZE;
 export const MONSTER_SPEED = 1.3;
 export const MONSTER_CHASE_SPEED_MULTIPLIER = 1.4;
@@ -276,10 +279,10 @@ export const MONSTER_REST_DURATION_MS = 2500;
 // A monster's nest is marked on the ground by a mud/water puddle — stepping
 // into it douses a burning tank, and a monster resting in its own puddle (or
 // hiding in any bush) slowly heals back up.
-export const NEST_PUDDLE_RADIUS = 26;
+export const NEST_PUDDLE_RADIUS = 34; // a proper pond, not a puddle — also the douse/heal radius
 export const MONSTER_AGGRO_TIMEOUT_MS = 4000; // must be refreshed by another hit or it drops
-// MONSTER_HP is small (2) — a per-tick fractional regen wouldn't read as
-// anything, so it heals in whole-HP steps on an interval instead.
+// A monster's max HP is small (2-4) — a per-tick fractional regen wouldn't
+// read as anything, so it heals in whole-HP steps on an interval instead.
 export const MONSTER_HEAL_INTERVAL_MS = 4000;
 
 // Boost is a built-in ability every tank has (hold to sprint), gated by an
@@ -431,6 +434,11 @@ export interface TankPlayer {
   // above, this is a status effect inflicted by someone else, so it's reset
   // alongside blindedUntil/burningUntil rather than via resetSkillState.
   stunnedUntil: number | null;
+  // Huge's ultimate: non-null while dashing (the timestamp it ends) — while
+  // set, movement is forced along `dashAngle` regardless of input. Reset via
+  // resetSkillState like the other per-skin fields above.
+  dashUntil: number | null;
+  dashAngle: number;
 }
 
 export interface Bullet {
@@ -560,6 +568,18 @@ export const SAND_WAVE_WIDTH = TILE_SIZE * 2.25;
 export const SAND_WAVE_KNOCKBACK_DIST = TILE_SIZE * 1.5;
 export const SAND_WAVE_STUN_MS = 1000;
 
+// Huge's ultimate: a forced-movement dash along the current aim, passing
+// straight through other tanks (not blocked by them, unlike normal
+// movement) but still stopped by walls. No direct damage — purely a
+// mobility/disruption tool, the payoff is scattering an enemy formation and
+// closing distance fast, not raw damage (its high HP pool is what pays for
+// diving in). Anyone caught within DASH_KNOCKBACK_RADIUS while it's underway
+// gets knocked outward, at most once per dash.
+export const DASH_DURATION_MS = 400;
+export const DASH_SPEED = 11; // px/tick — vs. TANK_SPEED's 2.4
+export const DASH_KNOCKBACK_RADIUS = TANK_SIZE * 1.4;
+export const DASH_KNOCKBACK_DIST = TILE_SIZE * 1.3;
+
 export interface Monster {
   id: string;
   x: number;
@@ -567,6 +587,9 @@ export interface Monster {
   dir: Direction;
   alive: boolean;
   hp: number;
+  // Rolled once at spawn (MONSTER_HP_MIN..MONSTER_HP_MAX) — not every
+  // monster in a pack is equally tough.
+  maxHp: number;
   respawnAt: number | null;
   nestX: number;
   nestY: number;

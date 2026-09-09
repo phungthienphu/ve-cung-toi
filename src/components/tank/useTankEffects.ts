@@ -112,18 +112,21 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     }
   }, [state.players, state.mapId]);
 
-  // A burst ring the instant any tank's ultimate activates (currently just
-  // Blue's rapid-fire buff) — visible to everyone watching, not just an
+  // A burst ring the instant any tank's ultimate activates (currently
+  // Blue's rapid-fire buff and Huge's dash — anything with its own "active
+  // until" field on TankPlayer) — visible to everyone watching, not just an
   // optimistic echo for whoever pressed the button, matching how other
   // impact effects (shove, trap) are shared state rather than a local-only
-  // cue. Future per-skin ultimates just need to be added to this check.
+  // cue. Future per-skin ultimates with their own such field just need
+  // adding to this OR.
   const prevUltimateActiveByPlayerRef = useRef<Map<string, boolean>>(new Map());
   useEffect(() => {
     const prevActive = prevUltimateActiveByPlayerRef.current;
     const seenIds = new Set<string>();
     for (const p of state.players) {
       seenIds.add(p.id);
-      const isActive = !!p.rapidFireUntil && p.rapidFireUntil > state.serverNow;
+      const isActive =
+        (!!p.rapidFireUntil && p.rapidFireUntil > state.serverNow) || (!!p.dashUntil && p.dashUntil > state.serverNow);
       if (isActive && !prevActive.get(p.id)) {
         explosionsRef.current.push({ id: `ultimate-${p.id}-${performance.now()}`, x: p.x, y: p.y, start: performance.now(), kind: "ultimate" });
       }
