@@ -17,12 +17,11 @@ import {
   mapCols,
   mapRows,
   type Airstrike,
-  type Crate,
   type TankMapDef,
   type TankPlayer,
 } from "../../shared/tankTypes";
-import { type CombatCtx, damagePlayer } from "./combat";
-import { findOverlappingCrate, makeId, spawnPixel } from "./geometry";
+import { type BombFieldCtx, resolveBombs } from "./bombs";
+import { makeId, spawnPixel } from "./geometry";
 
 export function randomAirstrikeDelay(): number {
   return AIRSTRIKE_MIN_INTERVAL_MS + Math.random() * (AIRSTRIKE_MAX_INTERVAL_MS - AIRSTRIKE_MIN_INTERVAL_MS);
@@ -111,11 +110,10 @@ export function spawnAirstrike(map: TankMapDef, players: Map<string, TankPlayer>
   };
 }
 
-export interface AirstrikeTickCtx extends CombatCtx {
+export interface AirstrikeTickCtx extends BombFieldCtx {
   airstrikes: Airstrike[];
   nextAirstrikeAt: number | null;
   matchStartAt: number | null;
-  crates: Crate[];
 }
 
 /** Spawns a new strike if one is due, then resolves any bombs whose timer
@@ -129,20 +127,7 @@ export function stepAirstrikes(ctx: AirstrikeTickCtx, map: TankMapDef, now: numb
     ctx.nextAirstrikeAt = now + randomAirstrikeDelay();
   }
   for (const strike of ctx.airstrikes) {
-    const landed = strike.bombs.filter((b) => now >= b.strikeAt);
-    if (landed.length === 0) continue;
-    strike.bombs = strike.bombs.filter((b) => now < b.strikeAt);
-    for (const bomb of landed) {
-      for (const player of ctx.players.values()) {
-        if (!player.alive) continue;
-        if (Math.hypot(player.x - bomb.x, player.y - bomb.y) < bomb.radius) {
-          damagePlayer(ctx, player, BOMB_DAMAGE, null);
-        }
-      }
-      const hitCrate = findOverlappingCrate(ctx.crates, bomb.x, bomb.y);
-      if (hitCrate) ctx.crates = ctx.crates.filter((c) => c.id !== hitCrate.id);
-      ctx.impacts.push({ id: makeId(), x: bomb.x, y: bomb.y, kind: "bomb", radius: bomb.radius });
-    }
+    strike.bombs = resolveBombs(ctx, strike.bombs, BOMB_DAMAGE, null, now);
   }
   ctx.airstrikes = ctx.airstrikes.filter((s) => now < s.planeArriveAt);
 }

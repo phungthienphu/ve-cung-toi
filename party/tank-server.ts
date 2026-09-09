@@ -27,6 +27,7 @@ import {
   type ItemKind,
   type Monster,
   type Pickup,
+  type RedBarrage,
   type TankClientMessage,
   type TankImpact,
   type TankKillEvent,
@@ -46,7 +47,8 @@ import { aimAngleOf, makeId, spawnPixel } from "./tank/geometry";
 import { spawnMonster, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
-import { activateRapidFire, fireSniperShot } from "./tank/skills";
+import { stepRedBarrages } from "./tank/redBarrage";
+import { activateRapidFire, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
 import type { InputState } from "./tank/types";
 
 export default class TankRoom implements Party.Server {
@@ -60,6 +62,7 @@ export default class TankRoom implements Party.Server {
   monsters: Monster[] = [];
   airstrikes: Airstrike[] = [];
   nextAirstrikeAt: number | null = null;
+  redBarrages: RedBarrage[] = [];
   matchStartAt: number | null = null;
   impacts: TankImpact[] = [];
   kills: TankKillEvent[] = [];
@@ -147,6 +150,8 @@ export default class TankRoom implements Party.Server {
         return this.handleShoot(sender, !!msg.big);
       case "charge_ultimate":
         return this.handleChargeUltimate(sender);
+      case "throw_bomb":
+        return this.handleThrowBomb(msg.x, msg.y, sender);
       case "use_item":
         return this.handleUseItem(msg.kind, sender);
       case "leave_room":
@@ -215,8 +220,7 @@ export default class TankRoom implements Party.Server {
         burningUntil: null,
         burnOwnerId: null,
         aimAngle: null,
-        rapidFireUntil: null,
-        sniperChargingSince: null,
+        ...initialSkillState(),
       };
       this.players.set(playerId, player);
       if (player.isHost) this.hostId = playerId;
@@ -283,8 +287,7 @@ export default class TankRoom implements Party.Server {
       p.fireShotsLeft = 0;
       p.burningUntil = null;
       p.burnOwnerId = null;
-      p.rapidFireUntil = null;
-      p.sniperChargingSince = null;
+      resetSkillState(p);
     });
     this.bullets = [];
     this.pickups = [];
@@ -308,6 +311,7 @@ export default class TankRoom implements Party.Server {
     // Airstrikes only make sense visually on grass terrain (arena/maze) —
     // the desert map is reserved for a future train hazard instead.
     this.airstrikes = [];
+    this.redBarrages = [];
     this.matchStartAt = Date.now();
     this.nextAirstrikeAt = this.map.terrain === "grass" ? Date.now() + randomAirstrikeDelay() : null;
     this.status = "playing";
@@ -325,6 +329,7 @@ export default class TankRoom implements Party.Server {
     this.crates = [];
     this.monsters = [];
     this.airstrikes = [];
+    this.redBarrages = [];
     this.nextAirstrikeAt = null;
     this.matchStartAt = null;
     this.impacts = [];
@@ -345,6 +350,7 @@ export default class TankRoom implements Party.Server {
     this.crates = [];
     this.monsters = [];
     this.airstrikes = [];
+    this.redBarrages = [];
     this.nextAirstrikeAt = null;
     this.matchStartAt = null;
     this.impacts = [];
@@ -435,6 +441,19 @@ export default class TankRoom implements Party.Server {
     if (player.sniperChargingSince !== null) return;
     if (player.ultimateEnergy < ULTIMATE_CONFIG[skin].maxEnergy) return;
     player.sniperChargingSince = Date.now();
+  }
+
+  /** Commits a "target" skin's ultimate (currently just Red's barrage) at a
+   * world point the client picked entirely on its own — there's no prior
+   * "start targeting" message for this mode (see ULTIMATE_ACTIVATION_MODE),
+   * so this is the only place server-side that skin's skill is triggered. */
+  private handleThrowBomb(x: number, y: number, sender: Party.Connection) {
+    const player = this.players.get(sender.id);
+    if (!player || !player.alive || this.status !== "playing") return;
+    const skin = skinForColor(player.color);
+    if (ULTIMATE_ACTIVATION_MODE[skin] !== "target") return;
+    if (player.ultimateEnergy < ULTIMATE_CONFIG[skin].maxEnergy) return;
+    this.redBarrages.push(throwRedBomb(player, x, y, Date.now()));
   }
 
   private handleUseItem(kind: ItemKind, sender: Party.Connection) {
@@ -528,6 +547,7 @@ export default class TankRoom implements Party.Server {
     if (map.terrain === "grass") {
       stepAirstrikes(this, map, now);
     }
+    stepRedBarrages(this, now);
 
     stepBullets(this, map, now);
 
@@ -554,6 +574,7 @@ export default class TankRoom implements Party.Server {
       crates: this.crates,
       monsters: this.monsters,
       airstrikes: this.airstrikes,
+      redBarrages: this.redBarrages,
       impacts: this.impacts,
       kills: this.kills,
       mapId: this.mapId,

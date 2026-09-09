@@ -35,7 +35,7 @@ import {
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
 import { DIR_VECTOR, findOverlappingCrate, findOverlappingTank, makeId, spawnPixel, tankBlocked, tileAt, tryPushCrate, tryPushTank, winsShovingContest } from "./geometry";
-import { fireSniperShot } from "./skills";
+import { fireSniperShot, resetSkillState } from "./skills";
 import type { InputState } from "./types";
 
 export interface PlayersTickCtx extends CombatCtx {
@@ -69,8 +69,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.fireShotsLeft = 0;
         player.burningUntil = null;
         player.burnOwnerId = null;
-        player.rapidFireUntil = null;
-        player.sniperChargingSince = null;
+        resetSkillState(player);
       }
       continue;
     }

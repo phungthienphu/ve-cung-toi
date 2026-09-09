@@ -21,6 +21,7 @@ import {
   type TankPublicState,
 } from "@shared/tankTypes";
 import { playTankBigShot, playTankShoot } from "@/lib/sound";
+import { DIR_ANGLE } from "./render/sprite-utils";
 
 const KEY_MAP: Record<string, "up" | "down" | "left" | "right"> = {
   ArrowUp: "up",
@@ -71,6 +72,16 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   // outside the rAF loop) can convert a screen-space mouse position into a
   // world angle without redoing the camera-clamp math itself.
   const cameraOffsetRef = useRef({ x: 0, y: 0 });
+  // World point currently under the cursor — unlike aimAngle/aimDistance
+  // this is never sent to the server on its own; it only leaves the client
+  // at all once a "target" skin (see ULTIMATE_ACTIVATION_MODE) actually
+  // commits (throw_bomb), which is the whole reason that mode doesn't need
+  // a networked "start aiming" step the way "charge" skins do.
+  const aimPointRef = useRef<{ x: number; y: number } | null>(null);
+  // True while a "target" skin has its aim toggled on (R press) but hasn't
+  // fired yet — purely local UI state, see the ULTIMATE_ACTIVATION_MODE doc
+  // for why this phase never touches the network.
+  const isTargetingRef = useRef(false);
 
   const sendInput = useCallback(() => {
     const held = heldRef.current;
@@ -83,12 +94,27 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   }, [send]);
 
   // The one normal fire trigger (Space, left click, the touch fire button)
-  // does double duty for a "charge" skin (see ULTIMATE_ACTIVATION_MODE):
-  // while scoped it releases that shot instead of a normal one, so the
-  // player never needs a second button — aim, then just fire as usual.
+  // does double duty for a "charge" or "target" skin (see
+  // ULTIMATE_ACTIVATION_MODE): while charging/targeting it commits that
+  // skill instead of firing a normal shot, so the player never needs a
+  // second button — aim, then just fire as usual.
   const sendShot = useCallback(() => {
     const self = stateRef.current.players.find((p) => p.id === selfId);
-    const isScoped = !!self && self.sniperChargingSince !== null;
+    if (!self) return;
+
+    if (isTargetingRef.current) {
+      isTargetingRef.current = false;
+      // No mouse (touch) or the cursor hasn't moved onto the canvas yet —
+      // fall back to a fixed point straight ahead so the button still does
+      // something reasonable instead of silently failing.
+      const angle = self.aimAngle ?? DIR_ANGLE[self.dir];
+      const point = aimPointRef.current ?? { x: self.x + Math.cos(angle) * 150, y: self.y + Math.sin(angle) * 150 };
+      send({ type: "throw_bomb", x: point.x, y: point.y });
+      playTankBigShot();
+      return;
+    }
+
+    const isScoped = self.sniperChargingSince !== null;
     send({ type: "shoot", big: isScoped || undefined });
     if (isScoped) playTankBigShot();
     else playTankShoot();
@@ -120,9 +146,22 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
         e.preventDefault();
       } else if ((e.key === "r" || e.key === "R") && !e.repeat) {
         const self = stateRef.current.players.find((p) => p.id === selfId);
-        if (!self || self.ultimateEnergy < ULTIMATE_CONFIG[skinForColor(self.color)].maxEnergy) return;
+        if (!self) return;
         const skin = skinForColor(self.color);
-        if (ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
+        const mode = ULTIMATE_ACTIVATION_MODE[skin];
+        if (mode === "target") {
+          // Purely local toggle — pressing R again while already aiming
+          // cancels for free, since nothing was ever sent to the server yet.
+          if (isTargetingRef.current) {
+            isTargetingRef.current = false;
+          } else if (self.ultimateEnergy >= ULTIMATE_CONFIG[skin].maxEnergy) {
+            isTargetingRef.current = true;
+          }
+          e.preventDefault();
+          return;
+        }
+        if (self.ultimateEnergy < ULTIMATE_CONFIG[skin].maxEnergy) return;
+        if (mode === "charge") {
           // A single tap toggles the scope on — no holding required. Firing
           // happens later through the normal shoot trigger (see sendShot).
           if (self.sniperChargingSince === null) send({ type: "charge_ultimate" });
@@ -270,11 +309,15 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
     // stop Dark's own scope line at the real cursor position instead of
     // always stretching it out to the wall/max range.
     aimDistanceRef.current = Math.hypot(dx, dy);
+    // The absolute world point under the cursor — Red's own local aim
+    // preview while targeting, and what actually gets sent on commit.
+    aimPointRef.current = { x: mouseX - cameraOffsetRef.current.x, y: mouseY - cameraOffsetRef.current.y };
     sendInput();
   }
   function handleAimLeave() {
     aimAngleRef.current = null;
     aimDistanceRef.current = null;
+    aimPointRef.current = null;
     sendInput();
     stopShooting();
   }
@@ -293,6 +336,8 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   return {
     cameraOffsetRef,
     aimDistanceRef,
+    aimPointRef,
+    isTargetingRef,
     joyBaseRef,
     joyKnobRef,
     handleJoyPointerDown,

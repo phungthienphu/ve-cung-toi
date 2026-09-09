@@ -320,22 +320,35 @@ export const ULTIMATE_CONFIG: Record<TankSkin, UltimateEnergyConfig> = {
   huge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
 };
 
-/** How pressing "R" behaves for each skin — "instant" fires/activates the
- * moment the button is pressed (a single `shoot: {big: true}` message);
- * "charge" instead toggles a scope on with one tap (`charge_ultimate`, no
- * holding required) and the shot itself fires later through the *normal*
- * shoot trigger (Space/left click/the touch fire button) while scoped, which
- * client input code checks and upgrades to `shoot: {big: true}` — see
- * useTankInput.ts. Both client input code and the server consult this table
- * instead of hardcoding which skin(s) currently work which way, so adding
- * another charge-based skill later is a one-line table edit, not a new
+/** How pressing "R" behaves for each skin:
+ * - "instant" fires/activates the moment the button is pressed (a single
+ *   `shoot: {big: true}` message).
+ * - "charge" toggles a scope on with one tap (`charge_ultimate`, no holding
+ *   required) and the shot itself fires later through the *normal* shoot
+ *   trigger (Space/left click/the touch fire button) while scoped, which
+ *   client input code checks and upgrades to `shoot: {big: true}` — see
+ *   useTankInput.ts's `sendShot`. The server tracks the charging state (so
+ *   it can broadcast a fair telegraph to every player) between the two
+ *   messages.
+ * - "target" also toggles on with one tap, but entirely client-side — no
+ *   message is sent for the tap itself, since the point being picked (by
+ *   moving the mouse) has no reason to be visible to anyone before it's
+ *   actually committed. Only the eventual `throw_bomb` (again sent by
+ *   whichever the normal shoot trigger is) reaches the server, at which
+ *   point the resulting hazard *is* broadcast like anything else — see
+ *   RedBarrage. Contrast with "charge", where the aiming itself is the
+ *   telegraph and must be networked from the moment it starts.
+ *
+ * Both client input code and the server consult this table instead of
+ * hardcoding which skin(s) currently work which way, so adding another
+ * charge/target-based skill later is a one-line table edit, not a new
  * `skin === "..."` check scattered across input/HUD/server files. */
-export type UltimateActivationMode = "instant" | "charge";
+export type UltimateActivationMode = "instant" | "charge" | "target";
 export const ULTIMATE_ACTIVATION_MODE: Record<TankSkin, UltimateActivationMode> = {
   blue: "instant",
   dark: "charge",
   green: "instant",
-  red: "instant",
+  red: "target",
   sand: "instant",
   bigRed: "instant",
   darkLarge: "instant",
@@ -505,6 +518,26 @@ export const AIRSTRIKE_RAMP_MS = 90_000;
 export const AIRSTRIKE_AIM_MIN_TILES = 1;
 export const AIRSTRIKE_AIM_MAX_TILES = 9;
 
+/** Red's ultimate: a player-aimed artillery barrage. Reuses AirstrikeBomb for
+ * each individual impact (same shape: a delayed, radius-damage explosion),
+ * just scattered around wherever Red targeted instead of a fixed 3x3 grid
+ * with a plane flying over. Unlike the automatic airstrike, there's no
+ * server-visible warning before the player commits — see
+ * ULTIMATE_ACTIVATION_MODE's "target" mode doc for why. */
+export interface RedBarrage {
+  id: string;
+  ownerId: string;
+  bombs: AirstrikeBomb[];
+}
+
+export const RED_BOMB_MAX_RANGE = 600; // px — how far from the tank the target point can be
+export const RED_BARRAGE_WARN_MS = 1500; // delay from commit to the first impact
+export const RED_BARRAGE_DURATION_MS = 2000; // spread of impact times after the warning
+export const RED_BARRAGE_BOMB_COUNT = 5;
+export const RED_BARRAGE_BOMB_RADIUS = TILE_SIZE * 0.75;
+export const RED_BARRAGE_BOMB_DAMAGE = 22; // all 5 landing on a stationary target is ~lethal
+export const RED_BARRAGE_SPREAD_RADIUS = TILE_SIZE * 1.8; // how scattered the impacts are around the aim point
+
 export interface Monster {
   id: string;
   x: number;
@@ -556,6 +589,7 @@ export interface TankPublicState {
   crates: Crate[];
   monsters: Monster[];
   airstrikes: Airstrike[];
+  redBarrages: RedBarrage[];
   impacts: TankImpact[];
   kills: TankKillEvent[];
   mapId: string;
@@ -579,6 +613,11 @@ export type TankClientMessage =
   // Starts charging a hold-then-release ultimate (currently just Dark's
   // sniper) — releasing sends the existing "shoot" message with big: true.
   | { type: "charge_ultimate" }
+  // Commits a "target" skin's ultimate (currently just Red's barrage) at a
+  // world point the client picked entirely on its own — see
+  // ULTIMATE_ACTIVATION_MODE's "target" mode doc for why there's no
+  // separate "start aiming" message the way charge-mode skins have one.
+  | { type: "throw_bomb"; x: number; y: number }
   | { type: "use_item"; kind: ItemKind }
   | { type: "leave_room" };
 

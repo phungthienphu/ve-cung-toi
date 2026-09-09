@@ -18,6 +18,7 @@ import {
   type TankSkin,
   type Team,
 } from "@shared/tankTypes";
+import { DIR_ANGLE } from "./render/sprite-utils";
 import TankCanvas from "./TankCanvas";
 
 interface Props {
@@ -58,7 +59,12 @@ const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
     barClass: "bg-red-500",
   },
   green: DEFAULT_ULTIMATE_UI,
-  red: DEFAULT_ULTIMATE_UI,
+  red: {
+    icon: "💣",
+    label: "Ném bom (R để ngắm điểm bằng chuột trên bản đồ, bắn bằng nút bắn thường) — rải nhiều đợt nổ, né bằng cách tăng tốc",
+    activeClasses: "border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100",
+    barClass: "bg-orange-500",
+  },
   sand: DEFAULT_ULTIMATE_UI,
   bigRed: DEFAULT_ULTIMATE_UI,
   darkLarge: DEFAULT_ULTIMATE_UI,
@@ -461,18 +467,29 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
 
               // A "charge" skin just toggles the scope on with one tap — the
               // shot itself fires later through the normal fire button/key
-              // (see useTankInput.ts's sendShot), so this button behaves
-              // like a plain tap for every skin, just sending a different
-              // message while one is charge-based.
-              const isCharge = ULTIMATE_ACTIVATION_MODE[skin] === "charge";
+              // (see useTankInput.ts's sendShot). A "target" skin has no
+              // precise aim to reuse here (this button lives outside the
+              // canvas, so it never sees the mouse) — it just throws along
+              // the tank's current aim/facing at a fixed distance, same as
+              // the touch fallback in useTankInput.ts. Either way this
+              // button behaves like a plain tap for every skin, just
+              // sending a different message depending on the mode.
+              const mode = ULTIMATE_ACTIVATION_MODE[skin];
+              function activate() {
+                if (mode === "charge") {
+                  send({ type: "charge_ultimate" });
+                } else if (mode === "target") {
+                  // `self` is already known non-null in the enclosing scope,
+                  // but that narrowing doesn't reach inside this nested
+                  // function declaration.
+                  const angle = self!.aimAngle ?? DIR_ANGLE[self!.dir];
+                  send({ type: "throw_bomb", x: self!.x + Math.cos(angle) * 150, y: self!.y + Math.sin(angle) * 150 });
+                } else {
+                  send({ type: "shoot", big: true });
+                }
+              }
               return (
-                <button
-                  type="button"
-                  disabled={!ready || isCharging}
-                  onClick={() => send(isCharge ? { type: "charge_ultimate" } : { type: "shoot", big: true })}
-                  title={ui.label}
-                  className={className}
-                >
+                <button type="button" disabled={!ready || isCharging} onClick={activate} title={ui.label} className={className}>
                   {ui.icon}
                   {bar}
                   <span className="text-[10px] font-bold">R</span>

@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import {
   MAX_BOOST_ENERGY,
+  RED_BARRAGE_BOMB_RADIUS,
+  RED_BARRAGE_SPREAD_RADIUS,
   TANK_SIZE,
   TICK_MS,
   TILE_SIZE,
@@ -43,6 +45,7 @@ import {
   explosionDurationFor,
 } from "./render/effects";
 import { BOMB_FALL_MS, drawBombDangerZone, drawBombPlane, drawBombTargetIcon, drawFallingBomb } from "./render/airstrike";
+import { drawAreaPreviewRing, drawTrapScopeReticle } from "./render/redBomb";
 import { useTankEffects } from "./useTankEffects";
 import { useTankInput } from "./useTankInput";
 
@@ -204,6 +207,30 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         }
       }
 
+      // Red's committed barrage — like the automatic airstrike, everyone
+      // sees this once it exists (the pre-commit aim itself never reached
+      // the server, see the local-only preview drawn below instead). Uses
+      // the trap-scope reticle rather than the airstrike's bomb icon so the
+      // two hazards read as visually distinct skills.
+      for (const barrage of s.redBarrages) {
+        for (const bomb of barrage.bombs) {
+          const msUntilStrike = bomb.strikeAt - estServerNow;
+          if (msUntilStrike <= 0) continue;
+          drawBombDangerZone(ctx, bomb.x, bomb.y, msUntilStrike, bomb.radius, now);
+          drawTrapScopeReticle(ctx, bomb.x, bomb.y, now);
+        }
+      }
+
+      // Red's own local aim preview — purely client-side (see
+      // useTankInput.ts's isTargetingRef), so only ever drawn for self.
+      if (self && input.isTargetingRef.current) {
+        const point = input.aimPointRef.current;
+        if (point) {
+          drawAreaPreviewRing(ctx, point.x, point.y, RED_BARRAGE_SPREAD_RADIUS + RED_BARRAGE_BOMB_RADIUS);
+          drawTrapScopeReticle(ctx, point.x, point.y, now);
+        }
+      }
+
       for (const pu of s.pickups) {
         if (pu.kind === "health") drawHealthPickup(ctx, pu.x, pu.y);
         else drawItemPickup(ctx, pu.x, pu.y, pu.kind);
@@ -322,7 +349,18 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     // reassigned) — including them here doesn't change when this effect
     // re-runs, it just satisfies the linter, which can't see through the
     // custom hooks to verify that stability itself.
-  }, [selfId, input.cameraOffsetRef, input.aimDistanceRef, explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef]);
+  }, [
+    selfId,
+    input.cameraOffsetRef,
+    input.aimDistanceRef,
+    input.aimPointRef,
+    input.isTargetingRef,
+    explosionsRef,
+    marksRef,
+    oilSpillsRef,
+    muzzleFlashesRef,
+    leavesRef,
+  ]);
 
   const self = state.players.find((p) => p.id === selfId);
 
