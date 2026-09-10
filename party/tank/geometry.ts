@@ -142,6 +142,43 @@ export function randomOpenTile(map: TankMapDef): { x: number; y: number } | null
   return null;
 }
 
+/** A random open floor tile that also tries to keep its distance from
+ * whatever's in `avoidPx` (other players just placed, monster nests) — used
+ * for both initial match-start placement and every respawn, so tanks land
+ * somewhere different each time instead of the same handful of fixed spots
+ * getting reused (and crowded) over and over. `colRange` optionally
+ * restricts the pick to one band of columns (team mode's rough "opposite
+ * sides of the map" split). Always returns a tile — if nothing fully clears
+ * `minDistancePx` within the attempt budget, falls back to whichever
+ * candidate ended up farthest from everything rather than giving up. */
+export function pickSpawnTile(
+  map: TankMapDef,
+  avoidPx: { x: number; y: number }[],
+  minDistancePx: number,
+  colRange?: { min: number; max: number }
+): { x: number; y: number } {
+  const cols = mapCols(map);
+  const rows = mapRows(map);
+  const minCol = Math.max(1, colRange?.min ?? 1);
+  const maxCol = Math.min(cols - 2, colRange?.max ?? cols - 2);
+  let best: { x: number; y: number } | null = null;
+  let bestScore = -Infinity;
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const col = minCol + Math.floor(Math.random() * Math.max(1, maxCol - minCol + 1));
+    const row = 1 + Math.floor(Math.random() * (rows - 2));
+    if (map.layout[row]?.[col] !== ".") continue;
+    const tile = { x: col, y: row };
+    const px = spawnPixel(tile);
+    const nearest = avoidPx.length === 0 ? Infinity : Math.min(...avoidPx.map((a) => Math.hypot(px.x - a.x, px.y - a.y)));
+    if (nearest >= minDistancePx) return tile;
+    if (nearest > bestScore) {
+      bestScore = nearest;
+      best = tile;
+    }
+  }
+  return best ?? { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
+}
+
 export const DIR_VECTOR: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
   down: { dx: 0, dy: 1 },

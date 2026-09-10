@@ -17,13 +17,14 @@ import {
   MONSTER_PACK_COUNT,
   RAPID_FIRE_COOLDOWN_MS,
   SHIELD_MAX_HITS,
+  SPAWN_MIN_DISTANCE_PX,
   TANK_COLORS,
   TANK_SIZE,
   TICK_MS,
   ULTIMATE_ACTIVATION_MODE,
   ULTIMATE_CONFIG,
   getMap,
-  getSpawnPoints,
+  mapCols,
   skinForColor,
   type Airstrike,
   type Bullet,
@@ -48,7 +49,7 @@ import {
 import { randomAirstrikeDelay, stepAirstrikes } from "./tank/airstrike";
 import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
-import { aimAngleOf, makeId, spawnPixel } from "./tank/geometry";
+import { aimAngleOf, makeId, pickSpawnTile, spawnPixel } from "./tank/geometry";
 import { stepGreenBursts, type PendingGreenBurst } from "./tank/greenBurst";
 import { spawnMonsterPacks, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
@@ -234,7 +235,10 @@ export default class TankRoom implements Party.Server {
         );
         return;
       }
-      const spawn = spawnPixel(getSpawnPoints(this.map)[this.players.size % 8]);
+      // Real placement only matters once a match actually starts (see
+      // handleStartGame's pickSpawnTile calls) — this is just a harmless
+      // placeholder position for a player still sitting in the lobby.
+      const spawn = spawnPixel({ x: 1, y: 1 });
       player = {
         id: playerId,
         name: cleanName,
@@ -305,21 +309,28 @@ export default class TankRoom implements Party.Server {
     }
 
     this.mapId = getMap(mapId).id;
-    const spawns = getSpawnPoints(this.map);
-    // In team mode, spawns 0-3 cluster near one corner and 4-7 near the
-    // opposite corner — walk each team's own counter through its 4 reserved
-    // slots so teammates land together on opposite sides of the map. FFA
-    // just cycles through all 8 in join order like before teams existed.
-    const teamIndex: Record<Team, number> = { A: 0, B: 0 };
-    connected.forEach((p, i) => {
-      let spawn;
-      if (this.mode === "team") {
-        const base = p.team === "A" ? 0 : 4;
-        spawn = spawnPixel(spawns[base + (teamIndex[p.team] % 4)]);
-        teamIndex[p.team] += 1;
-      } else {
-        spawn = spawnPixel(spawns[i % spawns.length]);
-      }
+    // Monsters are placed first so their nests are known — player spawns
+    // (picked fresh below) actively steer clear of them, rather than the
+    // old fixed 8-corner-point list that just happened to sit right next to
+    // a couple of decorative bush clusters some maps use as nest material.
+    this.monsters = spawnMonsterPacks(this.map, MONSTER_PACK_COUNT);
+    // Team mode keeps each side roughly to its own half of the map (left vs
+    // right) so teammates land near each other and away from the enemy —
+    // FFA/practice just picks anywhere. Within whichever region a player
+    // lands in, the exact spot is random and kept clear of every other
+    // spawn already placed this match (and every monster nest), so tanks
+    // stop reliably clustering into the same handful of corner slots — or
+    // right next to a pack of monsters — every game. `avoidPx` accumulates
+    // in pixel space as each player is placed, so later players in the same
+    // batch also steer clear of earlier ones.
+    const cols = mapCols(this.map);
+    const avoidPx: { x: number; y: number }[] = this.monsters.map((m) => ({ x: m.nestX, y: m.nestY }));
+    connected.forEach((p) => {
+      const colRange =
+        this.mode === "team" ? (p.team === "A" ? { min: 1, max: Math.floor(cols / 2) - 1 } : { min: Math.floor(cols / 2), max: cols - 2 }) : undefined;
+      const tile = pickSpawnTile(this.map, avoidPx, SPAWN_MIN_DISTANCE_PX, colRange);
+      const spawn = spawnPixel(tile);
+      avoidPx.push(spawn);
       p.x = spawn.x;
       p.y = spawn.y;
       p.alive = true;
@@ -356,7 +367,6 @@ export default class TankRoom implements Party.Server {
     this.lastBurnDamageAt.clear();
     this.monsterAggroUntil.clear();
     this.monsterRestUntil.clear();
-    this.monsters = spawnMonsterPacks(this.map, MONSTER_PACK_COUNT);
     this.teamScores = { A: 0, B: 0 };
     this.winnerId = null;
     this.winningTeam = null;

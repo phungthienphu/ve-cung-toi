@@ -21,22 +21,16 @@ import {
   MONSTER_REST_CHANCE,
   MONSTER_REST_DURATION_MS,
   MONSTER_SIZE,
-  MONSTER_SPAWN_EXCLUSION_TILES,
   MONSTER_SPAWN_SPREAD_RADIUS,
   MONSTER_SPEED,
   NEST_PUDDLE_RADIUS,
   TANK_SIZE,
-  getSpawnPoints,
   type Direction,
   type Monster,
   type TankMapDef,
 } from "../../shared/tankTypes";
 import { type CombatCtx, damageThroughShield } from "./combat";
 import { DIR_VECTOR, makeId, randomOpenTile, spawnPixel, tankBlocked, tileAt } from "./geometry";
-
-function isNearAnySpawn(tile: { x: number; y: number }, spawnPoints: { x: number; y: number }[]): boolean {
-  return spawnPoints.some((sp) => Math.hypot(tile.x - sp.x, tile.y - sp.y) < MONSTER_SPAWN_EXCLUSION_TILES);
-}
 
 /** 4-directionally-connected clusters of 'B' tiles on the map. */
 function findBushClusters(map: TankMapDef): { x: number; y: number }[][] {
@@ -75,27 +69,19 @@ function findBushClusters(map: TankMapDef): { x: number; y: number }[][] {
 /** A monster pack's nest should read as living somewhere real — a proper
  * clump of bushes, not a single lonely 'B' tile — so this prefers a cluster
  * of at least 3 connected bush tiles (falling back to any bush cluster, then
- * any open floor tile if a map somehow has no bushes at all). Every map's
- * fixed spawn corners happen to have their own small decorative bush
- * cluster right next to them, so any cluster touching a spawn point's
- * exclusion zone is dropped first — otherwise a nest could land exactly
- * where tanks spawn in, and someone takes a hit before they can even move.
- * `used` tracks clusters already claimed by an earlier pack so multiple
- * packs spread across different nests instead of piling into the same spot,
- * as long as the map actually has enough distinct clusters to go around. */
-function pickNestTile(map: TankMapDef, spawnPoints: { x: number; y: number }[], used: Set<{ x: number; y: number }[]>): { x: number; y: number } | null {
-  const clusters = findBushClusters(map).filter((c) => !c.some((tile) => isNearAnySpawn(tile, spawnPoints)));
+ * any open floor tile if a map somehow has no bushes at all). Nest placement
+ * itself doesn't need to dodge tanks: player spawns are picked afterward and
+ * are what steers clear of nests (see pickSpawnTile in geometry.ts) — nests
+ * are placed first and are fixed for the whole match, so that's the only
+ * direction that needs to be dynamic. `used` tracks clusters already
+ * claimed by an earlier pack so multiple packs spread across different
+ * nests instead of piling into the same spot, as long as the map actually
+ * has enough distinct clusters to go around. */
+function pickNestTile(map: TankMapDef, used: Set<{ x: number; y: number }[]>): { x: number; y: number } | null {
+  const clusters = findBushClusters(map);
   const bigClusters = clusters.filter((c) => c.length >= 3);
   const pool = bigClusters.length > 0 ? bigClusters : clusters;
-  if (pool.length === 0) {
-    // No eligible bush cluster at all — fall back to a random open tile,
-    // retrying a few times to steer clear of spawns too.
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const tile = randomOpenTile(map);
-      if (tile && !isNearAnySpawn(tile, spawnPoints)) return tile;
-    }
-    return randomOpenTile(map);
-  }
+  if (pool.length === 0) return randomOpenTile(map);
   const unused = pool.filter((c) => !used.has(c));
   const choices = unused.length > 0 ? unused : pool;
   const cluster = choices[Math.floor(Math.random() * choices.length)];
@@ -143,15 +129,13 @@ function spawnMonsterAt(nestTile: { x: number; y: number }, indexInPack: number,
 /** The whole map's monster population: MONSTER_PACK_COUNT packs, each with
  * its own nest (spread across distinct bush clusters where possible). */
 export function spawnMonsterPacks(map: TankMapDef, packCount: number): Monster[] {
-  const spawnPoints = getSpawnPoints(map);
-  // Dead center of the map — as far from every corner spawn as any single
-  // fallback point can be — in the vanishingly unlikely case a map has no
+  // Dead center of the map, in the vanishingly unlikely case it has no
   // eligible bush cluster or open tile at all.
   const centerFallback = { x: Math.floor((map.layout[0]?.length ?? 2) / 2), y: Math.floor(map.layout.length / 2) };
   const usedClusters = new Set<{ x: number; y: number }[]>();
   const monsters: Monster[] = [];
   for (let p = 0; p < packCount; p++) {
-    const nestTile = pickNestTile(map, spawnPoints, usedClusters) ?? centerFallback;
+    const nestTile = pickNestTile(map, usedClusters) ?? centerFallback;
     for (let i = 0; i < MONSTER_PACK_SIZE; i++) {
       monsters.push(spawnMonsterAt(nestTile, i, MONSTER_PACK_SIZE));
     }

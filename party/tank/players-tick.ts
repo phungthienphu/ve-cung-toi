@@ -22,12 +22,13 @@ import {
   PICKUP_HEAL_AMOUNT,
   PICKUP_SIZE,
   SNIPER_MAX_CHARGE_MS,
+  SPAWN_MIN_DISTANCE_PX,
   TANK_SIZE,
   TANK_SPEED,
   TRAP_DAMAGE,
   TRAP_SIZE,
   ULTIMATE_CONFIG,
-  getSpawnPoints,
+  mapCols,
   skinForColor,
   type Bullet,
   type Crate,
@@ -39,7 +40,19 @@ import {
   type Trap,
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
-import { DIR_VECTOR, findOverlappingCrate, findOverlappingTank, makeId, spawnPixel, tankBlocked, tileAt, tryPushCrate, tryPushTank, winsShovingContest } from "./geometry";
+import {
+  DIR_VECTOR,
+  findOverlappingCrate,
+  findOverlappingTank,
+  makeId,
+  pickSpawnTile,
+  spawnPixel,
+  tankBlocked,
+  tileAt,
+  tryPushCrate,
+  tryPushTank,
+  winsShovingContest,
+} from "./geometry";
 import { fireSniperShot, resetSkillState } from "./skills";
 import type { InputState } from "./types";
 
@@ -59,10 +72,19 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
   for (const player of ctx.players.values()) {
     if (!player.alive) {
       if (player.respawnAt !== null && now >= player.respawnAt) {
-        const idx = [...ctx.players.values()].indexOf(player);
-        const spawns = getSpawnPoints(map);
-        const spawnPoint = ctx.mode === "team" ? spawns[(player.team === "A" ? 0 : 4) + (idx % 4)] : spawns[idx % spawns.length];
-        const spawn = spawnPixel(spawnPoint);
+        // Same random-and-scattered placement as match start (see
+        // handleStartGame's pickSpawnTile calls in tank-server.ts) — steers
+        // clear of every monster nest and every other currently-alive tank,
+        // so a respawn doesn't drop someone back into a crowd or next to
+        // the pack that might have just killed them.
+        const cols = mapCols(map);
+        const avoidPx: { x: number; y: number }[] = ctx.monsters.map((m) => ({ x: m.nestX, y: m.nestY }));
+        for (const other of ctx.players.values()) {
+          if (other.id !== player.id && other.alive) avoidPx.push({ x: other.x, y: other.y });
+        }
+        const colRange =
+          ctx.mode === "team" ? (player.team === "A" ? { min: 1, max: Math.floor(cols / 2) - 1 } : { min: Math.floor(cols / 2), max: cols - 2 }) : undefined;
+        const spawn = spawnPixel(pickSpawnTile(map, avoidPx, SPAWN_MIN_DISTANCE_PX, colRange));
         player.x = spawn.x;
         player.y = spawn.y;
         player.alive = true;

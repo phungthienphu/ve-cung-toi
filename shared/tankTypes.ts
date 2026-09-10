@@ -134,24 +134,16 @@ export function mapCanvasSize(map: TankMapDef): { w: number; h: number } {
   return { w: mapCols(map) * TILE_SIZE, h: mapRows(map) * TILE_SIZE };
 }
 
-// 8 spawn points clustered into two corner quadrants — indices 0-3 sit near
-// the top-left corner, 4-7 near the bottom-right, so team A and team B land
-// on opposite sides of the map instead of interleaved. FFA just cycles
-// through all 8 in join order, same as before.
-export function getSpawnPoints(map: TankMapDef): { x: number; y: number }[] {
-  const cols = mapCols(map);
-  const rows = mapRows(map);
-  return [
-    { x: 1, y: 1 },
-    { x: 1, y: 3 },
-    { x: 3, y: 1 },
-    { x: 3, y: 3 },
-    { x: cols - 2, y: rows - 2 },
-    { x: cols - 2, y: rows - 4 },
-    { x: cols - 4, y: rows - 2 },
-    { x: cols - 4, y: rows - 4 },
-  ];
-}
+// Player spawn positions are picked fresh each time (see pickSpawnTile in
+// party/tank/geometry.ts) instead of a fixed list of corner points — a
+// random open tile, kept away from other players and monster nests, so
+// tanks don't keep landing on top of each other or the same handful of
+// spots every match/respawn.
+// Applied uniformly against both other tanks placed in the same batch and
+// every monster nest — a spawn is retried until it clears this distance
+// from everything already claimed, falling back to whichever candidate got
+// farthest if the map's too tight to fully satisfy it.
+export const SPAWN_MIN_DISTANCE_PX = TILE_SIZE * 6;
 
 // Each entry pairs a swatch color with a real Kenney "Tanks" sprite skin
 // (see public/Retina) — index-aligned with TANK_SKINS below. The 5 small
@@ -297,12 +289,6 @@ export const MONSTER_NEST_RADIUS = 90; // wander leash while passive
 export const MONSTER_CHASE_LEASH_RADIUS = 170; // gives up the chase past this from its nest
 export const MONSTER_REST_CHANCE = 0.4; // odds it pauses instead of picking a new direction
 export const MONSTER_REST_DURATION_MS = 2500;
-// Every map's fixed spawn corners happen to have a decorative bush cluster
-// right next to them — without this, a nest could land there and a freshly
-// spawned tank would take a hit before it could even move. Whole bush
-// clusters within this many tiles of any spawn point are excluded from nest
-// placement entirely, not just individual tiles.
-export const MONSTER_SPAWN_EXCLUSION_TILES = 6;
 
 // A monster's nest is marked on the ground by a mud/water puddle — stepping
 // into it douses a burning tank, and a monster resting in its own puddle (or
