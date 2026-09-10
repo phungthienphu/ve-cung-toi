@@ -10,7 +10,7 @@ import {
   VIEWPORT_W,
   getMap,
   mapCanvasSize,
-  type TankPlayer,
+  type PublicTankPlayer,
   type TankPublicState,
   type TankTimeOfDay,
 } from "@shared/tankTypes";
@@ -32,7 +32,7 @@ export function tileCharAt(m: ReturnType<typeof getMap>, x: number, y: number): 
 /** Same "server sends everything, client just doesn't render it" trick used
  * for the blind item's fog-of-war: bushes and smoke hide enemy tanks standing
  * in them unless the viewer is close enough to have spotted them anyway. */
-export function isCoverHidden(m: ReturnType<typeof getMap>, target: TankPlayer, self: TankPlayer): boolean {
+export function isCoverHidden(m: ReturnType<typeof getMap>, target: PublicTankPlayer, self: PublicTankPlayer): boolean {
   const tile = tileCharAt(m, target.x, target.y);
   if (tile !== "B" && tile !== "S") return false;
   return Math.hypot(target.x - self.x, target.y - self.y) > BUSH_REVEAL_RADIUS;

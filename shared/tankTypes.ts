@@ -517,6 +517,18 @@ export interface TankPlayer {
   auraShieldUntil: number | null;
 }
 
+/** What actually goes out over the wire for a player — omits fields that
+ * only matter to the server's own physics/easing math (ice's velocity
+ * accumulator, the hook pull's from/to/until bookkeeping — the client only
+ * ever needs the *result* the server already baked into x/y every tick, not
+ * how it got there — and burn's damage-attribution owner id). Broadcast
+ * every tick for every player, so trimming this is a standing bandwidth/CPU
+ * saving rather than only mattering during a combat spike. */
+export type PublicTankPlayer = Omit<
+  TankPlayer,
+  "velocityX" | "velocityY" | "hookPullUntil" | "hookPullFromX" | "hookPullFromY" | "hookPullToX" | "hookPullToY" | "burnOwnerId"
+>;
+
 export interface Bullet {
   id: string;
   ownerId: string;
@@ -747,6 +759,10 @@ export interface Monster {
   hookPullToY: number;
 }
 
+/** Same idea as PublicTankPlayer — the client only needs where a monster
+ * ended up (x/y, already eased server-side), not the bookkeeping behind it. */
+export type PublicMonster = Omit<Monster, "spawnOffsetX" | "spawnOffsetY" | "hookPullUntil" | "hookPullFromX" | "hookPullFromY" | "hookPullToX" | "hookPullToY">;
+
 /** A single-tick "something happened here" event — purely cosmetic, consumed
  * client-side to spawn a spark/skid-mark ("shove") or a trap-triggered burst
  * ("trap") effect at (x, y). */
@@ -854,12 +870,12 @@ export interface TankPublicState {
   status: TankRoomStatus;
   mode: TankRoomMode;
   hostId: string | null;
-  players: TankPlayer[];
+  players: PublicTankPlayer[];
   bullets: Bullet[];
   pickups: Pickup[];
   traps: Trap[];
   crates: Crate[];
-  monsters: Monster[];
+  monsters: PublicMonster[];
   airstrikes: Airstrike[];
   redBarrages: RedBarrage[];
   impacts: TankImpact[];

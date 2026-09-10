@@ -16,6 +16,9 @@ import {
   type Crate,
   type Direction,
   type ItemKind,
+  type Monster,
+  type PublicMonster,
+  type PublicTankPlayer,
   type TankMapDef,
   type TankPlayer,
 } from "../../shared/tankTypes";
@@ -30,6 +33,39 @@ export function makeId(): string {
 export function bulletTicksLeft(kind: BulletKind, speed: number): number {
   const maxRange = kind === "big" ? BULLET_BIG_MAX_RANGE_PX : BULLET_MAX_RANGE_PX;
   return Math.ceil(maxRange / speed);
+}
+
+/** Strips the fields that only matter to the server's own physics/easing
+ * math — see PublicTankPlayer's doc — before a player goes out over the
+ * wire. Called once per player per broadcast tick. */
+export function toPublicPlayer(p: TankPlayer): PublicTankPlayer {
+  const {
+    velocityX: _velocityX,
+    velocityY: _velocityY,
+    hookPullUntil: _hookPullUntil,
+    hookPullFromX: _hookPullFromX,
+    hookPullFromY: _hookPullFromY,
+    hookPullToX: _hookPullToX,
+    hookPullToY: _hookPullToY,
+    burnOwnerId: _burnOwnerId,
+    ...rest
+  } = p;
+  return rest;
+}
+
+/** Same idea as toPublicPlayer, for monsters. */
+export function toPublicMonster(m: Monster): PublicMonster {
+  const {
+    spawnOffsetX: _spawnOffsetX,
+    spawnOffsetY: _spawnOffsetY,
+    hookPullUntil: _hookPullUntil,
+    hookPullFromX: _hookPullFromX,
+    hookPullFromY: _hookPullFromY,
+    hookPullToX: _hookPullToX,
+    hookPullToY: _hookPullToY,
+    ...rest
+  } = m;
+  return rest;
 }
 
 export function tileAt(map: TankMapDef, px: number, py: number): string {

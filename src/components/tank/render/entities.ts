@@ -13,7 +13,7 @@ import {
   TRAP_SIZE,
   type Crate,
   type Direction,
-  type Monster,
+  type PublicMonster,
 } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
 import { DIR_ANGLE, capitalize, getTintedSprite, skinForColor } from "./sprite-utils";
@@ -440,7 +440,7 @@ export function drawTrap(ctx: CanvasRenderingContext2D, x: number, y: number, ti
   }
 }
 
-export function drawMonster(ctx: CanvasRenderingContext2D, monster: Monster) {
+export function drawMonster(ctx: CanvasRenderingContext2D, monster: PublicMonster) {
   const half = MONSTER_SIZE / 2;
   const bob = Math.sin(performance.now() / 220 + monster.x) * 1.5;
 
