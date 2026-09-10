@@ -20,6 +20,7 @@ import {
   SPAWN_MIN_DISTANCE_PX,
   TANK_COLORS,
   TANK_SIZE,
+  TANK_TIME_OF_DAY,
   TICK_MS,
   ULTIMATE_ACTIVATION_MODE,
   ULTIMATE_CONFIG,
@@ -43,6 +44,7 @@ import {
   type TankRoomListing,
   type TankRoomMode,
   type TankRoomStatus,
+  type TankTimeOfDay,
   type TankServerMessage,
   type Trap,
 } from "../shared/tankTypes";
@@ -99,6 +101,7 @@ export default class TankRoom implements Party.Server {
   monsterAggroUntil = new Map<string, number>();
   monsterRestUntil = new Map<string, number>();
   mapId: string = DEFAULT_MAP_ID;
+  timeOfDay: TankTimeOfDay = "day";
   hostId: string | null = null;
   status: TankRoomStatus = "lobby";
   mode: TankRoomMode = "ffa";
@@ -319,6 +322,7 @@ export default class TankRoom implements Party.Server {
     }
 
     this.mapId = getMap(mapId).id;
+    this.timeOfDay = TANK_TIME_OF_DAY[Math.floor(Math.random() * TANK_TIME_OF_DAY.length)];
     // Monsters are placed first so their nests are known — player spawns
     // (picked fresh below) actively steer clear of them, rather than the
     // old fixed 8-corner-point list that just happened to sit right next to
@@ -720,6 +724,7 @@ export default class TankRoom implements Party.Server {
       impacts: this.impacts,
       kills: this.kills,
       mapId: this.mapId,
+      timeOfDay: this.timeOfDay,
       killTarget: KILL_TARGET,
       teamScores: this.teamScores,
       winnerId: this.winnerId,

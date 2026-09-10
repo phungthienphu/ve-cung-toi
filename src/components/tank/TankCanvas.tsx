@@ -32,6 +32,7 @@ import {
   drawMinimap,
   drawNestPuddle,
   drawSmoke,
+  drawTimeOfDayOverlay,
   isCoverHidden,
   MINIMAP_H,
   MINIMAP_W,
@@ -438,6 +439,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       }
 
       ctx.restore();
+
+      drawTimeOfDayOverlay(ctx, s.timeOfDay);
 
       // Fog of war: purely a local rendering restriction — the browser still
       // has the full state above, it just chooses to paint over most of it.

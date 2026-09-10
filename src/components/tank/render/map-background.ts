@@ -12,6 +12,7 @@ import {
   mapCanvasSize,
   type TankPlayer,
   type TankPublicState,
+  type TankTimeOfDay,
 } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
 import { mulberry32 } from "./sprite-utils";
@@ -453,6 +454,40 @@ export function drawBush(
     ctx.beginPath();
     ctx.arc(cx, cy, TILE_SIZE * 0.4, 0, Math.PI * 2);
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** One of TANK_TIME_OF_DAY, rolled once per match server-side (see
+ * tank-server.ts's handleStartGame) so every viewer sees the same lighting.
+ * Drawn in screen space over the whole viewport, after the world content but
+ * before the blind item's fog-of-war overlay — blind stays fully dominant
+ * regardless of the ambient lighting underneath it. "day" draws nothing. */
+export function drawTimeOfDayOverlay(ctx: CanvasRenderingContext2D, timeOfDay: TankTimeOfDay) {
+  if (timeOfDay === "day") return;
+  ctx.save();
+  if (timeOfDay === "sunset") {
+    const grad = ctx.createLinearGradient(0, 0, 0, VIEWPORT_H);
+    grad.addColorStop(0, "rgba(251,146,60,0.16)");
+    grad.addColorStop(1, "rgba(190,24,93,0.16)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H);
+  } else {
+    // night
+    ctx.fillStyle = "rgba(15,23,42,0.42)";
+    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H);
+    const vignette = ctx.createRadialGradient(
+      VIEWPORT_W / 2,
+      VIEWPORT_H / 2,
+      VIEWPORT_H * 0.25,
+      VIEWPORT_W / 2,
+      VIEWPORT_H / 2,
+      VIEWPORT_H * 0.72
+    );
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.35)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H);
   }
   ctx.restore();
 }

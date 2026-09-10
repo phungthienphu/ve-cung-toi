@@ -756,6 +756,14 @@ export type DamageCause =
   | "Không kích"
   | "Pháo kích";
 
+// Purely cosmetic — rolled once per match (see tank-server.ts's
+// handleStartGame) and broadcast so everyone sees the same lighting rather
+// than each client picking its own. The actual tint colors are a client
+// rendering concern (see TankCanvas.tsx), not something the simulation
+// itself needs to know about.
+export const TANK_TIME_OF_DAY = ["day", "sunset", "night"] as const;
+export type TankTimeOfDay = (typeof TANK_TIME_OF_DAY)[number];
+
 export type TankRoomStatus = "lobby" | "playing" | "ended";
 
 export type TankRoomMode = "ffa" | "team" | "practice";
@@ -793,6 +801,7 @@ export interface TankPublicState {
   impacts: TankImpact[];
   kills: TankKillEvent[];
   mapId: string;
+  timeOfDay: TankTimeOfDay;
   killTarget: number;
   teamScores: Record<Team, number>;
   winnerId: string | null;

@@ -111,30 +111,35 @@ function noiseBurst(duration: number, gainPeak: number, filterFreq: number) {
   noise.stop(t0 + duration + 0.02);
 }
 
-/** Tank cannon firing — quick tonal "pew" layered over a noise crack. */
+/** Tank cannon firing — a real low crack with body (sub-thump + filtered
+ * noise), not the thin high "pew" this used to be. Still short enough to
+ * survive rapid-fire without turning into mush, just heavier and less toy-like. */
 export function playTankShoot() {
-  tone(920, 0, 0.05, 0.05, "square");
-  noiseBurst(0.07, 0.07, 4500);
+  noiseBurst(0.1, 0.18, 2000);
+  tone(150, 0, 0.1, 0.15, "square");
+  tone(65, 0.006, 0.14, 0.12, "sawtooth");
 }
 
-/** Bullet impact — a bullet vanishing against a wall or a tank. */
+/** Bullet impact — a bullet vanishing against a wall or a tank. Longer and
+ * louder than the old version, with a low rumble tail for weight. */
 export function playTankExplosion() {
-  noiseBurst(0.3, 0.16, 1100);
-  tone(90, 0, 0.28, 0.09, "sawtooth");
+  noiseBurst(0.4, 0.22, 850);
+  tone(85, 0, 0.36, 0.14, "sawtooth");
+  tone(45, 0.04, 0.3, 0.1, "sawtooth");
 }
 
 /** The default "big shot" skill firing — a heavier, lower-pitched thump than a normal shot. */
 export function playTankBigShot() {
-  tone(220, 0, 0.1, 0.1, "square");
-  tone(70, 0, 0.16, 0.12, "sawtooth");
-  noiseBurst(0.12, 0.1, 3000);
+  tone(190, 0, 0.15, 0.15, "square");
+  tone(60, 0, 0.24, 0.17, "sawtooth");
+  noiseBurst(0.2, 0.17, 1800);
 }
 
 /** A big shot detonating — bigger and longer than a normal bullet impact. */
 export function playTankBigExplosion() {
-  noiseBurst(0.45, 0.22, 900);
-  tone(60, 0, 0.4, 0.14, "sawtooth");
-  tone(50, 0.05, 0.35, 0.1, "sawtooth");
+  noiseBurst(0.65, 0.3, 650);
+  tone(55, 0, 0.55, 0.2, "sawtooth");
+  tone(38, 0.06, 0.5, 0.16, "sawtooth");
 }
 
 /** A shield absorbing a hit — a short metallic "ping", distinct from a real impact. */
@@ -282,9 +287,12 @@ export function playShieldAura() {
   osc.stop(t0 + 0.45);
 }
 
-/** Self took damage — bullet, trap, or terrain hazard. */
+/** Self took damage — bullet, trap, or terrain hazard. A short thump with a
+ * bit of grit, not just a bare beep — this fires often, so it's kept tight,
+ * just with real low end instead of a thin tone. */
 export function playTankHit() {
-  tone(160, 0, 0.12, 0.1, "square");
+  noiseBurst(0.14, 0.14, 1400);
+  tone(120, 0, 0.18, 0.15, "square");
 }
 
 /** Self picked up an item or healed off a pickup. */
@@ -300,9 +308,9 @@ export function playTankImpact() {
 
 /** Self's tank got destroyed — heavier and longer than a normal hit/impact. */
 export function playTankDestroyed() {
-  noiseBurst(0.5, 0.25, 700);
-  tone(140, 0, 0.3, 0.14, "sawtooth");
-  tone(70, 0.08, 0.35, 0.12, "sawtooth");
+  noiseBurst(0.6, 0.3, 650);
+  tone(130, 0, 0.35, 0.16, "sawtooth");
+  tone(65, 0.08, 0.45, 0.15, "sawtooth");
 }
 
 /** Boost just kicked in — a rising "power up" whoosh. */
