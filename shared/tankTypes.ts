@@ -917,6 +917,45 @@ export interface TankPublicState {
   serverNow: number;
 }
 
+/** A per-tick patch for one player/monster: `id` plus only the fields that
+ * actually changed since the last thing broadcast (full or delta) — see
+ * diffPlayer/diffMonster in party/tank/geometry.ts. Unchanged fields are
+ * simply absent, not `undefined`, so the client's merge (Object.assign-style
+ * spread) leaves them exactly as they were. */
+export type PlayerDelta = { id: string } & Partial<Omit<PublicTankPlayer, "id">>;
+export type MonsterDelta = { id: string } & Partial<Omit<PublicMonster, "id">>;
+
+/** The per-tick "what changed" message sent while a match is in progress,
+ * instead of the full TankPublicState — see broadcastStateDelta in
+ * tank-server.ts. Only players/monsters are actually diffed (they're the
+ * only rows that are frequently *unchanged* tick-to-tick); the remaining
+ * arrays (bullets, pickups, ...) are small and/or change membership every
+ * tick anyway, so they're just sent in full here too. Anything NOT present
+ * on this type (roomId, status, mode, hostId, mapId, killTarget) can only
+ * change through an event that already triggers a full "state" broadcast
+ * (join/leave, start/end game, ...), so the client keeps whatever it last
+ * had for those. */
+export interface TankStateDelta {
+  players: PlayerDelta[];
+  removedPlayerIds: string[];
+  monsters: MonsterDelta[];
+  removedMonsterIds: string[];
+  bullets: Bullet[];
+  pickups: Pickup[];
+  traps: Trap[];
+  crates: Crate[];
+  airstrikes: Airstrike[];
+  redBarrages: RedBarrage[];
+  impacts: TankImpact[];
+  kills: TankKillEvent[];
+  timeOfDay: TankTimeOfDay;
+  teamScores: Record<Team, number>;
+  winnerId: string | null;
+  winningTeam: Team | null;
+  matchEndsAt: number | null;
+  serverNow: number;
+}
+
 export type TankClientMessage =
   | { type: "join"; playerId: string; name: string; color: string }
   | { type: "choose_team"; team: Team }
@@ -940,6 +979,10 @@ export type TankClientMessage =
 
 export type TankServerMessage =
   | { type: "state"; state: TankPublicState }
+  // The per-tick "what changed" message sent while a match is ticking — see
+  // TankStateDelta. Only ever follows a "state" message the recipient has
+  // already seen; never sent to a connection that hasn't gotten one yet.
+  | { type: "state_delta"; delta: TankStateDelta }
   // Sent whenever the roster actually changes (join, rename/recolor, team
   // switch, leave) instead of every tick — see PlayerRosterEntry.
   | { type: "roster"; players: PlayerRosterEntry[] }

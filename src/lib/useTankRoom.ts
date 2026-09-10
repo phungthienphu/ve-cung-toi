@@ -53,6 +53,48 @@ export function useTankRoom(roomId: string, playerId: string, name: string, colo
             ...(roster.get(p.id) ?? { id: p.id, name: "?", color: "#94a3b8", team: "A" as const }),
           })),
         });
+      } else if (msg.type === "state_delta") {
+        setState((prev) => {
+          // A delta only ever follows a "state" this connection already
+          // received (see TankServerMessage's doc) — if that hasn't
+          // happened yet there's nothing to patch, so just drop it; the
+          // next full state (already on its way) will catch it up.
+          if (!prev) return prev;
+          const roster = rosterRef.current;
+          const players = new Map(prev.players.map((p) => [p.id, p]));
+          for (const id of msg.delta.removedPlayerIds) players.delete(id);
+          for (const patch of msg.delta.players) {
+            const existing = players.get(patch.id);
+            players.set(patch.id, {
+              ...(existing ?? (roster.get(patch.id) as ClientTankPlayer)),
+              ...patch,
+            });
+          }
+          const monsters = new Map(prev.monsters.map((m) => [m.id, m]));
+          for (const id of msg.delta.removedMonsterIds) monsters.delete(id);
+          for (const patch of msg.delta.monsters) {
+            monsters.set(patch.id, { ...monsters.get(patch.id), ...patch } as TankPublicState["monsters"][number]);
+          }
+          return {
+            ...prev,
+            players: [...players.values()],
+            monsters: [...monsters.values()],
+            bullets: msg.delta.bullets,
+            pickups: msg.delta.pickups,
+            traps: msg.delta.traps,
+            crates: msg.delta.crates,
+            airstrikes: msg.delta.airstrikes,
+            redBarrages: msg.delta.redBarrages,
+            impacts: msg.delta.impacts,
+            kills: msg.delta.kills,
+            timeOfDay: msg.delta.timeOfDay,
+            teamScores: msg.delta.teamScores,
+            winnerId: msg.delta.winnerId,
+            winningTeam: msg.delta.winningTeam,
+            matchEndsAt: msg.delta.matchEndsAt,
+            serverNow: msg.delta.serverNow,
+          };
+        });
       } else if (msg.type === "roster") {
         rosterRef.current = new Map(msg.players.map((p) => [p.id, p]));
       } else if (msg.type === "kicked") setKicked(true);

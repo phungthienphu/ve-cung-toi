@@ -17,6 +17,8 @@ import {
   type Direction,
   type ItemKind,
   type Monster,
+  type MonsterDelta,
+  type PlayerDelta,
   type PublicMonster,
   type PublicTankPlayer,
   type TankMapDef,
@@ -69,6 +71,52 @@ export function toPublicMonster(m: Monster): PublicMonster {
     ...rest
   } = m;
   return rest;
+}
+
+/** True if two field values differ, treating `items` (the only array-typed
+ * field on TankPlayer) as changed on content, not just reference — it's
+ * mutated in place (push/splice) elsewhere, so a plain `!==` would silently
+ * miss every change to it. */
+function fieldChanged(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length !== b.length || a.some((v, i) => v !== b[i]);
+  }
+  return a !== b;
+}
+
+/** Diffs one player against the last version actually sent out (full or
+ * delta) — see TankStateDelta. Returns null if nothing changed (skip it
+ * entirely this tick), otherwise `{id, ...only the changed fields}`. No
+ * previous version at all (shouldn't happen — a new player always arrives
+ * via a full broadcastState first) falls back to sending everything. */
+export function diffPlayer(prev: PublicTankPlayer | undefined, cur: PublicTankPlayer): PlayerDelta | null {
+  if (!prev) return { ...cur };
+  let changed = false;
+  const delta = { id: cur.id } as PlayerDelta;
+  for (const key of Object.keys(cur) as (keyof PublicTankPlayer)[]) {
+    if (key === "id") continue;
+    if (fieldChanged(cur[key], prev[key])) {
+      (delta as Record<string, unknown>)[key] = cur[key];
+      changed = true;
+    }
+  }
+  return changed ? delta : null;
+}
+
+/** Same idea as diffPlayer, for monsters — every field here is a primitive,
+ * so no fieldChanged special-casing is needed. */
+export function diffMonster(prev: PublicMonster | undefined, cur: PublicMonster): MonsterDelta | null {
+  if (!prev) return { ...cur };
+  let changed = false;
+  const delta = { id: cur.id } as MonsterDelta;
+  for (const key of Object.keys(cur) as (keyof PublicMonster)[]) {
+    if (key === "id") continue;
+    if (cur[key] !== prev[key]) {
+      (delta as Record<string, unknown>)[key] = cur[key];
+      changed = true;
+    }
+  }
+  return changed ? delta : null;
 }
 
 export function tileAt(map: TankMapDef, px: number, py: number): string {

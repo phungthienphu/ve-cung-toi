@@ -34,13 +34,18 @@ import {
   type Crate,
   type ItemKind,
   type Monster,
+  type MonsterDelta,
   type Pickup,
+  type PlayerDelta,
   type PlayerRosterEntry,
+  type PublicMonster,
+  type PublicTankPlayer,
   type RedBarrage,
   type TankClientMessage,
   type TankImpact,
   type TankKillEvent,
   type TankMapDef,
+  type TankStateDelta,
   type Team,
   type TankPlayer,
   type TankPublicState,
@@ -54,7 +59,7 @@ import {
 import { randomAirstrikeDelay, stepAirstrikes } from "./tank/airstrike";
 import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
-import { aimAngleOf, bulletTicksLeft, makeId, pickSpawnTile, spawnPixel, toPublicMonster, toPublicPlayer } from "./tank/geometry";
+import { aimAngleOf, bulletTicksLeft, diffMonster, diffPlayer, makeId, pickSpawnTile, spawnPixel, toPublicMonster, toPublicPlayer } from "./tank/geometry";
 import { stepGreenBursts, type PendingGreenBurst } from "./tank/greenBurst";
 import { spawnMonsterPacks, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
@@ -112,6 +117,13 @@ export default class TankRoom implements Party.Server {
   winnerId: string | null = null;
   winningTeam: Team | null = null;
   matchEndsAt: number | null = null;
+
+  // What the last broadcast (full or delta) actually sent for each
+  // player/monster — the baseline the next delta tick diffs against. Reset
+  // to the live state's exact contents on every full broadcastState, so a
+  // delta is always relative to something every connected client has.
+  lastSentPlayers = new Map<string, PublicTankPlayer>();
+  lastSentMonsters = new Map<string, PublicMonster>();
 
   tickHandle: ReturnType<typeof setInterval> | null = null;
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -718,7 +730,7 @@ export default class TankRoom implements Party.Server {
 
     stepBullets(this, map, now);
 
-    this.broadcastState();
+    this.broadcastStateDelta();
     // Reset only after broadcasting: an instant skill (e.g. Sand's wave) can
     // push an impact synchronously from onMessage, between two ticks — if we
     // cleared at the top of tick() instead, that push would be wiped before
@@ -762,7 +774,64 @@ export default class TankRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.party.broadcast(JSON.stringify(this.stateMessage()));
+    const state = this.publicState();
+    this.party.broadcast(JSON.stringify({ type: "state", state } satisfies TankServerMessage));
+    // Every connected client now has exactly this — the next delta tick can
+    // diff against it directly.
+    this.lastSentPlayers = new Map(state.players.map((p) => [p.id, p]));
+    this.lastSentMonsters = new Map(state.monsters.map((m) => [m.id, m]));
+  }
+
+  /** The per-tick equivalent of broadcastState — sent only while a match is
+   * actually ticking (see tick()), never for lobby/join/leave events, which
+   * still get a full broadcastState so nobody's baseline ever depends on a
+   * delta they might have missed. See TankStateDelta's doc for why only
+   * players/monsters are diffed. */
+  private broadcastStateDelta() {
+    const players = [...this.players.values()].map(toPublicPlayer);
+    const monsters = this.monsters.map(toPublicMonster);
+
+    const playerDeltas: PlayerDelta[] = [];
+    const curPlayerIds = new Set<string>();
+    for (const p of players) {
+      curPlayerIds.add(p.id);
+      const d = diffPlayer(this.lastSentPlayers.get(p.id), p);
+      if (d) playerDeltas.push(d);
+    }
+    const removedPlayerIds = [...this.lastSentPlayers.keys()].filter((id) => !curPlayerIds.has(id));
+
+    const monsterDeltas: MonsterDelta[] = [];
+    const curMonsterIds = new Set<string>();
+    for (const m of monsters) {
+      curMonsterIds.add(m.id);
+      const d = diffMonster(this.lastSentMonsters.get(m.id), m);
+      if (d) monsterDeltas.push(d);
+    }
+    const removedMonsterIds = [...this.lastSentMonsters.keys()].filter((id) => !curMonsterIds.has(id));
+
+    const delta: TankStateDelta = {
+      players: playerDeltas,
+      removedPlayerIds,
+      monsters: monsterDeltas,
+      removedMonsterIds,
+      bullets: this.bullets,
+      pickups: this.pickups,
+      traps: this.traps,
+      crates: this.crates,
+      airstrikes: this.airstrikes,
+      redBarrages: this.redBarrages,
+      impacts: this.impacts,
+      kills: this.kills,
+      timeOfDay: this.timeOfDay,
+      teamScores: this.teamScores,
+      winnerId: this.winnerId,
+      winningTeam: this.winningTeam,
+      matchEndsAt: this.matchEndsAt,
+      serverNow: Date.now(),
+    };
+    this.party.broadcast(JSON.stringify({ type: "state_delta", delta } satisfies TankServerMessage));
+    this.lastSentPlayers = new Map(players.map((p) => [p.id, p]));
+    this.lastSentMonsters = new Map(monsters.map((m) => [m.id, m]));
   }
 
   private rosterMessage(): TankServerMessage {
