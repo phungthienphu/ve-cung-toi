@@ -541,8 +541,6 @@ export default class TankRoom implements Party.Server {
 
     const now = Date.now();
     const map = this.map;
-    this.impacts = [];
-    this.kills = [];
 
     if (this.matchEndsAt !== null && now >= this.matchEndsAt) {
       this.status = "ended";
@@ -554,6 +552,8 @@ export default class TankRoom implements Party.Server {
         this.winnerId = top && (!ranked[1] || ranked[1].score < top.score) ? top.id : null;
       }
       this.broadcastState();
+      this.impacts = [];
+      this.kills = [];
       this.stopTicking();
       return;
     }
@@ -571,6 +571,12 @@ export default class TankRoom implements Party.Server {
     stepBullets(this, map, now);
 
     this.broadcastState();
+    // Reset only after broadcasting: an instant skill (e.g. Sand's wave) can
+    // push an impact synchronously from onMessage, between two ticks — if we
+    // cleared at the top of tick() instead, that push would be wiped before
+    // ever reaching a broadcast.
+    this.impacts = [];
+    this.kills = [];
     if (this.status !== "playing") this.stopTicking();
   }
 

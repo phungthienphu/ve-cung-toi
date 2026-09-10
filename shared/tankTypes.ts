@@ -267,8 +267,11 @@ export const MONSTER_HP_MAX = 4; // not every one of the pack is equally tough.
 export const MONSTER_SIZE = TANK_SIZE;
 export const MONSTER_SPEED = 1.3;
 export const MONSTER_CHASE_SPEED_MULTIPLIER = 1.4;
-export const MONSTER_DAMAGE = 10;
-export const MONSTER_CONTACT_COOLDOWN_MS = 900;
+// Lowered (and the cooldown lengthened) once monsters started traveling in
+// packs of 4 — several of them touching the same tank at once no longer
+// stacks into a near-instant kill.
+export const MONSTER_DAMAGE = 6;
+export const MONSTER_CONTACT_COOLDOWN_MS = 1100;
 export const MONSTER_DIR_CHANGE_MS = 1800;
 export const MONSTER_RESPAWN_DELAY_MS = 6000;
 export const MONSTER_NEST_RADIUS = 90; // wander leash while passive
@@ -563,9 +566,9 @@ export const RED_BARRAGE_SPREAD_RADIUS = TILE_SIZE * 1.8; // how scattered the i
 // knocks anyone caught in it back and stuns them, both cheap to land and
 // cheap to eat since the payoff is control, not raw damage.
 export const SAND_WAVE_DAMAGE = 10;
-export const SAND_WAVE_RANGE = TILE_SIZE * 4;
-export const SAND_WAVE_WIDTH = TILE_SIZE * 2.25;
-export const SAND_WAVE_KNOCKBACK_DIST = TILE_SIZE * 1.5;
+export const SAND_WAVE_RANGE = TILE_SIZE * 5.5;
+export const SAND_WAVE_WIDTH = TILE_SIZE * 3;
+export const SAND_WAVE_KNOCKBACK_DIST = TILE_SIZE * 2;
 export const SAND_WAVE_STUN_MS = 1000;
 
 // Huge's ultimate: a forced-movement dash along the current aim, passing
@@ -577,8 +580,8 @@ export const SAND_WAVE_STUN_MS = 1000;
 // gets knocked outward, at most once per dash.
 export const DASH_DURATION_MS = 400;
 export const DASH_SPEED = 11; // px/tick — vs. TANK_SPEED's 2.4
-export const DASH_KNOCKBACK_RADIUS = TANK_SIZE * 1.4;
-export const DASH_KNOCKBACK_DIST = TILE_SIZE * 1.3;
+export const DASH_KNOCKBACK_RADIUS = TANK_SIZE * 2.4;
+export const DASH_KNOCKBACK_DIST = TILE_SIZE * 2;
 
 export interface Monster {
   id: string;

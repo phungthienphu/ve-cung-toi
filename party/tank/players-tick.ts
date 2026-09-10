@@ -112,9 +112,21 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
       player.isBoosting = false;
 
-      // Bulldozer sweep: anyone caught nearby gets knocked outward, at most
-      // once per dash (DASH_DURATION_MS as the debounce window guarantees
-      // that, since a single dash never lasts longer than that).
+      // Bulldozer sweep: anyone caught nearby gets knocked out to whichever
+      // side of the dash line they're already on — NOT straight away from
+      // the tank's current position, which for anything hit head-on is
+      // roughly the same as the dash direction itself and just leaves it
+      // in front of the tank to get run over again a tick later. At most
+      // once per target per dash (DASH_DURATION_MS as the debounce window
+      // guarantees that, since a single dash never lasts longer than that).
+      const dashDirX = Math.cos(player.dashAngle);
+      const dashDirY = Math.sin(player.dashAngle);
+      const perpX = -dashDirY;
+      const perpY = dashDirX;
+      const sideOf = (tx: number, ty: number) => {
+        const side = (tx - player.x) * perpX + (ty - player.y) * perpY;
+        return side >= 0 ? 1 : -1;
+      };
       for (const other of ctx.players.values()) {
         if (other.id === player.id || !other.alive) continue;
         if (Math.hypot(other.x - player.x, other.y - player.y) >= DASH_KNOCKBACK_RADIUS) continue;
@@ -122,12 +134,29 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         const lastHit = ctx.lastDashHitAt.get(key) ?? 0;
         if (now - lastHit < DASH_DURATION_MS) continue;
         ctx.lastDashHitAt.set(key, now);
-        const angle = Math.atan2(other.y - player.y, other.x - player.x);
-        const kx = other.x + Math.cos(angle) * DASH_KNOCKBACK_DIST;
-        const ky = other.y + Math.sin(angle) * DASH_KNOCKBACK_DIST;
+        const sign = sideOf(other.x, other.y);
+        const kx = other.x + perpX * sign * DASH_KNOCKBACK_DIST;
+        const ky = other.y + perpY * sign * DASH_KNOCKBACK_DIST;
         if (!tankBlocked(map, kx, other.y)) other.x = kx;
         if (!tankBlocked(map, other.x, ky)) other.y = ky;
         ctx.impacts.push({ id: makeId(), x: other.x, y: other.y, kind: "shove" });
+      }
+      // Monsters are just as much "in the way" as another tank — bulldoze
+      // them aside too, same debounce so a lingering dash doesn't machine-
+      // gun the same monster with knockback every tick.
+      for (const monster of ctx.monsters) {
+        if (!monster.alive) continue;
+        if (Math.hypot(monster.x - player.x, monster.y - player.y) >= DASH_KNOCKBACK_RADIUS) continue;
+        const key = `${player.id}:monster:${monster.id}`;
+        const lastHit = ctx.lastDashHitAt.get(key) ?? 0;
+        if (now - lastHit < DASH_DURATION_MS) continue;
+        ctx.lastDashHitAt.set(key, now);
+        const sign = sideOf(monster.x, monster.y);
+        const kx = monster.x + perpX * sign * DASH_KNOCKBACK_DIST;
+        const ky = monster.y + perpY * sign * DASH_KNOCKBACK_DIST;
+        if (!tankBlocked(map, kx, monster.y)) monster.x = kx;
+        if (!tankBlocked(map, monster.x, ky)) monster.y = ky;
+        ctx.impacts.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shove" });
       }
     } else if (!input) {
       player.moving = false;

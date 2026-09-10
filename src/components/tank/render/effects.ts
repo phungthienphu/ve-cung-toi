@@ -214,7 +214,7 @@ export interface LeafParticle {
 // aim, matching the exact SAND_WAVE_RANGE/SAND_WAVE_WIDTH hitbox the server
 // resolved hits against — so the visual never lies about what actually got
 // hit.
-export const SAND_WAVE_EFFECT_DURATION_MS = 420;
+export const SAND_WAVE_EFFECT_DURATION_MS = 550;
 export interface SandWaveEffect {
   id: string;
   x: number;
@@ -222,6 +222,15 @@ export interface SandWaveEffect {
   angle: number;
   start: number;
 }
+
+// Deterministic-per-effect grit specks scattered inside the cone — fixed
+// offsets (as fractions of reach/width) reused every frame of one effect's
+// life so they don't swim around, just fade with everything else.
+const SAND_GRAIN_OFFSETS = Array.from({ length: 14 }, (_, i) => ({
+  along: 0.15 + ((i * 0.37) % 0.85),
+  across: (((i * 0.61) % 1) - 0.5) * 0.9,
+  size: 1.5 + ((i * 7) % 3),
+}));
 
 export function drawSandWave(ctx: CanvasRenderingContext2D, effect: SandWaveEffect, progress: number) {
   const alpha = 1 - progress;
@@ -233,8 +242,22 @@ export function drawSandWave(ctx: CanvasRenderingContext2D, effect: SandWaveEffe
   const px = -uy;
   const py = ux;
 
+  // A wider, softer haze first — sells "a big cloud of sand", not just a
+  // hard-edged wedge.
   ctx.save();
-  ctx.globalAlpha = alpha * 0.75;
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.fillStyle = "#d97706";
+  ctx.beginPath();
+  ctx.moveTo(effect.x + px * nearHalfWidth * 1.6, effect.y + py * nearHalfWidth * 1.6);
+  ctx.lineTo(effect.x + ux * reach * 1.08 + px * farHalfWidth * 1.35, effect.y + uy * reach * 1.08 + py * farHalfWidth * 1.35);
+  ctx.lineTo(effect.x + ux * reach * 1.08 - px * farHalfWidth * 1.35, effect.y + uy * reach * 1.08 - py * farHalfWidth * 1.35);
+  ctx.lineTo(effect.x - px * nearHalfWidth * 1.6, effect.y - py * nearHalfWidth * 1.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.8;
   ctx.fillStyle = "#b45309";
   ctx.beginPath();
   ctx.moveTo(effect.x + px * nearHalfWidth, effect.y + py * nearHalfWidth);
@@ -243,9 +266,23 @@ export function drawSandWave(ctx: CanvasRenderingContext2D, effect: SandWaveEffe
   ctx.lineTo(effect.x - px * nearHalfWidth, effect.y - py * nearHalfWidth);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = `rgba(217,119,6,${alpha * 0.6})`;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = `rgba(217,119,6,${alpha * 0.7})`;
+  ctx.lineWidth = 2.5;
   ctx.stroke();
+
+  // Grit specks scattered along the cone, brighter than the fill so they
+  // read as flying debris rather than just a flat-colored wedge.
+  ctx.fillStyle = `rgba(254,215,170,${alpha * 0.85})`;
+  for (const grain of SAND_GRAIN_OFFSETS) {
+    const along = grain.along * reach;
+    const width = nearHalfWidth + (farHalfWidth - nearHalfWidth) * grain.along;
+    const across = grain.across * width;
+    const gx = effect.x + ux * along + px * across;
+    const gy = effect.y + uy * along + py * across;
+    ctx.beginPath();
+    ctx.arc(gx, gy, grain.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 

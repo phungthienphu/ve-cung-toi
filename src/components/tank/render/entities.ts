@@ -67,21 +67,43 @@ export function drawTank(
     ctx.restore();
   }
 
-  // Huge's dash: a few dust streaks trailing behind, opposite the dash
-  // direction — drawn before the tank sprite so it reads as being kicked up
-  // from underneath rather than floating on top.
+  // Huge's dash: a billowing dust cloud + a fan of streaks trailing behind,
+  // opposite the dash direction — drawn before the tank sprite so it reads
+  // as being kicked up from underneath rather than floating on top.
   if (dashInfo?.isDashing) {
+    const t = performance.now();
     const backX = Math.cos(dashInfo.angle + Math.PI);
     const backY = Math.sin(dashInfo.angle + Math.PI);
     const perpX = -Math.sin(dashInfo.angle);
     const perpY = Math.cos(dashInfo.angle);
+
+    // Soft billowing dust cloud, biggest right behind the tank and fading
+    // out further back — sells "kicking up a lot of ground", not just a
+    // motion streak.
     ctx.save();
-    ctx.strokeStyle = "rgba(120,113,108,0.6)";
+    for (let i = 0; i < 3; i++) {
+      const puffDist = 8 + i * 11 + Math.sin(t / 60 + i * 2) * 3;
+      const puffSize = (half + 6 - i * 3) * (1 + 0.15 * Math.sin(t / 50 + i));
+      const px = x + backX * puffDist + perpX * Math.sin(t / 80 + i * 1.7) * 4;
+      const py = y + backY * puffDist + perpY * Math.sin(t / 80 + i * 1.7) * 4;
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, puffSize);
+      grad.addColorStop(0, `rgba(168,143,101,${0.5 - i * 0.13})`);
+      grad.addColorStop(1, "rgba(168,143,101,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(px, py, puffSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // A denser fan of streak lines cutting through the dust cloud.
+    ctx.save();
     ctx.lineCap = "round";
-    for (let i = 0; i < 4; i++) {
-      const spread = (i - 1.5) * 4;
-      const len = 10 + (i % 2) * 6;
-      ctx.lineWidth = 2 - (i % 2);
+    for (let i = 0; i < 8; i++) {
+      const spread = (i - 3.5) * 3.2;
+      const len = 12 + ((i * 7) % 12) + Math.sin(t / 40 + i) * 3;
+      ctx.strokeStyle = `rgba(120,113,108,${0.55 - (i % 3) * 0.1})`;
+      ctx.lineWidth = i % 2 === 0 ? 2.2 : 1.3;
       ctx.beginPath();
       ctx.moveTo(x + perpX * spread, y + perpY * spread);
       ctx.lineTo(x + perpX * spread + backX * len, y + perpY * spread + backY * len);
