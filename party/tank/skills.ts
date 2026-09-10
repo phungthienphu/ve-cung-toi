@@ -8,6 +8,7 @@
 
 import {
   BULLET_SIZE,
+  causeCode,
   DARKLARGE_AURA_DURATION_MS,
   DARKLARGE_AURA_RADIUS,
   DARKLARGE_AURA_GRACE_MS,
@@ -38,7 +39,7 @@ import {
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
 import { fireGreenVolley, type GreenBurstFieldCtx, type PendingGreenBurst } from "./greenBurst";
-import { aimAngleOf, makeId, tankBlocked } from "./geometry";
+import { aimAngleOf, bulletTicksLeft, makeId, tankBlocked } from "./geometry";
 import type { PendingHook } from "./hook";
 import { createRedBarrage } from "./redBarrage";
 
@@ -99,8 +100,9 @@ export function fireSniperShot(ctx: SniperCtx, player: TankPlayer) {
     y: player.y + Math.sin(angle) * offset,
     angle,
     kind: "big",
-    cause: "Bắn tỉa",
+    causeCode: causeCode("Bắn tỉa"),
     speed: SNIPER_BULLET_SPEED,
+    ticksLeft: bulletTicksLeft("big", SNIPER_BULLET_SPEED),
   });
   player.ultimateEnergy = 0;
   player.sniperChargingSince = null;

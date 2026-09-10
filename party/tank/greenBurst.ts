@@ -4,8 +4,8 @@
 // even if the tank keeps moving between volleys — nothing here locks
 // movement, unlike Sand/Huge/bigRed's ultimates.
 
-import { BULLET_SPEED, GREEN_BURST_BULLET_COUNT, GREEN_BURST_INTERVAL_MS, type Bullet, type TankPlayer } from "../../shared/tankTypes";
-import { makeId } from "./geometry";
+import { BULLET_SPEED, GREEN_BURST_BULLET_COUNT, GREEN_BURST_INTERVAL_MS, causeCode, type Bullet, type TankPlayer } from "../../shared/tankTypes";
+import { bulletTicksLeft, makeId } from "./geometry";
 
 export interface PendingGreenBurst {
   id: string;
@@ -31,8 +31,11 @@ export function fireGreenVolley(ctx: GreenBurstFieldCtx, owner: TankPlayer) {
       y: owner.y,
       angle,
       kind: "normal",
-      cause: "Đạn thường",
+      causeCode: causeCode("Đạn thường"),
       speed: BULLET_SPEED,
+      // A skill activation, even though each pellet only deals normal
+      // damage — gets the longer "big" range like every other ultimate shot.
+      ticksLeft: bulletTicksLeft("big", BULLET_SPEED),
     });
   }
 }

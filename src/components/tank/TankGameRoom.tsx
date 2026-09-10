@@ -7,6 +7,7 @@ import { useTankRoom } from "@/lib/useTankRoom";
 import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw, startTankBgMusic, stopTankBgMusic } from "@/lib/sound";
 import { fireworks } from "@/lib/confetti";
 import {
+  AMMO_MAX_ROUNDS,
   DEFAULT_MAP_ID,
   KILL_TARGET,
   MIN_TANK_PLAYERS,
@@ -461,6 +462,18 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                 </button>
               );
             })}
+            <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
+            <div className="flex shrink-0 items-center gap-1" title="Băng đạn — hết phải chờ hồi từng viên">
+              <span className="text-xs font-medium text-slate-500">Đạn:</span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: AMMO_MAX_ROUNDS }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`h-2.5 w-2.5 rounded-full ${i < Math.floor(self.ammo) ? "bg-slate-700" : "bg-slate-200"}`}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
             {(() => {
               const skin = skinForColor(self.color);

@@ -4,12 +4,15 @@
 // they're trivial to unit-reason about in isolation from the room class.
 
 import {
+  BULLET_BIG_MAX_RANGE_PX,
+  BULLET_MAX_RANGE_PX,
   CRATE_SIZE,
   PICKUP_WEIGHTS,
   TANK_SIZE,
   TILE_SIZE,
   mapCols,
   mapRows,
+  type BulletKind,
   type Crate,
   type Direction,
   type ItemKind,
@@ -19,6 +22,14 @@ import {
 
 export function makeId(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/** How many ticks a freshly-fired bullet should survive before despawning on
+ * its own — see Bullet.ticksLeft's doc for why. A "big"/ultimate shot gets a
+ * longer real-world range than a normal one. */
+export function bulletTicksLeft(kind: BulletKind, speed: number): number {
+  const maxRange = kind === "big" ? BULLET_BIG_MAX_RANGE_PX : BULLET_MAX_RANGE_PX;
+  return Math.ceil(maxRange / speed);
 }
 
 export function tileAt(map: TankMapDef, px: number, py: number): string {

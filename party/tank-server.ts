@@ -1,10 +1,12 @@
 import type * as Party from "partykit/server";
 import {
+  AMMO_MAX_ROUNDS,
   BULLET_SIZE,
   BULLET_SPEED,
   BULLET_SPREAD_MAX_DEG,
   BULLET_SPREAD_PER_SHOT_DEG,
   BULLET_SPREAD_RESET_MS,
+  causeCode,
   DEFAULT_MAP_ID,
   FIRE_COOLDOWN_MS,
   FIRE_SHOTS_PER_ITEM,
@@ -51,7 +53,7 @@ import {
 import { randomAirstrikeDelay, stepAirstrikes } from "./tank/airstrike";
 import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
-import { aimAngleOf, makeId, pickSpawnTile, spawnPixel } from "./tank/geometry";
+import { aimAngleOf, bulletTicksLeft, makeId, pickSpawnTile, spawnPixel } from "./tank/geometry";
 import { stepGreenBursts, type PendingGreenBurst } from "./tank/greenBurst";
 import { spawnMonsterPacks, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
@@ -277,6 +279,7 @@ export default class TankRoom implements Party.Server {
         ultimateEnergy: 0,
         shieldHitsLeft: 0,
         fireShotsLeft: 0,
+        ammo: AMMO_MAX_ROUNDS,
         burningUntil: null,
         burnOwnerId: null,
         aimAngle: null,
@@ -298,6 +301,7 @@ export default class TankRoom implements Party.Server {
       player.deaths ??= 0;
       player.velocityX ??= 0;
       player.velocityY ??= 0;
+      player.ammo ??= AMMO_MAX_ROUNDS;
     }
 
     if (!this.hostId || !this.players.get(this.hostId)?.connected) {
@@ -368,6 +372,7 @@ export default class TankRoom implements Party.Server {
       p.ultimateEnergy = 0;
       p.shieldHitsLeft = 0;
       p.fireShotsLeft = 0;
+      p.ammo = AMMO_MAX_ROUNDS;
       p.burningUntil = null;
       p.burnOwnerId = null;
       resetSkillState(p);
@@ -528,10 +533,18 @@ export default class TankRoom implements Party.Server {
     }
 
     const isFire = !big && player.fireShotsLeft > 0;
+    // Plain shots draw from a small magazine (see AMMO_MAX_ROUNDS) — same
+    // exemptions as the spread penalty below: a "big" shot, fire ammo, and
+    // Blue's rapid-fire window all skip it.
+    const usesMagazine = !big && !isFire && !isRapidFiring;
+    if (usesMagazine && player.ammo < 1) return;
+
     if (big) {
       player.ultimateEnergy = 0;
     } else if (isFire) {
       player.fireShotsLeft -= 1;
+    } else if (usesMagazine) {
+      player.ammo -= 1;
     }
 
     // A normal shot fired right on the heels of the previous one (i.e.
@@ -551,15 +564,17 @@ export default class TankRoom implements Party.Server {
     const spreadRad = spreadDeg === 0 ? 0 : ((Math.random() * 2 - 1) * spreadDeg * Math.PI) / 180;
     const angle = aimAngleOf(player) + spreadRad;
     const offset = TANK_SIZE / 2 + BULLET_SIZE;
+    const kind = big ? "big" : isFire ? "fire" : "normal";
     this.bullets.push({
       id: makeId(),
       ownerId: player.id,
       x: player.x + Math.cos(angle) * offset,
       y: player.y + Math.sin(angle) * offset,
       angle,
-      kind: big ? "big" : isFire ? "fire" : "normal",
-      cause: big ? "Đạn lớn" : isFire ? "Đạn lửa" : "Đạn thường",
+      kind,
+      causeCode: causeCode(big ? "Đạn lớn" : isFire ? "Đạn lửa" : "Đạn thường"),
       speed: BULLET_SPEED,
+      ticksLeft: bulletTicksLeft(kind, BULLET_SPEED),
     });
   }
 
@@ -609,8 +624,9 @@ export default class TankRoom implements Party.Server {
         y: player.y + Math.sin(angle) * offset,
         angle,
         kind: "blind",
-        cause: "Đạn thường",
+        causeCode: causeCode("Đạn thường"),
         speed: BULLET_SPEED,
+        ticksLeft: bulletTicksLeft("blind", BULLET_SPEED),
       });
     } else if (kind === "shield") {
       player.shieldHitsLeft = SHIELD_MAX_HITS;

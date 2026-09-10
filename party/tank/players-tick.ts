@@ -3,6 +3,8 @@
 // two ticked damage-over-time sources (hazard tiles, burning).
 
 import {
+  AMMO_MAX_ROUNDS,
+  AMMO_REGEN_PER_TICK,
   BOOST_DRAIN_PER_TICK,
   BOOST_REGEN_PER_TICK,
   BOOST_SPEED_MULTIPLIER,
@@ -102,6 +104,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.isBoosting = false;
         player.shieldHitsLeft = 0;
         player.fireShotsLeft = 0;
+        player.ammo = AMMO_MAX_ROUNDS;
         player.burningUntil = null;
         player.burnOwnerId = null;
         player.velocityX = 0;
@@ -112,6 +115,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
     }
     const ultimateConfig = ULTIMATE_CONFIG[skinForColor(player.color)];
     player.ultimateEnergy = Math.min(ultimateConfig.maxEnergy, player.ultimateEnergy + ultimateConfig.regenPerTick);
+    player.ammo = Math.min(AMMO_MAX_ROUNDS, player.ammo + AMMO_REGEN_PER_TICK);
     if (player.rapidFireUntil !== null && now >= player.rapidFireUntil) {
       player.rapidFireUntil = null;
     }

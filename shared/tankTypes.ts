@@ -211,7 +211,7 @@ export const BULLET_SIZE = 6;
 export const BULLET_SPEED = 6.5; // px/tick
 export const FIRE_COOLDOWN_MS = 480; // was 400 — still felt spammable even with the spread penalty below, so slowed the base rate too
 export const RESPAWN_DELAY_MS = 1500;
-export const TICK_MS = 50; // 20Hz
+export const TICK_MS = 65; // ~15.4Hz — was 50 (20Hz); lower tick rate cuts both server CPU/tick and broadcast bandwidth, safe under load on a free-tier deploy since the client already interpolates between ticks
 
 // LoL/Bang Bang-style health pool: a big number with proportional damage per
 // hit, instead of a fixed "3 hits and you're dead" counter — gives room for
@@ -318,6 +318,17 @@ export const MAX_BOOST_ENERGY = 100;
 export const BOOST_DRAIN_PER_TICK = 1.6; // ~3s of sprint on a full bar at 20Hz
 export const BOOST_REGEN_PER_TICK = 0.5; // ~10s to refill from empty
 export const BOOST_SPEED_MULTIPLIER = 1.8;
+
+// A plain normal shot draws from a small magazine instead of firing forever
+// on cooldown alone — on top of the spread-on-spam penalty above, this puts
+// a hard ceiling on a burst before the player is forced to actually wait,
+// then trickles back one round at a time rather than an instant full
+// refill. Doesn't apply to a "big"/ultimate shot, fire ammo (already its
+// own limited resource), or Blue's rapid-fire window (going fast on purpose
+// is that skill's whole point) — same exemptions as BULLET_SPREAD above.
+export const AMMO_MAX_ROUNDS = 4;
+export const AMMO_REGEN_MS_PER_ROUND = 2000; // time to regen one round from empty
+export const AMMO_REGEN_PER_TICK = TICK_MS / AMMO_REGEN_MS_PER_ROUND;
 
 // Inventory: up to 3 different pickup kinds held at once, each consumed the
 // moment it's used (no stacking, no duplicates of the same kind).
@@ -450,6 +461,9 @@ export interface TankPlayer {
   ultimateEnergy: number;
   shieldHitsLeft: number;
   fireShotsLeft: number;
+  // Normal-shot magazine — see AMMO_MAX_ROUNDS. Regenerates passively every
+  // tick (players-tick.ts), consumed one at a time in handleShoot.
+  ammo: number;
   burningUntil: number | null;
   burnOwnerId: string | null;
   // Mouse-aim angle in radians, sent only by desktop clients tracking the
@@ -513,12 +527,33 @@ export interface Bullet {
   // being locked to the 4-directional movement grid.
   angle: number;
   kind: BulletKind;
-  cause: DamageCause;
+  // Index into DAMAGE_CAUSES — see there for why this isn't the readable
+  // string directly.
+  causeCode: number;
   // Per-bullet travel speed (px/tick) — lets a skill's own bullet (e.g.
   // Dark's sniper round) fly faster than the shared BULLET_SPEED default
   // without needing a whole separate bullet kind.
   speed: number;
+  // Ticks left before this bullet despawns on its own even if it never hits
+  // anything — computed once at creation from BULLET_MAX_RANGE_PX (or
+  // BULLET_BIG_MAX_RANGE_PX for a "big"/ultimate shot) divided by speed, so
+  // every bullet has roughly the same real-world range regardless of how
+  // fast it travels. Without this, a shot fired into open space (or a big
+  // volley like Green's) would keep flying until it happened to reach a
+  // wall, which on a large map meant a lot of simultaneously-live bullets
+  // padding out every tick's broadcast for no gameplay reason.
+  ticksLeft: number;
 }
+
+export const BULLET_MAX_RANGE_PX = TILE_SIZE * 4;
+// A skill/ultimate shot is a deliberate, energy-gated commitment — it should
+// reach noticeably farther than a free-to-spam normal shot.
+export const BULLET_BIG_MAX_RANGE_PX = TILE_SIZE * 8;
+// Safety net on top of per-player range/magazine limits — if several
+// players' bullets still pile up at once (e.g. multiple Green ultimates),
+// this caps the total broadcast every tick regardless of source. Oldest
+// bullets get dropped first once over the cap.
+export const MAX_BULLETS_TOTAL = 180;
 
 export interface Pickup {
   id: string;
@@ -761,6 +796,29 @@ export type DamageCause =
   | "Chông"
   | "Không kích"
   | "Pháo kích";
+
+// Every DamageCause, in a fixed order — lets a bullet (broadcast every tick,
+// up to MAX_BULLETS_TOTAL of them) carry a 1-2 digit index instead of
+// repeating the full Vietnamese label on every single one. TankKillEvent
+// (a handful of rows per tick at most) isn't worth the same treatment and
+// keeps the readable string.
+export const DAMAGE_CAUSES: DamageCause[] = [
+  "Đạn thường",
+  "Đạn lớn",
+  "Bắn tỉa",
+  "Đạn lửa",
+  "Thiêu đốt",
+  "Bẫy",
+  "Móc câu",
+  "Sóng cát",
+  "Quái vật",
+  "Chông",
+  "Không kích",
+  "Pháo kích",
+];
+export function causeCode(cause: DamageCause): number {
+  return DAMAGE_CAUSES.indexOf(cause);
+}
 
 // Purely cosmetic — rolled once per match (see tank-server.ts's
 // handleStartGame) and broadcast so everyone sees the same lighting rather

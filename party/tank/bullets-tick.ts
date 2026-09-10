@@ -4,6 +4,8 @@
 
 import {
   CRATE_SIZE,
+  DAMAGE_CAUSES,
+  MAX_BULLETS_TOTAL,
   MONSTER_AGGRO_TIMEOUT_MS,
   MONSTER_RESPAWN_DELAY_MS,
   MONSTER_SIZE,
@@ -27,10 +29,20 @@ export interface BulletsTickCtx extends CombatCtx {
 }
 
 export function stepBullets(ctx: BulletsTickCtx, map: TankMapDef, now: number) {
+  // Safety net on top of per-player range/magazine limits — if bullets from
+  // several sources still pile up past this, drop the oldest ones (front of
+  // the array, since bullets are always appended) rather than let one tick's
+  // broadcast keep growing unbounded.
+  if (ctx.bullets.length > MAX_BULLETS_TOTAL) {
+    ctx.bullets = ctx.bullets.slice(ctx.bullets.length - MAX_BULLETS_TOTAL);
+  }
   const survivors: Bullet[] = [];
   for (const bullet of ctx.bullets) {
     bullet.x += Math.cos(bullet.angle) * bullet.speed;
     bullet.y += Math.sin(bullet.angle) * bullet.speed;
+
+    bullet.ticksLeft -= 1;
+    if (bullet.ticksLeft <= 0) continue; // out of range — same "just vanishes" path as hitting a wall
 
     if (tileAt(map, bullet.x, bullet.y) === "#") continue; // hit a wall
 
@@ -51,7 +63,7 @@ export function stepBullets(ctx: BulletsTickCtx, map: TankMapDef, now: number) {
       const dy = target.y - bullet.y;
       if (Math.hypot(dx, dy) < TANK_SIZE / 2) {
         hit = true;
-        applyHit(ctx, target, bullet.kind, bullet.ownerId, bullet.cause);
+        applyHit(ctx, target, bullet.kind, bullet.ownerId, DAMAGE_CAUSES[bullet.causeCode]);
         break;
       }
     }
