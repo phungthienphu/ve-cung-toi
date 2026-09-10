@@ -3,7 +3,8 @@
   "name": "ve-cung-toi",
   "main": "party/server.ts",
   "parties": {
-    "tanks": "party/tank-server.ts"
+    "tanks": "party/tank-server.ts",
+    "tanklobby": "party/tank-directory.ts"
   },
   "compatibilityDate": "2024-11-01"
 }

@@ -297,6 +297,12 @@ export const MONSTER_NEST_RADIUS = 90; // wander leash while passive
 export const MONSTER_CHASE_LEASH_RADIUS = 170; // gives up the chase past this from its nest
 export const MONSTER_REST_CHANCE = 0.4; // odds it pauses instead of picking a new direction
 export const MONSTER_REST_DURATION_MS = 2500;
+// Every map's fixed spawn corners happen to have a decorative bush cluster
+// right next to them — without this, a nest could land there and a freshly
+// spawned tank would take a hit before it could even move. Whole bush
+// clusters within this many tiles of any spawn point are excluded from nest
+// placement entirely, not just individual tiles.
+export const MONSTER_SPAWN_EXCLUSION_TILES = 6;
 
 // A monster's nest is marked on the ground by a mud/water puddle — stepping
 // into it douses a burning tank, and a monster resting in its own puddle (or
@@ -740,6 +746,23 @@ export interface TankKillEvent {
 export type TankRoomStatus = "lobby" | "playing" | "ended";
 
 export type TankRoomMode = "ffa" | "team" | "practice";
+export const TANK_ROOM_MODE_LABELS: Record<TankRoomMode, string> = {
+  ffa: "Đấu tự do",
+  team: "Đấu đội",
+  practice: "Luyện tập",
+};
+
+/** One entry in the public room list (tank-directory party) — what the
+ * tank-game home screen shows for each open lobby, so people can join
+ * without knowing a room code in advance. Deliberately excludes anything
+ * player-identifying (names, colors) since this is fetched by anyone who
+ * loads the home page, not just people already in the room. */
+export interface TankRoomListing {
+  roomId: string;
+  playerCount: number;
+  mode: TankRoomMode;
+  status: TankRoomStatus;
+}
 
 export interface TankPublicState {
   roomId: string;

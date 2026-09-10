@@ -107,7 +107,11 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     // internal resolution — that mismatch was the main source of the
     // "blocky/low-res" look. All drawing below still happens in the same
     // logical VIEWPORT_W x VIEWPORT_H coordinate space thanks to this scale.
-    const dpr = window.devicePixelRatio || 1;
+    // Capped at 2x: a 3x-DPR phone would otherwise redraw ~2.25x more pixels
+    // every single frame (dozens of drawImage/gradient/save-restore calls
+    // each) for a sharpness difference nobody notices on a small screen —
+    // 2x already looks crisp and is the actual perf-sensitive case.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = VIEWPORT_W * dpr;
     canvas.height = VIEWPORT_H * dpr;
     ctx.scale(dpr, dpr);

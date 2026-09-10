@@ -39,6 +39,7 @@ import {
   type Team,
   type TankPlayer,
   type TankPublicState,
+  type TankRoomListing,
   type TankRoomMode,
   type TankRoomStatus,
   type TankServerMessage,
@@ -124,6 +125,7 @@ export default class TankRoom implements Party.Server {
     if (!player) return;
     player.connected = false;
     this.broadcastState();
+    this.reportToDirectory();
 
     const existing = this.disconnectTimers.get(player.id);
     if (existing) clearTimeout(existing);
@@ -218,6 +220,7 @@ export default class TankRoom implements Party.Server {
     if (this.status !== "lobby" || sender.id !== this.hostId) return;
     this.mode = mode;
     this.broadcastState();
+    this.reportToDirectory();
   }
 
   private handleJoin(playerId: string, name: string, color: string, sender: Party.Connection) {
@@ -287,6 +290,7 @@ export default class TankRoom implements Party.Server {
 
     sender.send(JSON.stringify(this.stateMessage()));
     this.broadcastState();
+    this.reportToDirectory();
   }
 
   private handleStartGame(mapId: string, sender: Party.Connection) {
@@ -370,6 +374,7 @@ export default class TankRoom implements Party.Server {
     this.status = "playing";
     this.ensureTicking();
     this.broadcastState();
+    this.reportToDirectory();
   }
 
   private handleEndGame(sender: Party.Connection) {
@@ -393,6 +398,7 @@ export default class TankRoom implements Party.Server {
     this.winningTeam = null;
     this.matchEndsAt = null;
     this.broadcastState();
+    this.reportToDirectory();
   }
 
   private handlePlayAgain(sender: Party.Connection) {
@@ -416,6 +422,7 @@ export default class TankRoom implements Party.Server {
     this.winningTeam = null;
     this.matchEndsAt = null;
     this.broadcastState();
+    this.reportToDirectory();
   }
 
   private handleInput(
@@ -595,6 +602,7 @@ export default class TankRoom implements Party.Server {
       if (next) next.isHost = true;
     }
     this.broadcastState();
+    this.reportToDirectory();
     sender.close();
   }
 
@@ -696,5 +704,24 @@ export default class TankRoom implements Party.Server {
 
   private broadcastState() {
     this.party.broadcast(JSON.stringify(this.stateMessage()));
+  }
+
+  /** Pushes this room's current listing-relevant state (player count, mode,
+   * status) to the tank-directory party, so the tank-game home screen can
+   * show it as a joinable lobby — see tank-directory.ts. Fire-and-forget:
+   * the listing is a nice-to-have, never something gameplay should wait on
+   * or fail over. Only "lobby" rooms with someone actually in them end up
+   * shown; the directory itself filters that on read. */
+  private reportToDirectory() {
+    const listing: TankRoomListing = {
+      roomId: this.party.id,
+      playerCount: [...this.players.values()].filter((p) => p.connected).length,
+      mode: this.mode,
+      status: this.status,
+    };
+    this.party.context.parties["tanklobby"]
+      .get("main")
+      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
+      .catch(() => {});
   }
 }
