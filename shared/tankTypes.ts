@@ -197,7 +197,7 @@ export const TANK_SIZE = 22;
 export const TANK_SPEED = 2.4; // px/tick
 export const BULLET_SIZE = 6;
 export const BULLET_SPEED = 6.5; // px/tick
-export const FIRE_COOLDOWN_MS = 400;
+export const FIRE_COOLDOWN_MS = 480; // was 400 — still felt spammable even with the spread penalty below, so slowed the base rate too
 export const RESPAWN_DELAY_MS = 1500;
 export const TICK_MS = 50; // 20Hz
 
@@ -213,8 +213,8 @@ export const BULLET_DAMAGE = 20; // 5 clean hits to kill, same feel as before
 // touching raw damage/cooldown, which would punish deliberate, well-timed
 // shots exactly the same as spam.
 export const BULLET_SPREAD_RESET_MS = 500;
-export const BULLET_SPREAD_PER_SHOT_DEG = 2.5;
-export const BULLET_SPREAD_MAX_DEG = 14;
+export const BULLET_SPREAD_PER_SHOT_DEG = 3.5; // was 2.5 — ramps to max spread faster
+export const BULLET_SPREAD_MAX_DEG = 30; // was 14 — a harsher ceiling on sustained spam
 export const PICKUP_SIZE = 16;
 export const MAX_PICKUPS = 4;
 export const PICKUP_SPAWN_INTERVAL_MS = 7000;
@@ -385,7 +385,7 @@ export const ULTIMATE_ACTIVATION_MODE: Record<TankSkin, UltimateActivationMode> 
 // Blue's ultimate: hold-to-fire cooldown drops sharply for a short window
 // instead of firing one heavy shot.
 export const RAPID_FIRE_DURATION_MS = 2000;
-export const RAPID_FIRE_COOLDOWN_MS = 140; // vs. the normal FIRE_COOLDOWN_MS (350ms)
+export const RAPID_FIRE_COOLDOWN_MS = 140; // vs. the normal FIRE_COOLDOWN_MS
 
 // Dark's ultimate: press R to toggle on a scope (shows a telegraphed line
 // everyone can see and react to, following the mouse freely — no need to

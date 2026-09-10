@@ -9,6 +9,7 @@ import {
   MAX_BOOST_ENERGY,
   RED_BARRAGE_BOMB_RADIUS,
   RED_BARRAGE_SPREAD_RADIUS,
+  MONSTER_SIZE,
   TANK_SIZE,
   TICK_MS,
   TILE_SIZE,
@@ -138,6 +139,21 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         if (Math.hypot(curX - prev.x, curY - prev.y) > TANK_SIZE * 3) return { x: curX, y: curY };
         return { x: prev.x + (curX - prev.x) * tickT, y: prev.y + (curY - prev.y) * tickT };
       }
+      // Same idea for monsters and bullets — without this they were the one
+      // thing on screen still visibly stepping once per server tick (~50ms)
+      // instead of gliding, which read as constant micro-stutter even though
+      // the local tank itself (already interpolated above) looked smooth.
+      function renderMonsterPos(id: string, curX: number, curY: number): { x: number; y: number } {
+        const prev = prevS?.monsters.find((mo) => mo.id === id);
+        if (!prev) return { x: curX, y: curY };
+        if (Math.hypot(curX - prev.x, curY - prev.y) > MONSTER_SIZE * 4) return { x: curX, y: curY };
+        return { x: prev.x + (curX - prev.x) * tickT, y: prev.y + (curY - prev.y) * tickT };
+      }
+      function renderBulletPos(id: string, curX: number, curY: number): { x: number; y: number } {
+        const prev = prevS?.bullets.find((b) => b.id === id);
+        if (!prev) return { x: curX, y: curY };
+        return { x: prev.x + (curX - prev.x) * tickT, y: prev.y + (curY - prev.y) * tickT };
+      }
       const selfRender = self ? renderPos(self.id, self.x, self.y) : null;
 
       // Same idea, extended to a free-running clock: airstrike bombers fly
@@ -261,20 +277,23 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       }
 
       for (const b of s.bullets) {
+        const bp = renderBulletPos(b.id, b.x, b.y);
         if (b.kind === "big") {
-          drawBigBullet(ctx, b.x, b.y, b.angle, now);
+          drawBigBullet(ctx, bp.x, bp.y, b.angle, now);
         } else if (b.kind === "fire") {
-          drawFireBullet(ctx, b.x, b.y, b.angle, now);
+          drawFireBullet(ctx, bp.x, bp.y, b.angle, now);
         } else if (b.kind === "blind") {
-          drawBlindBullet(ctx, b.x, b.y, b.angle);
+          drawBlindBullet(ctx, bp.x, bp.y, b.angle);
         } else {
           const owner = s.players.find((p) => p.id === b.ownerId);
-          drawNormalBullet(ctx, b.x, b.y, b.angle, owner ? skinForColor(owner.color) : "blue");
+          drawNormalBullet(ctx, bp.x, bp.y, b.angle, owner ? skinForColor(owner.color) : "blue");
         }
       }
 
       for (const monster of s.monsters) {
-        if (monster.alive) drawMonster(ctx, monster);
+        if (!monster.alive) continue;
+        const mp = renderMonsterPos(monster.id, monster.x, monster.y);
+        drawMonster(ctx, { ...monster, x: mp.x, y: mp.y });
       }
 
       const visiblePlayers = s.players.filter((p) => p.alive && (p.id === selfId || !self || !isBushHidden(m, p, self)));
