@@ -31,6 +31,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
   const [minWords, setMinWords] = useState(DEFAULT_ROOM_CONFIG.minWords);
   const [maxWords, setMaxWords] = useState(DEFAULT_ROOM_CONFIG.maxWords);
   const [customWords, setCustomWords] = useState("");
+  const [customOnly, setCustomOnly] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const connectedCount = state.players.filter((p) => p.connected).length;
@@ -60,7 +61,11 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
       .map((w) => w.trim())
       .filter(Boolean);
 
-    if (wordlistIds.length === 0 && custom.length < 20) {
+    if (customOnly && custom.length < 20) {
+      alert("Chế độ chỉ dùng từ tùy chỉnh cần tối thiểu 20 từ.");
+      return;
+    }
+    if (!customOnly && wordlistIds.length === 0 && custom.length < 20) {
       alert("Chọn ít nhất một bộ từ mặc định, hoặc nhập tối thiểu 20 từ tùy chỉnh.");
       return;
     }
@@ -70,6 +75,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
       drawSeconds,
       wordlistIds: wordlistIds.length ? wordlistIds : ["vi-default"],
       customWords: custom,
+      customOnly,
       minWords,
       maxWords,
     });
@@ -134,15 +140,15 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                 />
               </div>
 
-              <div>
+              <div className={customOnly ? "opacity-40" : undefined}>
                 <label className="mb-1 block text-sm font-medium text-slate-600">Bộ từ vựng</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={useVi} onChange={(e) => setUseVi(e.target.checked)} />
+                    <input type="checkbox" checked={useVi} disabled={customOnly} onChange={(e) => setUseVi(e.target.checked)} />
                     Tiếng Việt
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={useEn} onChange={(e) => setUseEn(e.target.checked)} />
+                    <input type="checkbox" checked={useEn} disabled={customOnly} onChange={(e) => setUseEn(e.target.checked)} />
                     English
                   </label>
                 </div>
@@ -227,6 +233,10 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                   placeholder={"con mèo\ncon chó\n..."}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                 />
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={customOnly} onChange={(e) => setCustomOnly(e.target.checked)} />
+                  Chỉ dùng từ tùy chỉnh (bỏ qua bộ từ mặc định ở trên)
+                </label>
               </div>
 
               <button
@@ -254,7 +264,11 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                   <div className="flex justify-between gap-4">
                     <dt>Bộ từ vựng</dt>
                     <dd className="text-right font-medium">
-                      {state.config.wordlistIds.length > 0 ? state.config.wordlistIds.map(wordlistLabel).join(", ") : "—"}
+                      {state.config.customOnly
+                        ? "Chỉ từ tùy chỉnh"
+                        : state.config.wordlistIds.length > 0
+                          ? state.config.wordlistIds.map(wordlistLabel).join(", ")
+                          : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between">

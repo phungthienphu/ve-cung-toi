@@ -228,11 +228,14 @@ export default class GameRoom implements Party.Server {
       drawSeconds: Math.min(Math.max(30, Math.round(config.drawSeconds) || 80), 240),
       wordlistIds: config.wordlistIds?.length ? config.wordlistIds : ["vi-default"],
       customWords: (config.customWords || []).map((w) => w.trim()).filter(Boolean),
+      customOnly: !!config.customOnly,
       minWords,
       maxWords,
     };
 
-    const fullPool = [...getWordsForIds(this.config.wordlistIds), ...this.config.customWords];
+    const fullPool = this.config.customOnly
+      ? this.config.customWords
+      : [...getWordsForIds(this.config.wordlistIds), ...this.config.customWords];
     this.wordPool = fullPool.filter((w) => {
       const n = countWords(w);
       return n >= minWords && n <= maxWords;

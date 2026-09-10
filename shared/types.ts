@@ -39,6 +39,7 @@ export interface RoomConfig {
   drawSeconds: number;
   wordlistIds: string[]; // e.g. ["vi-default", "en-default"]
   customWords: string[]; // extra words typed by the host
+  customOnly: boolean; // when true, ignore wordlistIds entirely — draw only from customWords
   minWords: number; // filter: minimum number of words in a chosen phrase
   maxWords: number; // filter: maximum number of words in a chosen phrase
 }
@@ -48,6 +49,7 @@ export const DEFAULT_ROOM_CONFIG: RoomConfig = {
   drawSeconds: 80,
   wordlistIds: ["vi-default"],
   customWords: [],
+  customOnly: false,
   minWords: 1,
   maxWords: 3,
 };
