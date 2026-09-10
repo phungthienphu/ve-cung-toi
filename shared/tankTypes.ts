@@ -214,6 +214,15 @@ export const TICK_MS = 50; // 20Hz
 // a gradient health bar and percentage-flavored effects (burns, shields).
 export const MAX_HP = 100;
 export const BULLET_DAMAGE = 20; // 5 clean hits to kill, same feel as before
+
+// A normal shot fired well within FIRE_COOLDOWN_MS of the previous one (i.e.
+// holding the trigger down) gets progressively more spread — reset back to
+// pinpoint after a short pause. Targets mindless spam specifically without
+// touching raw damage/cooldown, which would punish deliberate, well-timed
+// shots exactly the same as spam.
+export const BULLET_SPREAD_RESET_MS = 500;
+export const BULLET_SPREAD_PER_SHOT_DEG = 2.5;
+export const BULLET_SPREAD_MAX_DEG = 14;
 export const PICKUP_SIZE = 16;
 export const MAX_PICKUPS = 2;
 export const PICKUP_SPAWN_INTERVAL_MS = 9000;
@@ -458,6 +467,17 @@ export interface TankPlayer {
   hookPullFromY: number;
   hookPullToX: number;
   hookPullToY: number;
+  // darkLarge's ultimate, the caster's own side: non-null while this
+  // player's shield aura is currently emitting (see stepShieldAuras in
+  // skills.ts). Reset via resetSkillState like the other per-skin fields.
+  shieldAuraUntil: number | null;
+  // darkLarge's ultimate, the beneficiary side: non-null while this player
+  // (an ally, or darkLarge itself) is currently standing inside someone's
+  // active aura — refreshed every tick they stay in range, checked in
+  // combat.ts's damagePlayer to block damage outright. Unlike shieldHitsLeft,
+  // being under this never locks movement. Reset alongside
+  // stunnedUntil/blindedUntil/burningUntil.
+  auraShieldUntil: number | null;
 }
 
 export interface Bullet {
@@ -619,6 +639,26 @@ export const HOOK_STUN_MS = 900;
 // stopped for the rest of it once the reel finishes.
 export const HOOK_THROW_MS = 160;
 export const HOOK_PULL_DURATION_MS = 220;
+
+// Green's ultimate: GREEN_BURST_VOLLEYS rings of GREEN_BURST_BULLET_COUNT
+// bullets each, spaced evenly around a full circle and fired
+// GREEN_BURST_INTERVAL_MS apart — each pellet does plain normal-bullet
+// damage, the payoff is area coverage over 3 waves rather than one
+// overtuned hit. Doesn't lock movement, unlike Sand/Huge/bigRed's ultimates.
+export const GREEN_BURST_BULLET_COUNT = 12;
+export const GREEN_BURST_VOLLEYS = 3;
+export const GREEN_BURST_INTERVAL_MS = 220;
+
+// darkLarge's ultimate: a mobile damage-immunity bubble around the tank
+// itself, refreshed onto any ally still inside DARKLARGE_AURA_RADIUS every
+// tick while the channel (DARKLARGE_AURA_DURATION_MS) is up. Unlike the item
+// shield (shieldHitsLeft), this blocks damage outright while it's active
+// instead of a fixed number of hits, and never locks movement — darkLarge
+// and its allies keep fighting/repositioning normally. See damagePlayer in
+// combat.ts for where it actually blocks damage.
+export const DARKLARGE_AURA_DURATION_MS = 8000;
+export const DARKLARGE_AURA_RADIUS = TILE_SIZE * 3.5;
+export const DARKLARGE_AURA_GRACE_MS = 200; // buffer so one tick of latency doesn't flicker the buff off right at the edge
 
 export interface Monster {
   id: string;

@@ -299,6 +299,41 @@ export function drawHookedOverlay(ctx: CanvasRenderingContext2D, x: number, y: n
   }
 }
 
+/** darkLarge's aura, the emitter's own side: a large violet ring at
+ * DARKLARGE_AURA_RADIUS around the tank while its channel is up, so
+ * everyone can see exactly how close they need to stay to be covered. */
+export function drawAuraEmitterRing(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, time: number) {
+  const pulse = 0.6 + 0.4 * Math.sin(time / 260);
+  ctx.save();
+  ctx.fillStyle = `rgba(167,139,250,${0.05 * pulse})`;
+  ctx.strokeStyle = `rgba(167,139,250,${0.55 * pulse})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** darkLarge's aura, the beneficiary's side: a soft violet glow on anyone
+ * (ally or darkLarge itself) currently standing inside an active aura —
+ * distinct in color from the item shield's blue ring (drawn inline above)
+ * so the two "can't be hurt" states still read as different things. */
+export function drawAuraShieldGlow(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  const half = TANK_SIZE / 2;
+  const pulse = 0.6 + 0.4 * Math.sin(time / 220);
+  ctx.save();
+  ctx.fillStyle = `rgba(167,139,250,${0.15 * pulse})`;
+  ctx.strokeStyle = `rgba(167,139,250,${0.75 * pulse})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, half + 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: number) {
   const half = PICKUP_SIZE / 2;
   ctx.fillStyle = "#dcfce7";

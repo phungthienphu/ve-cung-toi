@@ -37,14 +37,7 @@ interface UltimateUi {
 
 // One entry per skin so the "R" button's icon/tooltip/color stays a single
 // table edit away instead of a growing pile of `isBlue`/`isDark`-style
-// booleans in the JSX below. Skins without a custom skill yet share the
-// original "big shot" look.
-const DEFAULT_ULTIMATE_UI: UltimateUi = {
-  icon: "💥",
-  label: "Đạn to (R) — sát thương gấp đôi, cần đầy năng lượng",
-  activeClasses: "border-red-400 bg-red-50 text-red-700 hover:bg-red-100",
-  barClass: "bg-red-500",
-};
+// booleans in the JSX below.
 const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
   blue: {
     icon: "🔥",
@@ -58,7 +51,12 @@ const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
     activeClasses: "border-red-400 bg-red-50 text-red-700 hover:bg-red-100",
     barClass: "bg-red-500",
   },
-  green: DEFAULT_ULTIMATE_UI,
+  green: {
+    icon: "✳️",
+    label: "Vòng đạn tỏa (R) — bắn 3 đợt đạn tỏa tròn quanh xe, vẫn di chuyển được",
+    activeClasses: "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+    barClass: "bg-emerald-500",
+  },
   red: {
     icon: "💣",
     label: "Ném bom (R để ngắm điểm bằng chuột trên bản đồ, bắn bằng nút bắn thường) — rải nhiều đợt nổ, né bằng cách tăng tốc",
@@ -77,7 +75,12 @@ const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
     activeClasses: "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100",
     barClass: "bg-rose-500",
   },
-  darkLarge: DEFAULT_ULTIMATE_UI,
+  darkLarge: {
+    icon: "🛡️",
+    label: "Khiên chắn di động (R) — miễn sát thương cho bản thân và đồng đội gần trong 8s, vẫn di chuyển được",
+    activeClasses: "border-violet-400 bg-violet-50 text-violet-700 hover:bg-violet-100",
+    barClass: "bg-violet-500",
+  },
   huge: {
     icon: "🚀",
     label: "Lao thẳng (R) — lao nhanh xuyên qua tank khác theo hướng ngắm, hất văng ai ở gần, không gây sát thương",

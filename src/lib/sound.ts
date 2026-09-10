@@ -250,6 +250,35 @@ export function playHook() {
   noiseBurst(0.12, 0.08, 900);
 }
 
+/** Green's radial burst — three quick overlapping pops instead of one bang,
+ * hinting at the volley-of-3 structure. */
+export function playGreenBurst() {
+  tone(500, 0, 0.05, 0.09, "square");
+  tone(500, 0.09, 0.05, 0.08, "square");
+  tone(500, 0.18, 0.05, 0.07, "square");
+  noiseBurst(0.2, 0.1, 700);
+}
+
+/** darkLarge's shield aura switching on — a warm rising hum, distinct from
+ * every other skill's sharper/percussive sound since this one's a sustained
+ * buff, not a hit. */
+export function playShieldAura() {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = "sine";
+  const t0 = audio.currentTime;
+  osc.frequency.setValueAtTime(220, t0);
+  osc.frequency.linearRampToValueAtTime(440, t0 + 0.35);
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(0.18, t0 + 0.08);
+  gain.gain.linearRampToValueAtTime(0, t0 + 0.45);
+  osc.connect(gain).connect(audio.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.45);
+}
+
 /** Self took damage — bullet, trap, or terrain hazard. */
 export function playTankHit() {
   tone(160, 0, 0.12, 0.1, "square");

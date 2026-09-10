@@ -72,6 +72,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.stunnedUntil = null;
         player.hookedUntil = null;
         player.hookPullUntil = null;
+        player.auraShieldUntil = null;
         player.boostEnergy = MAX_BOOST_ENERGY;
         player.isBoosting = false;
         player.shieldHitsLeft = 0;
@@ -95,6 +96,9 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
     }
     if (player.hookedUntil !== null && now >= player.hookedUntil) {
       player.hookedUntil = null;
+    }
+    if (player.auraShieldUntil !== null && now >= player.auraShieldUntil) {
+      player.auraShieldUntil = null;
     }
 
     if (player.dashUntil !== null && now >= player.dashUntil) {

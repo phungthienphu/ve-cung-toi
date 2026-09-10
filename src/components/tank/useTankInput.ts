@@ -20,7 +20,7 @@ import {
   type TankClientMessage,
   type TankPublicState,
 } from "@shared/tankTypes";
-import { playDash, playHook, playSandWave, playTankBigShot, playTankShoot } from "@/lib/sound";
+import { playDash, playGreenBurst, playHook, playSandWave, playShieldAura, playTankBigShot, playTankShoot } from "@/lib/sound";
 import { DIR_ANGLE } from "./render/sprite-utils";
 
 const KEY_MAP: Record<string, "up" | "down" | "left" | "right"> = {
@@ -170,6 +170,8 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
           if (skin === "sand") playSandWave();
           else if (skin === "huge") playDash();
           else if (skin === "bigRed") playHook();
+          else if (skin === "green") playGreenBurst();
+          else if (skin === "darkLarge") playShieldAura();
           else playTankBigShot();
         }
         e.preventDefault();

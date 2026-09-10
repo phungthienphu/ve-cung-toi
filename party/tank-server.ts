@@ -2,6 +2,9 @@ import type * as Party from "partykit/server";
 import {
   BULLET_SIZE,
   BULLET_SPEED,
+  BULLET_SPREAD_MAX_DEG,
+  BULLET_SPREAD_PER_SHOT_DEG,
+  BULLET_SPREAD_RESET_MS,
   DEFAULT_MAP_ID,
   FIRE_COOLDOWN_MS,
   FIRE_SHOTS_PER_ITEM,
@@ -43,12 +46,25 @@ import { randomAirstrikeDelay, stepAirstrikes } from "./tank/airstrike";
 import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
 import { aimAngleOf, makeId, spawnPixel } from "./tank/geometry";
+import { stepGreenBursts, type PendingGreenBurst } from "./tank/greenBurst";
 import { spawnMonsterPack, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
 import { stepRedBarrages } from "./tank/redBarrage";
 import { stepHooks, type PendingHook } from "./tank/hook";
-import { activateDash, activateHook, activateRapidFire, activateSandWave, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
+import {
+  activateDash,
+  activateGreenBurst,
+  activateHook,
+  activateRapidFire,
+  activateSandWave,
+  activateShieldAura,
+  fireSniperShot,
+  initialSkillState,
+  resetSkillState,
+  stepShieldAuras,
+  throwRedBomb,
+} from "./tank/skills";
 import type { InputState } from "./tank/types";
 
 export default class TankRoom implements Party.Server {
@@ -74,6 +90,8 @@ export default class TankRoom implements Party.Server {
   lastMonsterHealAt = new Map<string, number>();
   lastDashHitAt = new Map<string, number>();
   pendingHooks: PendingHook[] = [];
+  pendingGreenBursts: PendingGreenBurst[] = [];
+  shotHeat = new Map<string, number>();
   monsterAggroUntil = new Map<string, number>();
   monsterRestUntil = new Map<string, number>();
   mapId: string = DEFAULT_MAP_ID;
@@ -222,6 +240,7 @@ export default class TankRoom implements Party.Server {
         hookPullFromY: 0,
         hookPullToX: 0,
         hookPullToY: 0,
+        auraShieldUntil: null,
         boostEnergy: MAX_BOOST_ENERGY,
         isBoosting: false,
         ultimateEnergy: 0,
@@ -293,6 +312,7 @@ export default class TankRoom implements Party.Server {
       p.stunnedUntil = null;
       p.hookedUntil = null;
       p.hookPullUntil = null;
+      p.auraShieldUntil = null;
       p.boostEnergy = MAX_BOOST_ENERGY;
       p.isBoosting = false;
       p.ultimateEnergy = 0;
@@ -328,6 +348,7 @@ export default class TankRoom implements Party.Server {
     this.airstrikes = [];
     this.redBarrages = [];
     this.pendingHooks = [];
+    this.pendingGreenBursts = [];
     this.matchStartAt = Date.now();
     this.nextAirstrikeAt = this.map.terrain === "grass" ? Date.now() + randomAirstrikeDelay() : null;
     this.status = "playing";
@@ -347,6 +368,7 @@ export default class TankRoom implements Party.Server {
     this.airstrikes = [];
     this.redBarrages = [];
     this.pendingHooks = [];
+    this.pendingGreenBursts = [];
     this.nextAirstrikeAt = null;
     this.matchStartAt = null;
     this.impacts = [];
@@ -369,6 +391,7 @@ export default class TankRoom implements Party.Server {
     this.airstrikes = [];
     this.redBarrages = [];
     this.pendingHooks = [];
+    this.pendingGreenBursts = [];
     this.nextAirstrikeAt = null;
     this.matchStartAt = null;
     this.impacts = [];
@@ -443,6 +466,14 @@ export default class TankRoom implements Party.Server {
       activateHook(this, player, now);
       return;
     }
+    if (big && skin === "green") {
+      activateGreenBurst(this, player, now);
+      return;
+    }
+    if (big && skin === "darkLarge") {
+      activateShieldAura(player, now);
+      return;
+    }
 
     const isFire = !big && player.fireShotsLeft > 0;
     if (big) {
@@ -451,7 +482,20 @@ export default class TankRoom implements Party.Server {
       player.fireShotsLeft -= 1;
     }
 
-    const angle = aimAngleOf(player);
+    // A normal shot fired right on the heels of the previous one (i.e.
+    // holding the trigger) builds "heat", widening the spread each time —
+    // resets back to pinpoint after BULLET_SPREAD_RESET_MS without firing.
+    // Blue's rapid-fire window is exempt: going fast on purpose is its whole
+    // gimmick, not the mindless spam this is meant to discourage.
+    let spreadDeg = 0;
+    if (!big && !isRapidFiring) {
+      const prevHeat = this.shotHeat.get(sender.id) ?? 0;
+      const heat = now - last < BULLET_SPREAD_RESET_MS ? prevHeat + 1 : 0;
+      this.shotHeat.set(sender.id, heat);
+      spreadDeg = Math.min(heat * BULLET_SPREAD_PER_SHOT_DEG, BULLET_SPREAD_MAX_DEG);
+    }
+    const spreadRad = spreadDeg === 0 ? 0 : ((Math.random() * 2 - 1) * spreadDeg * Math.PI) / 180;
+    const angle = aimAngleOf(player) + spreadRad;
     const offset = TANK_SIZE / 2 + BULLET_SIZE;
     this.bullets.push({
       id: makeId(),
@@ -578,6 +622,8 @@ export default class TankRoom implements Party.Server {
     stepPlayers(this, map, now);
     stepMonsters(this, map, now);
     this.pendingHooks = stepHooks(this, map, this.pendingHooks, now);
+    this.pendingGreenBursts = stepGreenBursts(this, this.pendingGreenBursts, now);
+    stepShieldAuras(this, now);
 
     this.lastPickupSpawnAt = maybeSpawnPickup(this, map, now);
 

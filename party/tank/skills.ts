@@ -8,7 +8,12 @@
 
 import {
   BULLET_SIZE,
+  DARKLARGE_AURA_DURATION_MS,
+  DARKLARGE_AURA_RADIUS,
+  DARKLARGE_AURA_GRACE_MS,
   DASH_DURATION_MS,
+  GREEN_BURST_INTERVAL_MS,
+  GREEN_BURST_VOLLEYS,
   HOOK_RANGE,
   HOOK_THROW_MS,
   HOOK_WIDTH,
@@ -29,8 +34,10 @@ import {
   type RedBarrage,
   type TankMapDef,
   type TankPlayer,
+  type TankRoomMode,
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
+import { fireGreenVolley, type GreenBurstFieldCtx, type PendingGreenBurst } from "./greenBurst";
 import { aimAngleOf, makeId, tankBlocked } from "./geometry";
 import type { PendingHook } from "./hook";
 import { createRedBarrage } from "./redBarrage";
@@ -47,12 +54,13 @@ import { createRedBarrage } from "./redBarrage";
  * miss one of those by hand and a player can end up permanently stuck
  * "mid-skill" until they leave the room.
  */
-export function initialSkillState(): Pick<TankPlayer, "rapidFireUntil" | "sniperChargingSince" | "dashUntil" | "dashAngle"> {
+export function initialSkillState(): Pick<TankPlayer, "rapidFireUntil" | "sniperChargingSince" | "dashUntil" | "dashAngle" | "shieldAuraUntil"> {
   return {
     rapidFireUntil: null,
     sniperChargingSince: null,
     dashUntil: null,
     dashAngle: 0,
+    shieldAuraUntil: null,
   };
 }
 
@@ -246,4 +254,55 @@ export function activateHook(ctx: HookCastCtx, player: TankPlayer, now: number) 
     angle,
     resolveAt: now + HOOK_THROW_MS,
   });
+}
+
+export interface GreenBurstCastCtx extends GreenBurstFieldCtx {
+  pendingGreenBursts: PendingGreenBurst[];
+}
+
+/** Green: fires the first ring immediately, then schedules the remaining
+ * GREEN_BURST_VOLLEYS - 1 rings (see stepGreenBursts in ./greenBurst.ts). */
+export function activateGreenBurst(ctx: GreenBurstCastCtx, player: TankPlayer, now: number) {
+  player.ultimateEnergy = 0;
+  fireGreenVolley(ctx, player);
+  if (GREEN_BURST_VOLLEYS > 1) {
+    ctx.pendingGreenBursts.push({ id: makeId(), ownerId: player.id, volleysRemaining: GREEN_BURST_VOLLEYS - 1, nextFireAt: now + GREEN_BURST_INTERVAL_MS });
+  }
+}
+
+/** darkLarge: starts (or refreshes) the mobile damage-immunity aura — see
+ * stepShieldAuras below for the actual per-tick application to nearby
+ * allies. */
+export function activateShieldAura(player: TankPlayer, now: number) {
+  player.ultimateEnergy = 0;
+  player.shieldAuraUntil = now + DARKLARGE_AURA_DURATION_MS;
+}
+
+export interface ShieldAuraCtx {
+  players: Map<string, TankPlayer>;
+  mode: TankRoomMode;
+}
+
+/** Every tick, any darkLarge with an active aura refreshes auraShieldUntil
+ * on itself and (in team mode) any teammate within DARKLARGE_AURA_RADIUS —
+ * a small per-tick grace window (DARKLARGE_AURA_GRACE_MS) so the buff
+ * doesn't flicker off the instant someone drifts a step out of range, but
+ * still decays quickly once they actually leave. Unlike the item shield
+ * (shieldHitsLeft), this never blocks movement — see damagePlayer in
+ * combat.ts for where it actually blocks damage. */
+export function stepShieldAuras(ctx: ShieldAuraCtx, now: number) {
+  for (const caster of ctx.players.values()) {
+    if (!caster.alive || caster.shieldAuraUntil === null) continue;
+    if (now >= caster.shieldAuraUntil) {
+      caster.shieldAuraUntil = null;
+      continue;
+    }
+    for (const ally of ctx.players.values()) {
+      if (ally.id !== caster.id && (ctx.mode !== "team" || ally.team !== caster.team)) continue;
+      if (!ally.alive) continue;
+      const dist = Math.hypot(ally.x - caster.x, ally.y - caster.y);
+      if (dist > DARKLARGE_AURA_RADIUS) continue;
+      ally.auraShieldUntil = now + DARKLARGE_AURA_GRACE_MS;
+    }
+  }
 }

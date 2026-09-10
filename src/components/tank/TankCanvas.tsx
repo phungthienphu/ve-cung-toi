@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import {
+  DARKLARGE_AURA_RADIUS,
   MAX_BOOST_ENERGY,
   RED_BARRAGE_BOMB_RADIUS,
   RED_BARRAGE_SPREAD_RADIUS,
@@ -30,7 +31,19 @@ import {
   MINIMAP_H,
   MINIMAP_W,
 } from "./render/map-background";
-import { drawBurningOverlay, drawCrate, drawHealthPickup, drawHookedOverlay, drawItemPickup, drawMonster, drawStunnedOverlay, drawTank, drawTrap } from "./render/entities";
+import {
+  drawAuraEmitterRing,
+  drawAuraShieldGlow,
+  drawBurningOverlay,
+  drawCrate,
+  drawHealthPickup,
+  drawHookedOverlay,
+  drawItemPickup,
+  drawMonster,
+  drawStunnedOverlay,
+  drawTank,
+  drawTrap,
+} from "./render/entities";
 import { drawBigBullet, drawBlindBullet, drawFireBullet, drawNormalBullet } from "./render/bullets";
 import {
   MARK_DURATION_MS,
@@ -281,6 +294,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, rp.x, rp.y, now);
         if (p.hookedUntil && p.hookedUntil > s.serverNow) drawHookedOverlay(ctx, rp.x, rp.y, now);
         else if (p.stunnedUntil && p.stunnedUntil > s.serverNow) drawStunnedOverlay(ctx, rp.x, rp.y, now);
+        if (p.shieldAuraUntil && p.shieldAuraUntil > s.serverNow) drawAuraEmitterRing(ctx, rp.x, rp.y, DARKLARGE_AURA_RADIUS, now);
+        if (p.auraShieldUntil && p.auraShieldUntil > s.serverNow) drawAuraShieldGlow(ctx, rp.x, rp.y, now);
       }
 
       // Whoever's standing in a bush (self included) gets a second, lighter

@@ -36,6 +36,13 @@ export interface CombatCtx {
 /** Applies flat damage to a tank; kills + credits `killerId` (if any) once hp runs out. */
 export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number, killerId: string | null) {
   if (!target.alive) return;
+  // darkLarge's aura: blocks damage outright while the target is standing
+  // in it, rather than eating one of a fixed number of charges like the
+  // item shield below — see stepShieldAuras in skills.ts.
+  if (target.auraShieldUntil !== null && target.auraShieldUntil > Date.now()) {
+    ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
+    return;
+  }
   target.hp -= amount;
   if (target.hp > 0) return;
 
