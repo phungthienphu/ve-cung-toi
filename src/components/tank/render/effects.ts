@@ -286,6 +286,72 @@ export function drawSandWave(ctx: CanvasRenderingContext2D, effect: SandWaveEffe
   ctx.restore();
 }
 
+// bigRed's ultimate: two chained visuals sharing the same drawHook — the
+// chain snapping out to whatever it hit (or its max range, on a whiff), then
+// a second one, target-in-tow, snapping from the landing spot back to
+// bigRed as it reels in. `duration` is per-instance (throw and reel play out
+// over different lengths — see HOOK_THROW_MS/HOOK_PULL_DURATION_MS
+// server-side) rather than a shared constant.
+export const HOOK_EFFECT_DURATION_MS = 380; // fallback for a whiff, which has no server-specified duration
+export interface HookEffect {
+  id: string;
+  x: number;
+  y: number;
+  x2: number;
+  y2: number;
+  start: number;
+  duration: number;
+}
+
+export function drawHook(ctx: CanvasRenderingContext2D, effect: HookEffect, progress: number) {
+  // Snaps out over the first 35% of the duration, holds taut briefly, then
+  // fades — the chain doesn't retract visually, it's already done its job.
+  const outT = Math.min(1, progress / 0.35);
+  const ex = effect.x + (effect.x2 - effect.x) * outT;
+  const ey = effect.y + (effect.y2 - effect.y) * outT;
+  const alpha = 1 - Math.max(0, (progress - 0.55) / 0.45);
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, alpha);
+  ctx.strokeStyle = "#9f1239";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(effect.x, effect.y);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+
+  // A few chain-link ticks along the segment for texture.
+  const dx = ex - effect.x;
+  const dy = ey - effect.y;
+  const len = Math.hypot(dx, dy);
+  if (len > 1) {
+    const ux = dx / len;
+    const uy = dy / len;
+    const px = -uy;
+    const py = ux;
+    ctx.strokeStyle = "#fecdd3";
+    ctx.lineWidth = 2;
+    const step = 10;
+    for (let d = step / 2; d < len; d += step) {
+      const cx = effect.x + ux * d;
+      const cy = effect.y + uy * d;
+      ctx.beginPath();
+      ctx.moveTo(cx - px * 2.5, cy - py * 2.5);
+      ctx.lineTo(cx + px * 2.5, cy + py * 2.5);
+      ctx.stroke();
+    }
+  }
+
+  // A small burst at the hooked end, most visible right when it lands.
+  ctx.globalAlpha = Math.max(0, alpha) * (1 - outT * 0.3);
+  ctx.fillStyle = "#e11d48";
+  ctx.beginPath();
+  ctx.arc(ex, ey, 5 + 3 * (1 - outT), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 export function spawnLeafBurst(ref: { current: LeafParticle[] }, x: number, y: number) {
   const count = 5 + Math.floor(Math.random() * 3);
   for (let i = 0; i < count; i++) {

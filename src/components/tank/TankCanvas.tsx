@@ -30,7 +30,7 @@ import {
   MINIMAP_H,
   MINIMAP_W,
 } from "./render/map-background";
-import { drawBurningOverlay, drawCrate, drawHealthPickup, drawItemPickup, drawMonster, drawStunnedOverlay, drawTank, drawTrap } from "./render/entities";
+import { drawBurningOverlay, drawCrate, drawHealthPickup, drawHookedOverlay, drawItemPickup, drawMonster, drawStunnedOverlay, drawTank, drawTrap } from "./render/entities";
 import { drawBigBullet, drawBlindBullet, drawFireBullet, drawNormalBullet } from "./render/bullets";
 import {
   MARK_DURATION_MS,
@@ -39,6 +39,7 @@ import {
   OIL_SPILL_DURATION_MS,
   SAND_WAVE_EFFECT_DURATION_MS,
   drawExplosion,
+  drawHook,
   drawLeafParticle,
   drawMuzzleFlash,
   drawOilSpill,
@@ -73,7 +74,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     stateRef.current = state;
   }
 
-  const { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, killFeed } = useTankEffects(state, selfId);
+  const { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, killFeed } = useTankEffects(state, selfId);
   const input = useTankInput({ send, selfId, stateRef, canvasRef });
 
   const bgCacheRef = useRef<{ mapId: string; canvas: HTMLCanvasElement } | null>(null);
@@ -278,7 +279,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           isDashing ? { isDashing, angle: p.dashAngle } : null
         );
         if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, rp.x, rp.y, now);
-        if (p.stunnedUntil && p.stunnedUntil > s.serverNow) drawStunnedOverlay(ctx, rp.x, rp.y, now);
+        if (p.hookedUntil && p.hookedUntil > s.serverNow) drawHookedOverlay(ctx, rp.x, rp.y, now);
+        else if (p.stunnedUntil && p.stunnedUntil > s.serverNow) drawStunnedOverlay(ctx, rp.x, rp.y, now);
       }
 
       // Whoever's standing in a bush (self included) gets a second, lighter
@@ -315,6 +317,11 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       sandWavesRef.current = sandWavesRef.current.filter((w) => now - w.start < SAND_WAVE_EFFECT_DURATION_MS);
       for (const w of sandWavesRef.current) {
         drawSandWave(ctx, w, (now - w.start) / SAND_WAVE_EFFECT_DURATION_MS);
+      }
+
+      hooksRef.current = hooksRef.current.filter((h) => now - h.start < h.duration);
+      for (const h of hooksRef.current) {
+        drawHook(ctx, h, (now - h.start) / h.duration);
       }
 
       leavesRef.current = leavesRef.current.filter((l) => now - l.start < LEAF_PARTICLE_DURATION_MS);
@@ -385,6 +392,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     muzzleFlashesRef,
     leavesRef,
     sandWavesRef,
+    hooksRef,
   ]);
 
   const self = state.players.find((p) => p.id === selfId);

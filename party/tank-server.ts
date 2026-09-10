@@ -47,7 +47,8 @@ import { spawnMonsterPack, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
 import { stepRedBarrages } from "./tank/redBarrage";
-import { activateDash, activateRapidFire, activateSandWave, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
+import { stepHooks, type PendingHook } from "./tank/hook";
+import { activateDash, activateHook, activateRapidFire, activateSandWave, fireSniperShot, initialSkillState, resetSkillState, throwRedBomb } from "./tank/skills";
 import type { InputState } from "./tank/types";
 
 export default class TankRoom implements Party.Server {
@@ -72,6 +73,7 @@ export default class TankRoom implements Party.Server {
   lastMonsterContactAt = new Map<string, number>();
   lastMonsterHealAt = new Map<string, number>();
   lastDashHitAt = new Map<string, number>();
+  pendingHooks: PendingHook[] = [];
   monsterAggroUntil = new Map<string, number>();
   monsterRestUntil = new Map<string, number>();
   mapId: string = DEFAULT_MAP_ID;
@@ -214,6 +216,12 @@ export default class TankRoom implements Party.Server {
         items: [],
         blindedUntil: null,
         stunnedUntil: null,
+        hookedUntil: null,
+        hookPullUntil: null,
+        hookPullFromX: 0,
+        hookPullFromY: 0,
+        hookPullToX: 0,
+        hookPullToY: 0,
         boostEnergy: MAX_BOOST_ENERGY,
         isBoosting: false,
         ultimateEnergy: 0,
@@ -283,6 +291,8 @@ export default class TankRoom implements Party.Server {
       p.items = [];
       p.blindedUntil = null;
       p.stunnedUntil = null;
+      p.hookedUntil = null;
+      p.hookPullUntil = null;
       p.boostEnergy = MAX_BOOST_ENERGY;
       p.isBoosting = false;
       p.ultimateEnergy = 0;
@@ -317,6 +327,7 @@ export default class TankRoom implements Party.Server {
     // the desert map is reserved for a future train hazard instead.
     this.airstrikes = [];
     this.redBarrages = [];
+    this.pendingHooks = [];
     this.matchStartAt = Date.now();
     this.nextAirstrikeAt = this.map.terrain === "grass" ? Date.now() + randomAirstrikeDelay() : null;
     this.status = "playing";
@@ -335,6 +346,7 @@ export default class TankRoom implements Party.Server {
     this.monsters = [];
     this.airstrikes = [];
     this.redBarrages = [];
+    this.pendingHooks = [];
     this.nextAirstrikeAt = null;
     this.matchStartAt = null;
     this.impacts = [];
@@ -356,6 +368,7 @@ export default class TankRoom implements Party.Server {
     this.monsters = [];
     this.airstrikes = [];
     this.redBarrages = [];
+    this.pendingHooks = [];
     this.nextAirstrikeAt = null;
     this.matchStartAt = null;
     this.impacts = [];
@@ -424,6 +437,10 @@ export default class TankRoom implements Party.Server {
     }
     if (big && skin === "huge") {
       activateDash(player, now);
+      return;
+    }
+    if (big && skin === "bigRed") {
+      activateHook(this, player, now);
       return;
     }
 
@@ -560,6 +577,7 @@ export default class TankRoom implements Party.Server {
 
     stepPlayers(this, map, now);
     stepMonsters(this, map, now);
+    this.pendingHooks = stepHooks(this, map, this.pendingHooks, now);
 
     this.lastPickupSpawnAt = maybeSpawnPickup(this, map, now);
 

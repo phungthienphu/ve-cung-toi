@@ -14,6 +14,7 @@ import {
   DASH_SPEED,
   HAZARD_DAMAGE,
   HAZARD_DAMAGE_INTERVAL_MS,
+  HOOK_PULL_DURATION_MS,
   MAX_BOOST_ENERGY,
   MAX_HELD_ITEMS,
   MAX_HP,
@@ -69,6 +70,8 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.respawnAt = null;
         player.blindedUntil = null;
         player.stunnedUntil = null;
+        player.hookedUntil = null;
+        player.hookPullUntil = null;
         player.boostEnergy = MAX_BOOST_ENERGY;
         player.isBoosting = false;
         player.shieldHitsLeft = 0;
@@ -90,14 +93,36 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
     if (player.stunnedUntil !== null && now >= player.stunnedUntil) {
       player.stunnedUntil = null;
     }
+    if (player.hookedUntil !== null && now >= player.hookedUntil) {
+      player.hookedUntil = null;
+    }
 
     if (player.dashUntil !== null && now >= player.dashUntil) {
       player.dashUntil = null;
     }
     const isDashing = player.dashUntil !== null;
 
+    if (player.hookPullUntil !== null && now >= player.hookPullUntil) {
+      player.x = player.hookPullToX;
+      player.y = player.hookPullToY;
+      player.hookPullUntil = null;
+    }
+
     const input = ctx.inputs.get(player.id);
-    if (isDashing) {
+    if (player.hookPullUntil !== null) {
+      // Eased travel from where the hook landed to where it's dragging the
+      // target — a decelerating "yanked then settling" curve rather than a
+      // linear slide, so the tug reads as physical rather than mechanical.
+      // All normal input is ignored for the (short) remainder of the pull.
+      const start = player.hookPullUntil - HOOK_PULL_DURATION_MS;
+      const t = Math.max(0, Math.min(1, (now - start) / HOOK_PULL_DURATION_MS));
+      const eased = 1 - Math.pow(1 - t, 3);
+      player.x = player.hookPullFromX + (player.hookPullToX - player.hookPullFromX) * eased;
+      player.y = player.hookPullFromY + (player.hookPullToY - player.hookPullFromY) * eased;
+      player.moving = false;
+      player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
+      player.isBoosting = false;
+    } else if (isDashing) {
       // Forced movement along the locked-in dash angle — normal input is
       // ignored entirely for the duration. Unlike regular movement, a dash
       // passes straight through other tanks (not blocked by them) but still

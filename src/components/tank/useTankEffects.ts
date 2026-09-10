@@ -13,6 +13,7 @@ import {
   playBombBoom,
   playBombWhistle,
   playFireIgnite,
+  playHook,
   playPlaneRoar,
   playSandWave,
   playShieldBlock,
@@ -28,7 +29,9 @@ import {
 import {
   BOMB_EXPLOSION_FRAMES,
   EXPLOSION_FRAMES,
+  HOOK_EFFECT_DURATION_MS,
   type Explosion,
+  type HookEffect,
   type LeafParticle,
   type MuzzleFlash,
   type OilSpill,
@@ -59,6 +62,7 @@ function preloadTankSprites() {
     "/Retina/treeBrown_twigs.png",
     "/Retina/oilSpill_small.png",
     "/trap_scope.png",
+    "/Retina/barrelRed_top.png",
     "/Retina/shotOrange.png",
     "/Retina/shotRed.png",
     "/Retina/bulletDark1_outline.png",
@@ -80,6 +84,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
   const muzzleFlashesRef = useRef<MuzzleFlash[]>([]);
   const leavesRef = useRef<LeafParticle[]>([]);
   const sandWavesRef = useRef<SandWaveEffect[]>([]);
+  const hooksRef = useRef<HookEffect[]>([]);
   const prevBulletsRef = useRef<Map<string, Bullet>>(new Map());
 
   // Kick every sprite this screen could possibly need off loading the moment
@@ -189,6 +194,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     let sawCrate = false;
     let sawBomb = false;
     let sawSandWave = false;
+    let sawHook = false;
     for (const imp of state.impacts) {
       if (imp.kind === "shove") {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "shove" });
@@ -206,6 +212,17 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
       } else if (imp.kind === "sand_wave") {
         sandWavesRef.current.push({ id: imp.id, x: imp.x, y: imp.y, angle: imp.angle ?? 0, start: now });
         sawSandWave = true;
+      } else if (imp.kind === "hook") {
+        hooksRef.current.push({
+          id: imp.id,
+          x: imp.x,
+          y: imp.y,
+          x2: imp.x2 ?? imp.x,
+          y2: imp.y2 ?? imp.y,
+          start: now,
+          duration: imp.durationMs ?? HOOK_EFFECT_DURATION_MS,
+        });
+        sawHook = true;
       } else {
         explosionsRef.current.push({ id: imp.id, x: imp.x, y: imp.y, start: now, kind: "normal" });
         sawTrap = true;
@@ -217,6 +234,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     if (sawCrate) playTankExplosion();
     if (sawBomb) playBombBoom();
     if (sawSandWave) playSandWave();
+    if (sawHook) playHook();
   }, [state.impacts]);
 
   // Airstrike audio: an engine roar for the whole flight (played once, the
@@ -308,5 +326,5 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     };
   }, [state.players, selfId, state.serverNow]);
 
-  return { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, killFeed };
+  return { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, killFeed };
 }

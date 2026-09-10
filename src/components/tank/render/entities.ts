@@ -251,6 +251,54 @@ export function drawStunnedOverlay(ctx: CanvasRenderingContext2D, x: number, y: 
   }
 }
 
+/** bigRed's hook holding a target still — jagged electric arcs crackling
+ * around the tank plus its own barrel hovering upside-down overhead, reading
+ * as "aimed at / pinned" rather than the generic dizzy-stars stun look. Drawn
+ * instead of drawStunnedOverlay while `hookedUntil` is active (see
+ * TankCanvas.tsx), even though both block input the same way server-side. */
+export function drawHookedOverlay(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  const half = TANK_SIZE / 2;
+  const flickerSeed = Math.floor(time / 70);
+  const rand = (seed: number) => {
+    const v = Math.sin(seed * 12.9898 + flickerSeed * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = "#7dd3fc";
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.9;
+  const boltCount = 4;
+  for (let i = 0; i < boltCount; i++) {
+    const angle = (i / boltCount) * Math.PI * 2 + rand(i) * Math.PI * 0.4;
+    const outerR = half + 14;
+    const sx = x + Math.cos(angle) * outerR;
+    const sy = y + Math.sin(angle) * outerR;
+    const midR = half + 5;
+    const midAngle = angle + (rand(i + 10) - 0.5) * 0.8;
+    const mx = x + Math.cos(midAngle) * midR;
+    const my = y + Math.sin(midAngle) * midR;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(mx, my);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const sprite = getSprite("/Retina/barrelRed_top.png");
+  if (sprite) {
+    const w = 20;
+    const h = (sprite.naturalHeight / sprite.naturalWidth) * w;
+    const bob = Math.sin(time / 180) * 2;
+    ctx.save();
+    ctx.translate(x, y - half - 22 + bob);
+    ctx.rotate(Math.PI);
+    ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+}
+
 export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: number) {
   const half = PICKUP_SIZE / 2;
   ctx.fillStyle = "#dcfce7";

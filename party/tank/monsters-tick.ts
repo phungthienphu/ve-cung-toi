@@ -6,6 +6,7 @@
 // unrefreshed.
 
 import {
+  HOOK_PULL_DURATION_MS,
   MONSTER_AGGRO_TIMEOUT_MS,
   MONSTER_CHASE_LEASH_RADIUS,
   MONSTER_CHASE_SPEED_MULTIPLIER,
@@ -93,6 +94,11 @@ function spawnMonsterAt(nestTile: { x: number; y: number }): Monster {
     nestX: pos.x,
     nestY: pos.y,
     aggroPlayerId: null,
+    hookPullUntil: null,
+    hookPullFromX: 0,
+    hookPullFromY: 0,
+    hookPullToX: 0,
+    hookPullToY: 0,
   };
 }
 
@@ -165,8 +171,24 @@ export function stepMonsters(ctx: MonstersTickCtx, map: TankMapDef, now: number)
         monster.hp = monster.maxHp;
         monster.respawnAt = null;
         monster.aggroPlayerId = null;
+        monster.hookPullUntil = null;
         ctx.monsterAggroUntil.delete(monster.id);
       }
+      continue;
+    }
+
+    if (monster.hookPullUntil !== null && now >= monster.hookPullUntil) {
+      monster.x = monster.hookPullToX;
+      monster.y = monster.hookPullToY;
+      monster.hookPullUntil = null;
+    }
+    if (monster.hookPullUntil !== null) {
+      // Same eased travel as a hooked tank — see players-tick.ts.
+      const start = monster.hookPullUntil - HOOK_PULL_DURATION_MS;
+      const t = Math.max(0, Math.min(1, (now - start) / HOOK_PULL_DURATION_MS));
+      const eased = 1 - Math.pow(1 - t, 3);
+      monster.x = monster.hookPullFromX + (monster.hookPullToX - monster.hookPullFromX) * eased;
+      monster.y = monster.hookPullFromY + (monster.hookPullToY - monster.hookPullFromY) * eased;
       continue;
     }
 

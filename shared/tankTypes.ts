@@ -442,6 +442,22 @@ export interface TankPlayer {
   // resetSkillState like the other per-skin fields above.
   dashUntil: number | null;
   dashAngle: number;
+  // bigRed's hook: set alongside stunnedUntil to the same timestamp whenever
+  // the stun came from being hooked, purely so the client can draw the
+  // electric-arcs-and-barrel "pinned" look instead of the generic dizzy-stars
+  // stun overlay — doesn't gate anything server-side beyond what stunnedUntil
+  // already does. Reset alongside stunnedUntil/blindedUntil/burningUntil.
+  hookedUntil: number | null;
+  // bigRed's hook, the actual yank: non-null while the pull's eased travel
+  // (see HOOK_PULL_DURATION_MS) is still underway — players-tick.ts
+  // interpolates x/y from hookPullFrom* to hookPullTo* every tick while set,
+  // instead of teleporting the target there in one frame. Reset alongside
+  // stunnedUntil/blindedUntil/burningUntil.
+  hookPullUntil: number | null;
+  hookPullFromX: number;
+  hookPullFromY: number;
+  hookPullToX: number;
+  hookPullToY: number;
 }
 
 export interface Bullet {
@@ -583,6 +599,27 @@ export const DASH_SPEED = 11; // px/tick — vs. TANK_SPEED's 2.4
 export const DASH_KNOCKBACK_RADIUS = TANK_SIZE * 2.4;
 export const DASH_KNOCKBACK_DIST = TILE_SIZE * 2;
 
+// bigRed's ultimate: an instant hook skillshot along the current aim — a
+// narrow HOOK_RANGE-long by HOOK_WIDTH-wide corridor (a precision pick, not
+// an AoE like Sand's wave). The closest target caught in it gets yanked to
+// HOOK_PULL_DISTANCE in front of bigRed, takes a flat hit of damage, and is
+// stunned — long enough for bigRed's follow-up shots to land before the
+// target can react or flee.
+export const HOOK_RANGE = TILE_SIZE * 6.5;
+export const HOOK_WIDTH = TANK_SIZE * 1.1;
+export const HOOK_PULL_DISTANCE = TANK_SIZE * 1.2;
+export const HOOK_DAMAGE = 8;
+export const HOOK_STUN_MS = 900;
+// Full flow: chain snaps out (HOOK_THROW_MS) — nothing happens to the target
+// until it actually lands — then damage/stun kick in the instant it lands,
+// then it reels back in over HOOK_PULL_DURATION_MS (eased, not linear) with
+// the target in tow, instead of the whole thing resolving and snapping the
+// target to its final spot in a single instant. Both stages together are
+// well inside HOOK_STUN_MS, so the target is already stunned and stays
+// stopped for the rest of it once the reel finishes.
+export const HOOK_THROW_MS = 160;
+export const HOOK_PULL_DURATION_MS = 220;
+
 export interface Monster {
   id: string;
   x: number;
@@ -597,6 +634,12 @@ export interface Monster {
   nestX: number;
   nestY: number;
   aggroPlayerId: string | null;
+  // Same eased-yank mechanism as TankPlayer's hookPull* fields — see there.
+  hookPullUntil: number | null;
+  hookPullFromX: number;
+  hookPullFromY: number;
+  hookPullToX: number;
+  hookPullToY: number;
 }
 
 /** A single-tick "something happened here" event — purely cosmetic, consumed
@@ -606,13 +649,23 @@ export interface TankImpact {
   id: string;
   x: number;
   y: number;
-  kind: "shove" | "trap" | "shield" | "crate" | "bomb" | "sand_wave";
+  kind: "shove" | "trap" | "shield" | "crate" | "bomb" | "sand_wave" | "hook";
   // Only set for "bomb" — the blast radius that hit, so the client's
   // explosion visual scales to match instead of always looking the same size.
   radius?: number;
   // Only set for "sand_wave" — the direction it fanned out in, so the client
   // can draw the same cone shape the server used to resolve hits.
   angle?: number;
+  // Only set for "hook" — where the chain's far end landed (the target's
+  // position at the moment it got hit, before any pull was applied, or the
+  // hook's max range on a whiff). (x, y) is the near end (bigRed's own
+  // position), carried by the impact's own x/y fields as usual.
+  x2?: number;
+  y2?: number;
+  // Only set for "hook" — how long this particular chain visual should play
+  // (the throw-out and reel-in stages have different durations); falls back
+  // to a sane default on the client if absent.
+  durationMs?: number;
 }
 
 /** A single-tick elimination event — consumed client-side to show a

@@ -242,6 +242,14 @@ export function playDash() {
   tone(140, 0, 0.15, 0.08, "square");
 }
 
+/** bigRed's hook fires out, then snaps back on a hit — a quick metallic
+ * whip-crack rather than an explosion. */
+export function playHook() {
+  tone(700, 0, 0.06, 0.05, "square");
+  tone(220, 0.06, 0.12, 0.12, "sawtooth");
+  noiseBurst(0.12, 0.08, 900);
+}
+
 /** Self took damage — bullet, trap, or terrain hazard. */
 export function playTankHit() {
   tone(160, 0, 0.12, 0.1, "square");

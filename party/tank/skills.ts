@@ -9,6 +9,9 @@
 import {
   BULLET_SIZE,
   DASH_DURATION_MS,
+  HOOK_RANGE,
+  HOOK_THROW_MS,
+  HOOK_WIDTH,
   MONSTER_AGGRO_TIMEOUT_MS,
   MONSTER_RESPAWN_DELAY_MS,
   RAPID_FIRE_DURATION_MS,
@@ -29,6 +32,7 @@ import {
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
 import { aimAngleOf, makeId, tankBlocked } from "./geometry";
+import type { PendingHook } from "./hook";
 import { createRedBarrage } from "./redBarrage";
 
 /**
@@ -177,4 +181,69 @@ export function activateSandWave(ctx: SandWaveCtx, player: TankPlayer, map: Tank
       knockBack(monster);
     }
   }
+}
+
+export interface HookCastCtx extends CombatCtx {
+  monsters: Monster[];
+  pendingHooks: PendingHook[];
+}
+
+/** bigRed: a hook skillshot along a narrow HOOK_RANGE-long corridor on the
+ * tank's current aim. Firing only picks the target and launches the visible
+ * throw — the actual grab (damage/stun) and the reel-in pull happen later,
+ * once the throw lands (see stepHooks in ./hook.ts and HOOK_THROW_MS), so
+ * the whole thing reads as "throw the chain, hit, then drag it in" instead
+ * of resolving in one instant. */
+export function activateHook(ctx: HookCastCtx, player: TankPlayer, now: number) {
+  const angle = aimAngleOf(player);
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  player.ultimateEnergy = 0;
+
+  const inCorridor = (x: number, y: number) => {
+    const dx = x - player.x;
+    const dy = y - player.y;
+    const forward = dx * ux + dy * uy;
+    const perp = -dx * uy + dy * ux;
+    return forward >= 0 && forward <= HOOK_RANGE && Math.abs(perp) <= HOOK_WIDTH / 2;
+  };
+
+  let bestPlayer: TankPlayer | null = null;
+  let bestMonster: Monster | null = null;
+  let bestDist = Infinity;
+
+  for (const target of ctx.players.values()) {
+    if (target.id === player.id || !target.alive || !inCorridor(target.x, target.y)) continue;
+    const d = Math.hypot(target.x - player.x, target.y - player.y);
+    if (d < bestDist) {
+      bestDist = d;
+      bestPlayer = target;
+      bestMonster = null;
+    }
+  }
+  for (const monster of ctx.monsters) {
+    if (!monster.alive || !inCorridor(monster.x, monster.y)) continue;
+    const d = Math.hypot(monster.x - player.x, monster.y - player.y);
+    if (d < bestDist) {
+      bestDist = d;
+      bestMonster = monster;
+      bestPlayer = null;
+    }
+  }
+
+  if (!bestPlayer && !bestMonster) {
+    ctx.impacts.push({ id: makeId(), x: player.x, y: player.y, kind: "hook", x2: player.x + ux * HOOK_RANGE, y2: player.y + uy * HOOK_RANGE });
+    return;
+  }
+
+  const target = bestPlayer ?? bestMonster!;
+  ctx.impacts.push({ id: makeId(), x: player.x, y: player.y, kind: "hook", x2: target.x, y2: target.y, durationMs: HOOK_THROW_MS });
+  ctx.pendingHooks.push({
+    id: makeId(),
+    casterId: player.id,
+    targetKind: bestPlayer ? "player" : "monster",
+    targetId: target.id,
+    angle,
+    resolveAt: now + HOOK_THROW_MS,
+  });
 }
