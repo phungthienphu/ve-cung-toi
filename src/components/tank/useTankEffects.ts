@@ -6,7 +6,8 @@
 // TankCanvas's draw loop reads the ref lists this returns every frame.
 
 import { useEffect, useRef, useState } from "react";
-import { TANK_SKINS, ULTIMATE_CONFIG, getMap, skinForColor, type Bullet, type TankPublicState } from "@shared/tankTypes";
+import { TANK_SKINS, ULTIMATE_CONFIG, getMap, skinForColor, type Bullet } from "@shared/tankTypes";
+import type { ClientTankPublicState } from "@/lib/useTankRoom";
 import { getSprite } from "@/lib/imageCache";
 import {
   playBoostStart,
@@ -93,7 +94,7 @@ function preloadTankSprites() {
   for (const src of srcs) getSprite(src);
 }
 
-export function useTankEffects(state: TankPublicState, selfId: string) {
+export function useTankEffects(state: ClientTankPublicState, selfId: string) {
   const explosionsRef = useRef<Explosion[]>([]);
   const marksRef = useRef<SkidMark[]>([]);
   const oilSpillsRef = useRef<OilSpill[]>([]);

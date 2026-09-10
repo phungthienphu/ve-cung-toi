@@ -35,6 +35,7 @@ import {
   type ItemKind,
   type Monster,
   type Pickup,
+  type PlayerRosterEntry,
   type RedBarrage,
   type TankClientMessage,
   type TankImpact,
@@ -123,6 +124,10 @@ export default class TankRoom implements Party.Server {
   }
 
   onConnect(connection: Party.Connection) {
+    // Roster first: a brand-new connection has no locally-cached
+    // name/color/team for anyone yet, and the per-tick state that follows no
+    // longer carries them (see PublicTankPlayer).
+    connection.send(JSON.stringify(this.rosterMessage()));
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
@@ -207,6 +212,7 @@ export default class TankRoom implements Party.Server {
     const player = this.players.get(sender.id);
     if (!player) return;
     player.team = team;
+    this.broadcastRoster();
     this.broadcastState();
   }
 
@@ -219,6 +225,7 @@ export default class TankRoom implements Party.Server {
     const player = this.players.get(sender.id);
     if (!player) return;
     player.color = color;
+    this.broadcastRoster();
     this.broadcastState();
   }
 
@@ -309,6 +316,9 @@ export default class TankRoom implements Party.Server {
       player.isHost = true;
     }
 
+    // Roster before state, same reasoning as onConnect — this connection may
+    // not have a roster entry for itself (or an updated name/color) yet.
+    this.broadcastRoster();
     sender.send(JSON.stringify(this.stateMessage()));
     this.broadcastState();
     this.reportToDirectory();
@@ -648,6 +658,7 @@ export default class TankRoom implements Party.Server {
       this.hostId = next ? next.id : null;
       if (next) next.isHost = true;
     }
+    this.broadcastRoster();
     this.broadcastState();
     this.reportToDirectory();
     sender.close();
@@ -752,6 +763,23 @@ export default class TankRoom implements Party.Server {
 
   private broadcastState() {
     this.party.broadcast(JSON.stringify(this.stateMessage()));
+  }
+
+  private rosterMessage(): TankServerMessage {
+    const players: PlayerRosterEntry[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      color: p.color,
+      team: p.team,
+    }));
+    return { type: "roster", players };
+  }
+
+  /** Only called from the handful of places that actually change a name,
+   * color, or team (join, choose_team, choose_color, leave) — never from the
+   * per-tick loop, unlike broadcastState. See PublicTankPlayer's doc. */
+  private broadcastRoster() {
+    this.party.broadcast(JSON.stringify(this.rosterMessage()));
   }
 
   /** Pushes this room's current listing-relevant state (player count, mode,

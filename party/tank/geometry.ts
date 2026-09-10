@@ -48,6 +48,9 @@ export function toPublicPlayer(p: TankPlayer): PublicTankPlayer {
     hookPullToX: _hookPullToX,
     hookPullToY: _hookPullToY,
     burnOwnerId: _burnOwnerId,
+    name: _name,
+    color: _color,
+    team: _team,
     ...rest
   } = p;
   return rest;

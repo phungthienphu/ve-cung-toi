@@ -517,17 +517,44 @@ export interface TankPlayer {
   auraShieldUntil: number | null;
 }
 
-/** What actually goes out over the wire for a player — omits fields that
- * only matter to the server's own physics/easing math (ice's velocity
- * accumulator, the hook pull's from/to/until bookkeeping — the client only
- * ever needs the *result* the server already baked into x/y every tick, not
- * how it got there — and burn's damage-attribution owner id). Broadcast
- * every tick for every player, so trimming this is a standing bandwidth/CPU
- * saving rather than only mattering during a combat spike. */
+/** What actually goes out over the wire for a player every tick — omits
+ * fields that only matter to the server's own physics/easing math (ice's
+ * velocity accumulator, the hook pull's from/to/until bookkeeping — the
+ * client only ever needs the *result* the server already baked into x/y
+ * every tick, not how it got there — and burn's damage-attribution owner
+ * id), plus `name`/`color`/`team`, which barely ever change during a match
+ * (join, a lobby re-pick, or a team switch) but would otherwise get
+ * re-sent unchanged on every single tick. Those three travel instead on the
+ * separate, only-sent-on-change "roster" message — see PlayerRosterEntry —
+ * and the client re-merges them locally. Broadcast every tick for every
+ * player, so trimming this is a standing bandwidth/CPU saving rather than
+ * only mattering during a combat spike. */
 export type PublicTankPlayer = Omit<
   TankPlayer,
-  "velocityX" | "velocityY" | "hookPullUntil" | "hookPullFromX" | "hookPullFromY" | "hookPullToX" | "hookPullToY" | "burnOwnerId"
+  | "velocityX"
+  | "velocityY"
+  | "hookPullUntil"
+  | "hookPullFromX"
+  | "hookPullFromY"
+  | "hookPullToX"
+  | "hookPullToY"
+  | "burnOwnerId"
+  | "name"
+  | "color"
+  | "team"
 >;
+
+/** The part of a player that's essentially static for the whole match —
+ * broadcast only when it actually changes (join, a lobby name/color
+ * re-pick, a team switch), not every tick. The client keeps its own map of
+ * these by id and merges them onto the per-tick PublicTankPlayer rows
+ * itself; see useTankRoom.ts. */
+export interface PlayerRosterEntry {
+  id: string;
+  name: string;
+  color: string;
+  team: Team;
+}
 
 export interface Bullet {
   id: string;
@@ -913,5 +940,8 @@ export type TankClientMessage =
 
 export type TankServerMessage =
   | { type: "state"; state: TankPublicState }
+  // Sent whenever the roster actually changes (join, rename/recolor, team
+  // switch, leave) instead of every tick — see PlayerRosterEntry.
+  | { type: "roster"; players: PlayerRosterEntry[] }
   | { type: "kicked" }
   | { type: "error"; message: string };

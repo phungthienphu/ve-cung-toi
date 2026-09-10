@@ -10,10 +10,9 @@ import {
   VIEWPORT_W,
   getMap,
   mapCanvasSize,
-  type PublicTankPlayer,
-  type TankPublicState,
   type TankTimeOfDay,
 } from "@shared/tankTypes";
+import type { ClientTankPlayer, ClientTankPublicState } from "@/lib/useTankRoom";
 import { getSprite } from "@/lib/imageCache";
 import { mulberry32 } from "./sprite-utils";
 
@@ -32,7 +31,7 @@ export function tileCharAt(m: ReturnType<typeof getMap>, x: number, y: number): 
 /** Same "server sends everything, client just doesn't render it" trick used
  * for the blind item's fog-of-war: bushes and smoke hide enemy tanks standing
  * in them unless the viewer is close enough to have spotted them anyway. */
-export function isCoverHidden(m: ReturnType<typeof getMap>, target: PublicTankPlayer, self: PublicTankPlayer): boolean {
+export function isCoverHidden(m: ReturnType<typeof getMap>, target: ClientTankPlayer, self: ClientTankPlayer): boolean {
   const tile = tileCharAt(m, target.x, target.y);
   if (tile !== "B" && tile !== "S") return false;
   return Math.hypot(target.x - self.x, target.y - self.y) > BUSH_REVEAL_RADIUS;
@@ -322,7 +321,7 @@ function getMinimapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement {
 
 export function drawMinimap(
   canvas: HTMLCanvasElement | null,
-  s: TankPublicState,
+  s: ClientTankPublicState,
   m: ReturnType<typeof getMap>,
   selfId: string,
   camX: number,

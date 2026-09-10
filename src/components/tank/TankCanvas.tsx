@@ -19,8 +19,8 @@ import {
   getMap,
   mapCanvasSize,
   type TankClientMessage,
-  type TankPublicState,
 } from "@shared/tankTypes";
+import type { ClientTankPublicState } from "@/lib/useTankRoom";
 import { DIR_ANGLE, skinForColor } from "./render/sprite-utils";
 import { computeScopeEndpoint, drawScopeLine } from "./render/sniper";
 import {
@@ -73,7 +73,7 @@ import { useTankEffects } from "./useTankEffects";
 import { useTankInput } from "./useTankInput";
 
 interface Props {
-  state: TankPublicState;
+  state: ClientTankPublicState;
   selfId: string;
   send: (msg: TankClientMessage) => void;
 }
@@ -86,7 +86,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
   // draw loop smoothly slide tanks between the two instead of them sitting
   // still for ~3 rendered frames and then jumping, which is what a server
   // tick rate of 20Hz looks like on a ~60fps screen with no interpolation.
-  const prevStateRef = useRef<TankPublicState | null>(null);
+  const prevStateRef = useRef<ClientTankPublicState | null>(null);
   const stateChangedAtRef = useRef(performance.now());
   if (stateRef.current !== state) {
     prevStateRef.current = stateRef.current;

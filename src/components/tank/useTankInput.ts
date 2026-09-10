@@ -19,8 +19,8 @@ import {
   VIEWPORT_W,
   skinForColor,
   type TankClientMessage,
-  type TankPublicState,
 } from "@shared/tankTypes";
+import type { ClientTankPublicState } from "@/lib/useTankRoom";
 import { playDash, playGreenBurst, playHook, playSandWave, playShieldAura, playTankBigShot, playTankShoot } from "@/lib/sound";
 import { DIR_ANGLE } from "./render/sprite-utils";
 
@@ -52,7 +52,7 @@ function angleToDir(dx: number, dy: number): "up" | "down" | "left" | "right" {
 interface Params {
   send: (msg: TankClientMessage) => void;
   selfId: string;
-  stateRef: { current: TankPublicState };
+  stateRef: { current: ClientTankPublicState };
   canvasRef: { current: HTMLCanvasElement | null };
 }
 
