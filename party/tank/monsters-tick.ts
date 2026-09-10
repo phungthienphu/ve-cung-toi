@@ -1,9 +1,9 @@
-// Forest monster spawning + AI: a pack sharing one nest (a real clump of
-// bushes, not a lone tile), passive by default and wandering together near
-// that nest, which only gives chase — individually, not as a pack — after a
-// tank collides with or shoots one of them, and gives up (back to wandering)
-// once the target escapes the leash range, dies, or the aggro timer lapses
-// unrefreshed.
+// Forest monster spawning + AI: MONSTER_PACK_COUNT packs, each sharing one
+// nest (a real clump of bushes, not a lone tile), passive by default and
+// wandering together near that nest, which only gives chase — individually,
+// not as a pack — after a tank collides with or shoots one of them, and
+// gives up (back to wandering) once the target escapes the leash range,
+// dies, or the aggro timer lapses unrefreshed.
 
 import {
   HOOK_PULL_DURATION_MS,
@@ -21,6 +21,7 @@ import {
   MONSTER_REST_CHANCE,
   MONSTER_REST_DURATION_MS,
   MONSTER_SIZE,
+  MONSTER_SPAWN_SPREAD_RADIUS,
   MONSTER_SPEED,
   NEST_PUDDLE_RADIUS,
   TANK_SIZE,
@@ -68,24 +69,41 @@ function findBushClusters(map: TankMapDef): { x: number; y: number }[][] {
 /** A monster pack's nest should read as living somewhere real — a proper
  * clump of bushes, not a single lonely 'B' tile — so this prefers a cluster
  * of at least 3 connected bush tiles (falling back to any bush cluster, then
- * any open floor tile if a map somehow has no bushes at all). */
-function pickNestTile(map: TankMapDef): { x: number; y: number } | null {
+ * any open floor tile if a map somehow has no bushes at all). `used` tracks
+ * clusters already claimed by an earlier pack so multiple packs spread
+ * across different nests instead of piling into the same spot, as long as
+ * the map actually has enough distinct clusters to go around. */
+function pickNestTile(map: TankMapDef, used: Set<{ x: number; y: number }[]>): { x: number; y: number } | null {
   const clusters = findBushClusters(map);
   const bigClusters = clusters.filter((c) => c.length >= 3);
   const pool = bigClusters.length > 0 ? bigClusters : clusters;
   if (pool.length === 0) return randomOpenTile(map);
-  const cluster = pool[Math.floor(Math.random() * pool.length)];
+  const unused = pool.filter((c) => !used.has(c));
+  const choices = unused.length > 0 ? unused : pool;
+  const cluster = choices[Math.floor(Math.random() * choices.length)];
+  used.add(cluster);
   return cluster[Math.floor(Math.random() * cluster.length)];
 }
 
-function spawnMonsterAt(nestTile: { x: number; y: number }): Monster {
+/** A small fixed offset from the pack's shared nest anchor, evenly spaced
+ * around a circle by index — deterministic (not random) so it's guaranteed
+ * to actually separate every member, instead of random jitter that could
+ * occasionally place two of them close to overlapping again anyway. */
+function spawnOffsetFor(indexInPack: number, packSize: number): { x: number; y: number } {
+  if (packSize <= 1) return { x: 0, y: 0 };
+  const angle = (indexInPack / packSize) * Math.PI * 2;
+  return { x: Math.cos(angle) * MONSTER_SPAWN_SPREAD_RADIUS, y: Math.sin(angle) * MONSTER_SPAWN_SPREAD_RADIUS };
+}
+
+function spawnMonsterAt(nestTile: { x: number; y: number }, indexInPack: number, packSize: number): Monster {
   const pos = spawnPixel(nestTile);
+  const offset = spawnOffsetFor(indexInPack, packSize);
   const dirs: Direction[] = ["up", "down", "left", "right"];
   const maxHp = MONSTER_HP_MIN + Math.floor(Math.random() * (MONSTER_HP_MAX - MONSTER_HP_MIN + 1));
   return {
     id: makeId(),
-    x: pos.x,
-    y: pos.y,
+    x: pos.x + offset.x,
+    y: pos.y + offset.y,
     dir: dirs[Math.floor(Math.random() * dirs.length)],
     alive: true,
     hp: maxHp,
@@ -94,6 +112,8 @@ function spawnMonsterAt(nestTile: { x: number; y: number }): Monster {
     nestX: pos.x,
     nestY: pos.y,
     aggroPlayerId: null,
+    spawnOffsetX: offset.x,
+    spawnOffsetY: offset.y,
     hookPullUntil: null,
     hookPullFromX: 0,
     hookPullFromY: 0,
@@ -102,10 +122,18 @@ function spawnMonsterAt(nestTile: { x: number; y: number }): Monster {
   };
 }
 
-/** The whole map's monster population: one pack, sharing one nest. */
-export function spawnMonsterPack(map: TankMapDef): Monster[] {
-  const nestTile = pickNestTile(map) ?? { x: 1, y: 1 };
-  return Array.from({ length: MONSTER_PACK_SIZE }, () => spawnMonsterAt(nestTile));
+/** The whole map's monster population: MONSTER_PACK_COUNT packs, each with
+ * its own nest (spread across distinct bush clusters where possible). */
+export function spawnMonsterPacks(map: TankMapDef, packCount: number): Monster[] {
+  const usedClusters = new Set<{ x: number; y: number }[]>();
+  const monsters: Monster[] = [];
+  for (let p = 0; p < packCount; p++) {
+    const nestTile = pickNestTile(map, usedClusters) ?? { x: 1, y: 1 };
+    for (let i = 0; i < MONSTER_PACK_SIZE; i++) {
+      monsters.push(spawnMonsterAt(nestTile, i, MONSTER_PACK_SIZE));
+    }
+  }
+  return monsters;
 }
 
 export interface MonstersTickCtx extends CombatCtx {
@@ -164,9 +192,11 @@ export function stepMonsters(ctx: MonstersTickCtx, map: TankMapDef, now: number)
     if (!monster.alive) {
       if (monster.respawnAt !== null && now >= monster.respawnAt) {
         // Respawns at its own nest, not a fresh random spot — the nest is
-        // a fixed lair for the whole match (marked on the ground for players).
-        monster.x = monster.nestX;
-        monster.y = monster.nestY;
+        // a fixed lair for the whole match (marked on the ground for
+        // players) — offset by its own spawnOffset so it doesn't respawn
+        // exactly on top of its packmates either.
+        monster.x = monster.nestX + monster.spawnOffsetX;
+        monster.y = monster.nestY + monster.spawnOffsetY;
         monster.alive = true;
         monster.hp = monster.maxHp;
         monster.respawnAt = null;

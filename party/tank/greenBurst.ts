@@ -47,7 +47,8 @@ export function stepGreenBursts(ctx: GreenBurstFieldCtx, pending: PendingGreenBu
       continue;
     }
     const owner = ctx.players.get(burst.ownerId);
-    if (owner && owner.alive) fireGreenVolley(ctx, owner);
+    if (!owner || !owner.alive) continue; // owner died mid-sequence — drop the rest of the burst entirely, don't let it "wake up" if they respawn
+    fireGreenVolley(ctx, owner);
     if (burst.volleysRemaining > 1) {
       remaining.push({ ...burst, volleysRemaining: burst.volleysRemaining - 1, nextFireAt: now + GREEN_BURST_INTERVAL_MS });
     }

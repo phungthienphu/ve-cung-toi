@@ -2,6 +2,7 @@
 // crates, traps, and ground pickups.
 
 import {
+  BULLET_SPREAD_MAX_DEG,
   CRATE_MAX_HP,
   CRATE_SIZE,
   MAX_HP,
@@ -331,6 +332,31 @@ export function drawAuraShieldGlow(ctx: CanvasRenderingContext2D, x: number, y: 
   ctx.arc(x, y, half + 6, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.restore();
+}
+
+/** Local accuracy cue for the "spam widens spread" mechanic (see
+ * BULLET_SPREAD_* in tankTypes.ts and tank-server.ts's handleShoot): two
+ * thin lines fanning out from the muzzle showing roughly how far the next
+ * shot could drift off-aim, redder the hotter it's running. Self only —
+ * this is a UI hint about your own next shot, not something opponents need
+ * to see. */
+export function drawSpreadCone(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, spreadDeg: number) {
+  const half = TANK_SIZE / 2;
+  const offset = half + 6;
+  const len = 34;
+  const spreadRad = (spreadDeg * Math.PI) / 180;
+  const heatT = Math.min(1, spreadDeg / BULLET_SPREAD_MAX_DEG);
+  ctx.save();
+  ctx.strokeStyle = `rgba(248,113,113,${0.3 + 0.4 * heatT})`;
+  ctx.lineWidth = 1.5;
+  for (const sign of [-1, 1]) {
+    const a = angle + sign * spreadRad;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(angle) * offset, y + Math.sin(angle) * offset);
+    ctx.lineTo(x + Math.cos(a) * (offset + len), y + Math.sin(a) * (offset + len));
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

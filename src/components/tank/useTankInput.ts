@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import {
+  BULLET_SPREAD_RESET_MS,
   FIRE_COOLDOWN_MS,
   RAPID_FIRE_COOLDOWN_MS,
   ULTIMATE_ACTIVATION_MODE,
@@ -82,6 +83,13 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   // fired yet — purely local UI state, see the ULTIMATE_ACTIVATION_MODE doc
   // for why this phase never touches the network.
   const isTargetingRef = useRef(false);
+  // Local best-effort mirror of the server's per-shot spread "heat" (see
+  // tank-server.ts's handleShoot) — purely a rendering aid so the player can
+  // actually see why their shots start drifting instead of just missing for
+  // no visible reason. The server is still the sole authority on the real
+  // roll; this only has to be close enough to explain what's happening.
+  const spreadHeatRef = useRef(0);
+  const lastNormalShotAtRef = useRef(0);
 
   const sendInput = useCallback(() => {
     const held = heldRef.current;
@@ -118,6 +126,18 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
     send({ type: "shoot", big: isScoped || undefined });
     if (isScoped) playTankBigShot();
     else playTankShoot();
+
+    if (!isScoped) {
+      const now = performance.now();
+      const isRapidFiring = self.rapidFireUntil !== null && self.rapidFireUntil > stateRef.current.serverNow;
+      const isFire = self.fireShotsLeft > 0;
+      if (isRapidFiring || isFire) {
+        spreadHeatRef.current = 0;
+      } else {
+        spreadHeatRef.current = now - lastNormalShotAtRef.current < BULLET_SPREAD_RESET_MS ? spreadHeatRef.current + 1 : 0;
+      }
+      lastNormalShotAtRef.current = now;
+    }
   }, [send, selfId, stateRef]);
 
   useEffect(() => {
@@ -343,6 +363,8 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
     aimDistanceRef,
     aimPointRef,
     isTargetingRef,
+    spreadHeatRef,
+    lastNormalShotAtRef,
     joyBaseRef,
     joyKnobRef,
     handleJoyPointerDown,

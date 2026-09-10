@@ -51,7 +51,7 @@ export function stepHooks(ctx: HookFieldCtx, map: TankMapDef, pending: PendingHo
     }
 
     const caster = ctx.players.get(hook.casterId);
-    if (!caster) continue; // caster left mid-throw — the chain just vanishes
+    if (!caster || !caster.alive) continue; // caster left or died mid-throw — the chain just vanishes
 
     const ux = Math.cos(hook.angle);
     const uy = Math.sin(hook.angle);

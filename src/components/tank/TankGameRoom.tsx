@@ -4,22 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTankRoom } from "@/lib/useTankRoom";
-import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw } from "@/lib/sound";
+import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw, startTankBgMusic, stopTankBgMusic } from "@/lib/sound";
 import { fireworks } from "@/lib/confetti";
 import {
   DEFAULT_MAP_ID,
   KILL_TARGET,
   MIN_TANK_PLAYERS,
+  TANK_COLORS,
   TANK_MAPS,
+  TANK_SKINS,
+  TANK_SKIN_LABELS,
   ULTIMATE_ACTIVATION_MODE,
   ULTIMATE_CONFIG,
   skinForColor,
   type ItemKind,
-  type TankSkin,
   type Team,
 } from "@shared/tankTypes";
 import { DIR_ANGLE } from "./render/sprite-utils";
 import TankCanvas from "./TankCanvas";
+import { ULTIMATE_UI } from "./ultimateUi";
 
 interface Props {
   roomId: string;
@@ -28,71 +31,11 @@ interface Props {
   color: string;
 }
 
-interface UltimateUi {
-  icon: string;
-  label: string;
-  activeClasses: string;
-  barClass: string;
-}
-
-// One entry per skin so the "R" button's icon/tooltip/color stays a single
-// table edit away instead of a growing pile of `isBlue`/`isDark`-style
-// booleans in the JSX below.
-const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
-  blue: {
-    icon: "🔥",
-    label: "Xả đạn liên hoàn (R) — bắn nhanh trong 2s, cần đầy năng lượng",
-    activeClasses: "border-cyan-400 bg-cyan-50 text-cyan-700 hover:bg-cyan-100",
-    barClass: "bg-cyan-500",
-  },
-  dark: {
-    icon: "🎯",
-    label: "Bắn tỉa (R để bật ngắm, bắn bằng nút bắn thường) — sát thương gấp đôi, đạn bay rất nhanh",
-    activeClasses: "border-red-400 bg-red-50 text-red-700 hover:bg-red-100",
-    barClass: "bg-red-500",
-  },
-  green: {
-    icon: "✳️",
-    label: "Vòng đạn tỏa (R) — bắn 3 đợt đạn tỏa tròn quanh xe, vẫn di chuyển được",
-    activeClasses: "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-    barClass: "bg-emerald-500",
-  },
-  red: {
-    icon: "💣",
-    label: "Ném bom (R để ngắm điểm bằng chuột trên bản đồ, bắn bằng nút bắn thường) — rải nhiều đợt nổ, né bằng cách tăng tốc",
-    activeClasses: "border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100",
-    barClass: "bg-orange-500",
-  },
-  sand: {
-    icon: "🌪️",
-    label: "Sóng cát (R) — đẩy lùi + choáng 1s kẻ địch phía trước, sát thương thấp",
-    activeClasses: "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    barClass: "bg-amber-500",
-  },
-  bigRed: {
-    icon: "🪝",
-    label: "Móc câu (R) — kéo địch gần nhất trên đường ngắm lại gần, gây sát thương + choáng",
-    activeClasses: "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100",
-    barClass: "bg-rose-500",
-  },
-  darkLarge: {
-    icon: "🛡️",
-    label: "Khiên chắn di động (R) — miễn sát thương cho bản thân và đồng đội gần trong 8s, vẫn di chuyển được",
-    activeClasses: "border-violet-400 bg-violet-50 text-violet-700 hover:bg-violet-100",
-    barClass: "bg-violet-500",
-  },
-  huge: {
-    icon: "🚀",
-    label: "Lao thẳng (R) — lao nhanh xuyên qua tank khác theo hướng ngắm, hất văng ai ở gần, không gây sát thương",
-    activeClasses: "border-stone-400 bg-stone-50 text-stone-700 hover:bg-stone-100",
-    barClass: "bg-stone-500",
-  },
-};
-
 export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
   const router = useRouter();
   const { state, connected, kicked, send } = useTankRoom(roomId, playerId, name, color);
   const [mapId, setMapId] = useState(DEFAULT_MAP_ID);
+  const [pickingTank, setPickingTank] = useState(false);
 
   useEffect(() => {
     if (kicked) router.push("/tank-game");
@@ -100,6 +43,15 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
 
   useEffect(() => {
     if (state?.status === "ended") fireworks();
+  }, [state?.status]);
+
+  // In-match background track — only while a round is actually being
+  // played, not the lobby/results screens. Stopped on unmount too, so
+  // leaving the room mid-match doesn't leave it playing in the background.
+  useEffect(() => {
+    if (state?.status === "playing") startTankBgMusic();
+    else stopTankBgMusic();
+    return () => stopTankBgMusic();
   }, [state?.status]);
 
   // A short chime whenever another player joins the lobby (skip the very
@@ -233,13 +185,45 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
           )}
 
           {state.mode === "team" && self && (
-            <button
-              type="button"
-              onClick={() => send({ type: "choose_team", team: self.team === "A" ? "B" : "A" })}
-              className="mb-5 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-500"
-            >
-              Chuyển sang Đội {self.team === "A" ? "B" : "A"}
-            </button>
+            <>
+              <div className="mb-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => send({ type: "choose_team", team: self.team === "A" ? "B" : "A" })}
+                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-500"
+                >
+                  Chuyển sang Đội {self.team === "A" ? "B" : "A"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickingTank((v) => !v)}
+                  className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                    pickingTank ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Đổi xe tăng
+                </button>
+              </div>
+              {pickingTank && (
+                <div className="mb-3 grid grid-cols-4 gap-2 rounded-lg border border-cream-200 bg-slate-50 p-2.5">
+                  {TANK_COLORS.map((c, i) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => send({ type: "choose_color", color: c })}
+                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-1.5 transition ${
+                        self.color === c ? "border-slate-800 bg-white" : "border-transparent hover:border-slate-200"
+                      }`}
+                      aria-label={TANK_SKIN_LABELS[TANK_SKINS[i]]}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/Retina/tank_${TANK_SKINS[i]}.png`} alt="" className="h-8 w-8 object-contain" />
+                      <span className="truncate text-[10px] font-medium text-ink/60">{TANK_SKIN_LABELS[TANK_SKINS[i]]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {isHost && (

@@ -14,8 +14,10 @@ import {
   MAX_TANK_PLAYERS,
   MIN_TANK_PLAYERS,
   MAX_HP,
+  MONSTER_PACK_COUNT,
   RAPID_FIRE_COOLDOWN_MS,
   SHIELD_MAX_HITS,
+  TANK_COLORS,
   TANK_SIZE,
   TICK_MS,
   ULTIMATE_ACTIVATION_MODE,
@@ -47,7 +49,7 @@ import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
 import { aimAngleOf, makeId, spawnPixel } from "./tank/geometry";
 import { stepGreenBursts, type PendingGreenBurst } from "./tank/greenBurst";
-import { spawnMonsterPack, stepMonsters } from "./tank/monsters-tick";
+import { spawnMonsterPacks, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
 import { stepPlayers } from "./tank/players-tick";
 import { stepRedBarrages } from "./tank/redBarrage";
@@ -157,6 +159,8 @@ export default class TankRoom implements Party.Server {
         return this.handleJoin(msg.playerId, msg.name, msg.color, sender);
       case "choose_team":
         return this.handleChooseTeam(msg.team, sender);
+      case "choose_color":
+        return this.handleChooseColor(msg.color, sender);
       case "set_mode":
         return this.handleSetMode(msg.mode, sender);
       case "start_game":
@@ -195,6 +199,18 @@ export default class TankRoom implements Party.Server {
     const player = this.players.get(sender.id);
     if (!player) return;
     player.team = team;
+    this.broadcastState();
+  }
+
+  /** Re-picking a tank mid-lobby — same "no duplicates enforced" rule as the
+   * initial join color already had, so this doesn't need any new collision
+   * handling either. Lobby-only, like choosing a team. */
+  private handleChooseColor(color: string, sender: Party.Connection) {
+    if (this.status !== "lobby") return;
+    if (!TANK_COLORS.includes(color)) return;
+    const player = this.players.get(sender.id);
+    if (!player) return;
+    player.color = color;
     this.broadcastState();
   }
 
@@ -336,7 +352,7 @@ export default class TankRoom implements Party.Server {
     this.lastBurnDamageAt.clear();
     this.monsterAggroUntil.clear();
     this.monsterRestUntil.clear();
-    this.monsters = spawnMonsterPack(this.map);
+    this.monsters = spawnMonsterPacks(this.map, MONSTER_PACK_COUNT);
     this.teamScores = { A: 0, B: 0 };
     this.winnerId = null;
     this.winningTeam = null;
@@ -486,9 +502,11 @@ export default class TankRoom implements Party.Server {
     // holding the trigger) builds "heat", widening the spread each time —
     // resets back to pinpoint after BULLET_SPREAD_RESET_MS without firing.
     // Blue's rapid-fire window is exempt: going fast on purpose is its whole
-    // gimmick, not the mindless spam this is meant to discourage.
+    // gimmick, not the mindless spam this is meant to discourage. Fire ammo
+    // is exempt too — it's a limited pickup the player already paid for,
+    // not the free-to-spam plain shot this mechanic targets.
     let spreadDeg = 0;
-    if (!big && !isRapidFiring) {
+    if (!big && !isRapidFiring && !isFire) {
       const prevHeat = this.shotHeat.get(sender.id) ?? 0;
       const heat = now - last < BULLET_SPREAD_RESET_MS ? prevHeat + 1 : 0;
       this.shotHeat.set(sender.id, heat);

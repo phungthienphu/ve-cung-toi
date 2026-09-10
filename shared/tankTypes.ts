@@ -224,8 +224,8 @@ export const BULLET_SPREAD_RESET_MS = 500;
 export const BULLET_SPREAD_PER_SHOT_DEG = 2.5;
 export const BULLET_SPREAD_MAX_DEG = 14;
 export const PICKUP_SIZE = 16;
-export const MAX_PICKUPS = 2;
-export const PICKUP_SPAWN_INTERVAL_MS = 9000;
+export const MAX_PICKUPS = 4;
+export const PICKUP_SPAWN_INTERVAL_MS = 7000;
 export const PICKUP_HEAL_AMOUNT = 35;
 
 // Odds a freshly-spawned map pickup is each kind (must sum to 1). Shield is
@@ -271,9 +271,19 @@ export const BUSH_REVEAL_RADIUS = 50;
 // Monsters spawn as one pack sharing a single nest (see pickNestCluster in
 // monsters-tick.ts) rather than each wandering off completely independently.
 export const MONSTER_PACK_SIZE = 4;
+// How many separate packs (separate nests) populate one map — more packs
+// means monsters spread across the map instead of one single crowded spot.
+export const MONSTER_PACK_COUNT = 2;
 export const MONSTER_HP_MIN = 2; // each monster rolls its own max HP in this range at spawn —
 export const MONSTER_HP_MAX = 4; // not every one of the pack is equally tough.
 export const MONSTER_SIZE = TANK_SIZE;
+// A pack's members all share one nest anchor and move in lockstep while
+// wandering (see the pack-sync pre-pass in monsters-tick.ts) — without this,
+// they'd sit exactly on top of each other forever and read as a single
+// monster. Each member gets a small fixed offset from the shared nest point
+// (applied at spawn and respawn, not to the shared nestX/nestY itself, so
+// pack-grouping/puddle-healing logic still treats them as one pack).
+export const MONSTER_SPAWN_SPREAD_RADIUS = TILE_SIZE * 0.4;
 export const MONSTER_SPEED = 1.3;
 export const MONSTER_CHASE_SPEED_MULTIPLIER = 1.4;
 // Lowered (and the cooldown lengthened) once monsters started traveling in
@@ -337,7 +347,11 @@ export const ULTIMATE_CONFIG: Record<TankSkin, UltimateEnergyConfig> = {
   // than the shared baseline to compensate (~14s instead of ~10s).
   sand: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: 0.36 },
   bigRed: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
-  darkLarge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
+  // A team-wide 8s full damage immunity is much stronger than Sand's 1s
+  // single-target stun (which already got a slower regen than default) —
+  // scaled down further so it reads as a cooldown-gated team defensive
+  // move, not something that's up most of the fight.
+  darkLarge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: 0.2 },
   huge: { maxEnergy: MAX_ULTIMATE_ENERGY, regenPerTick: ULTIMATE_REGEN_PER_TICK },
 };
 
@@ -674,6 +688,12 @@ export interface Monster {
   nestX: number;
   nestY: number;
   aggroPlayerId: string | null;
+  // Fixed per-monster offset from the pack's shared nestX/nestY — see
+  // MONSTER_SPAWN_SPREAD_RADIUS. Applied at spawn and respawn so pack
+  // members never land exactly on top of each other or each other's own
+  // respawn point, while nestX/nestY itself stays the shared pack anchor.
+  spawnOffsetX: number;
+  spawnOffsetY: number;
   // Same eased-yank mechanism as TankPlayer's hookPull* fields — see there.
   hookPullUntil: number | null;
   hookPullFromX: number;
@@ -748,6 +768,7 @@ export interface TankPublicState {
 export type TankClientMessage =
   | { type: "join"; playerId: string; name: string; color: string }
   | { type: "choose_team"; team: Team }
+  | { type: "choose_color"; color: string }
   | { type: "set_mode"; mode: TankRoomMode }
   | { type: "start_game"; mapId: string }
   | { type: "play_again" }

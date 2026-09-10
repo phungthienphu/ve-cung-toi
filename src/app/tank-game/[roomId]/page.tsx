@@ -3,9 +3,10 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { TANK_COLORS, TANK_SKINS, TANK_SKIN_LABELS } from "@shared/tankTypes";
+import { TANK_COLORS, TANK_SKINS, TANK_SKIN_LABELS, skinForColor } from "@shared/tankTypes";
 import TankGameRoom from "@/components/tank/TankGameRoom";
 import TankPreview from "@/components/tank/TankPreview";
+import { ULTIMATE_UI } from "@/components/tank/ultimateUi";
 
 export default function TankRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -57,6 +58,11 @@ export default function TankRoomPage({ params }: { params: Promise<{ roomId: str
 
           <div className="mb-5 rounded-lg bg-slate-50 py-2">
             <TankPreview color={color} />
+          </div>
+
+          <div className="mb-5 flex items-start gap-2 rounded-lg border border-cream-200 bg-white px-3 py-2.5">
+            <span className="text-lg leading-none">{ULTIMATE_UI[skinForColor(color)].icon}</span>
+            <p className="text-xs leading-snug text-ink/70">{ULTIMATE_UI[skinForColor(color)].label}</p>
           </div>
 
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Loại xe tăng</label>

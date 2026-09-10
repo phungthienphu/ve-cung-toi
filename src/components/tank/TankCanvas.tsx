@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import {
+  BULLET_SPREAD_MAX_DEG,
+  BULLET_SPREAD_PER_SHOT_DEG,
+  BULLET_SPREAD_RESET_MS,
   DARKLARGE_AURA_RADIUS,
   MAX_BOOST_ENERGY,
   RED_BARRAGE_BOMB_RADIUS,
@@ -40,6 +43,7 @@ import {
   drawHookedOverlay,
   drawItemPickup,
   drawMonster,
+  drawSpreadCone,
   drawStunnedOverlay,
   drawTank,
   drawTrap,
@@ -296,6 +300,20 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         else if (p.stunnedUntil && p.stunnedUntil > s.serverNow) drawStunnedOverlay(ctx, rp.x, rp.y, now);
         if (p.shieldAuraUntil && p.shieldAuraUntil > s.serverNow) drawAuraEmitterRing(ctx, rp.x, rp.y, DARKLARGE_AURA_RADIUS, now);
         if (p.auraShieldUntil && p.auraShieldUntil > s.serverNow) drawAuraShieldGlow(ctx, rp.x, rp.y, now);
+
+        // Local accuracy cue: only self needs to see why their own rapid
+        // fire is starting to drift — see BULLET_SPREAD_* in tankTypes.ts.
+        if (p.id === selfId) {
+          const elapsedSinceShot = now - input.lastNormalShotAtRef.current;
+          const spreadDeg =
+            elapsedSinceShot < BULLET_SPREAD_RESET_MS
+              ? Math.min(input.spreadHeatRef.current * BULLET_SPREAD_PER_SHOT_DEG, BULLET_SPREAD_MAX_DEG)
+              : 0;
+          if (spreadDeg > 0) {
+            const angle = p.aimAngle ?? DIR_ANGLE[p.dir];
+            drawSpreadCone(ctx, rp.x, rp.y, angle, spreadDeg);
+          }
+        }
       }
 
       // Whoever's standing in a bush (self included) gets a second, lighter
@@ -401,6 +419,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     input.aimDistanceRef,
     input.aimPointRef,
     input.isTargetingRef,
+    input.spreadHeatRef,
+    input.lastNormalShotAtRef,
     explosionsRef,
     marksRef,
     oilSpillsRef,

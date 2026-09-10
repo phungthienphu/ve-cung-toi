@@ -26,7 +26,10 @@ export function isMuted(): boolean {
 export function setMuted(muted: boolean) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
-  if (muted) stopMusic();
+  if (muted) {
+    stopMusic();
+    stopTankBgMusic();
+  }
 }
 
 function tone(freq: number, startOffset: number, duration: number, gainPeak = 0.15, type: OscillatorType = "sine") {
@@ -393,4 +396,28 @@ export function toggleMusic(): boolean {
   }
   startMusic();
   return true;
+}
+
+// Tank game's looping background track — a real audio file (unlike every
+// other sound here), separate from the synthesized startMusic()/toggleMusic()
+// pair above, and specific to an actual match in progress rather than a
+// general ambient track.
+let tankBgMusicEl: HTMLAudioElement | null = null;
+
+export function startTankBgMusic() {
+  if (typeof window === "undefined" || isMuted()) return;
+  if (!tankBgMusicEl) {
+    tankBgMusicEl = new Audio("/nhac_nen_hoi_hop_nghiem_trong-www_tiengdong_com.mp3");
+    tankBgMusicEl.loop = true;
+    tankBgMusicEl.volume = 0.35;
+  }
+  // Autoplay can still be blocked by the browser even after a prior click —
+  // fine to just silently drop it rather than surface a console error the
+  // player can't do anything about.
+  tankBgMusicEl.play().catch(() => {});
+}
+
+export function stopTankBgMusic() {
+  tankBgMusicEl?.pause();
+  if (tankBgMusicEl) tankBgMusicEl.currentTime = 0;
 }

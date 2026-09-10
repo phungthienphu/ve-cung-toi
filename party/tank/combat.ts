@@ -33,13 +33,19 @@ export interface CombatCtx {
   impacts: TankImpact[];
 }
 
+/** darkLarge's aura: blocks damage outright while the target is standing in
+ * it, rather than eating one of a fixed number of charges like the item
+ * shield — see stepShieldAuras in skills.ts. Checked ahead of the item
+ * shield everywhere both could apply, so a free aura block is used up
+ * before a limited item-shield charge is. */
+function isUnderAuraShield(target: TankPlayer): boolean {
+  return target.auraShieldUntil !== null && target.auraShieldUntil > Date.now();
+}
+
 /** Applies flat damage to a tank; kills + credits `killerId` (if any) once hp runs out. */
 export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number, killerId: string | null) {
   if (!target.alive) return;
-  // darkLarge's aura: blocks damage outright while the target is standing
-  // in it, rather than eating one of a fixed number of charges like the
-  // item shield below — see stepShieldAuras in skills.ts.
-  if (target.auraShieldUntil !== null && target.auraShieldUntil > Date.now()) {
+  if (isUnderAuraShield(target)) {
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
     return;
   }
@@ -79,6 +85,10 @@ export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number,
  * directly, which meant a shielded tank getting mauled by a monster took
  * full damage anyway). */
 export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: number, ownerId: string | null) {
+  if (isUnderAuraShield(target)) {
+    ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
+    return;
+  }
   if (target.shieldHitsLeft > 0) {
     target.shieldHitsLeft -= 1;
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
@@ -87,9 +97,14 @@ export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: 
   damagePlayer(ctx, target, amount, ownerId);
 }
 
-/** Applies bullet damage/effects to a hit tank; returns true if the tank died. */
+/** Applies bullet damage/effects to a hit tank; returns true if the tank died.
+ * Blind and fire's ignition are still blocked by an item shield exactly as
+ * before (a status effect, not something the free aura is meant to stop —
+ * see combat.ts's isUnderAuraShield doc); only the actual damage-consuming
+ * paths below check the aura first, so a free aura block gets used up
+ * before a limited item-shield charge does. */
 export function applyHit(ctx: CombatCtx, target: TankPlayer, bulletKind: "normal" | "blind" | "big" | "fire", ownerId: string): boolean {
-  if (target.shieldHitsLeft > 0) {
+  if ((bulletKind === "blind" || bulletKind === "fire") && target.shieldHitsLeft > 0) {
     target.shieldHitsLeft -= 1;
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
     return false;
@@ -101,6 +116,15 @@ export function applyHit(ctx: CombatCtx, target: TankPlayer, bulletKind: "normal
   if (bulletKind === "fire") {
     target.burningUntil = Date.now() + BURN_DURATION_MS;
     target.burnOwnerId = ownerId;
+  }
+  if (isUnderAuraShield(target)) {
+    ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
+    return false;
+  }
+  if (target.shieldHitsLeft > 0) {
+    target.shieldHitsLeft -= 1;
+    ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
+    return false;
   }
   const wasAlive = target.alive;
   const damage = bulletKind === "big" ? BULLET_DAMAGE * ULTIMATE_DAMAGE_MULTIPLIER : BULLET_DAMAGE;
