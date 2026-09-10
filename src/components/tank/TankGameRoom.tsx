@@ -303,7 +303,8 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
     );
 
     if (state.mode === "team") {
-      const rosterFor = (team: Team) => [...state.players].filter((p) => p.team === team).sort((a, b) => b.score - a.score);
+      const rosterFor = (team: Team) =>
+        [...state.players].filter((p) => p.team === team).sort((a, b) => b.score - a.score || b.damageDealt - a.damageDealt);
       const teamA = rosterFor("A");
       const teamB = rosterFor("B");
       const title =
@@ -311,22 +312,28 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
       const roster = (players: typeof teamA, label: string, colorClass: string) => (
         <div>
           <div className={`mb-1.5 text-xs font-semibold uppercase tracking-wide ${colorClass}`}>{label}</div>
-          <div className="space-y-1">
-            {players.map((p) => (
-              <div key={p.id} className="flex min-w-0 items-center justify-between gap-1 rounded-lg px-2 py-1 text-xs">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="h-3 w-3 shrink-0 rounded" style={{ backgroundColor: p.color }} />
-                  <span className="min-w-0 truncate font-medium">{p.name}</span>
-                </span>
-                <span className="shrink-0 text-slate-500">{p.score}</span>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-slate-500">
+                <tr><th className="px-2 py-1 text-left">Người chơi</th><th className="px-2 py-1">K/D</th><th className="px-2 py-1">Gây</th><th className="px-2 py-1">Nhận</th></tr>
+              </thead>
+              <tbody>
+                {players.map((p) => (
+                  <tr key={p.id} className="border-t border-slate-100">
+                    <td className="max-w-28 truncate px-2 py-1.5 text-left font-medium"><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded" style={{ backgroundColor: p.color }} />{p.name}</td>
+                    <td className="px-2 py-1.5 text-center font-semibold">{p.score}/{p.deaths}</td>
+                    <td className="px-2 py-1.5 text-center">{p.damageDealt}</td>
+                    <td className="px-2 py-1.5 text-center">{p.damageTaken}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       );
       return (
         <main className="flex min-h-app items-center justify-center bg-tank-scene px-4 py-10">
-          <div className="w-full max-w-md min-w-0 rounded-xl border border-cream-200 bg-white p-6 text-center shadow-xl">
+          <div className="w-full max-w-3xl min-w-0 rounded-xl border border-cream-200 bg-white p-6 text-center shadow-xl">
             <h2 className="mb-1 truncate text-2xl font-bold text-ink">{title}</h2>
             <p className="mb-6 text-sm text-ink/50">
               Tỉ số: {state.teamScores.A} - {state.teamScores.B} (mục tiêu {KILL_TARGET} điểm hoặc hết giờ)
@@ -341,25 +348,31 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
       );
     }
 
-    const ranking = [...state.players].sort((a, b) => b.score - a.score);
+    const ranking = [...state.players].sort((a, b) => b.score - a.score || b.damageDealt - a.damageDealt);
     const winner = state.players.find((p) => p.id === state.winnerId);
     return (
       <main className="flex min-h-app items-center justify-center bg-tank-scene px-4 py-10">
-        <div className="w-full max-w-md min-w-0 rounded-xl border border-cream-200 bg-white p-6 text-center shadow-xl">
+        <div className="w-full max-w-2xl min-w-0 rounded-xl border border-cream-200 bg-white p-6 text-center shadow-xl">
           <h2 className="mb-1 truncate text-2xl font-bold text-ink">{winner ? `🏆 ${winner.name} thắng!` : "🤝 Hòa!"}</h2>
           <p className="mb-6 text-sm text-ink/50">Đạt {KILL_TARGET} điểm tiêu diệt trước, hoặc điểm cao nhất khi hết giờ.</p>
 
-          <div className="mb-6 space-y-1.5 text-left">
-            {ranking.map((p, i) => (
-              <div key={p.id} className="flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 text-slate-400">#{i + 1}</span>
-                  <span className="h-4 w-4 shrink-0 rounded" style={{ backgroundColor: p.color }} />
-                  <span className="min-w-0 truncate font-medium">{p.name}</span>
-                </span>
-                <span className="shrink-0 font-semibold text-slate-700">{p.score} điểm</span>
-              </div>
-            ))}
+          <div className="mb-6 overflow-x-auto rounded-lg border border-slate-200 text-left">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr><th className="px-3 py-2">Hạng / người chơi</th><th className="px-3 py-2 text-center">Hạ</th><th className="px-3 py-2 text-center">Chết</th><th className="px-3 py-2 text-center">Sát thương gây</th><th className="px-3 py-2 text-center">Sát thương nhận</th></tr>
+              </thead>
+              <tbody>
+                {ranking.map((p, i) => (
+                  <tr key={p.id} className="border-t border-slate-100">
+                    <td className="max-w-52 truncate px-3 py-2 font-medium"><span className="mr-2 text-slate-400">#{i + 1}</span><span className="mr-2 inline-block h-3 w-3 rounded" style={{ backgroundColor: p.color }} />{p.name}</td>
+                    <td className="px-3 py-2 text-center font-semibold">{p.score}</td>
+                    <td className="px-3 py-2 text-center">{p.deaths}</td>
+                    <td className="px-3 py-2 text-center">{p.damageDealt}</td>
+                    <td className="px-3 py-2 text-center">{p.damageTaken}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {playAgainButtons}

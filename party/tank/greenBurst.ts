@@ -31,6 +31,7 @@ export function fireGreenVolley(ctx: GreenBurstFieldCtx, owner: TankPlayer) {
       y: owner.y,
       angle,
       kind: "normal",
+      cause: "Đạn thường",
       speed: BULLET_SPEED,
     });
   }

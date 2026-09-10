@@ -361,25 +361,33 @@ export function drawSpreadCone(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const half = PICKUP_SIZE / 2;
-  ctx.fillStyle = "#dcfce7";
-  ctx.fillRect(Math.round(x - half), Math.round(y - half), PICKUP_SIZE, PICKUP_SIZE);
-  ctx.strokeStyle = "#22c55e";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(Math.round(x - half) + 0.5, Math.round(y - half) + 0.5, PICKUP_SIZE - 1, PICKUP_SIZE - 1);
-  ctx.fillStyle = "#16a34a";
-  const armW = 3;
-  ctx.fillRect(Math.round(x - armW / 2), Math.round(y - half + 3), armW, PICKUP_SIZE - 6);
-  ctx.fillRect(Math.round(x - half + 3), Math.round(y - armW / 2), PICKUP_SIZE - 6, armW);
+  const img = getSprite("/items/heart-hp.png");
+  if (!img) return;
+  const size = PICKUP_SIZE * 1.5;
+  const bob = Math.sin(performance.now() / 280 + x) * 1.5;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, Math.round(x - size / 2), Math.round(y - size / 2 + bob), size, size);
+  ctx.restore();
 }
 
 export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: number, kind: "trap" | "blind" | "shield" | "fire") {
+  if (kind === "shield") {
+    const img = getSprite("/items/shield.png");
+    if (!img) return;
+    const size = PICKUP_SIZE * 1.5;
+    const bob = Math.sin(performance.now() / 280 + x) * 1.5;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, Math.round(x - size / 2), Math.round(y - size / 2 + bob), size, size);
+    ctx.restore();
+    return;
+  }
   const half = PICKUP_SIZE / 2;
   const palette: Record<typeof kind, [string, string, string]> = {
-    trap: ["#fef3c7", "#b45309", "T"],
+    trap: ["#fef3c7", "#b45309", "💣"],
     blind: ["#ede9fe", "#6d28d9", "M"],
-    shield: ["#dbeafe", "#1d4ed8", "S"],
-    fire: ["#ffedd5", "#c2410c", "F"],
+    fire: ["#ffedd5", "#c2410c", "🔥"],
   };
   const [bg, fg, label] = palette[kind];
   ctx.fillStyle = bg;
@@ -434,7 +442,7 @@ export function drawTrap(ctx: CanvasRenderingContext2D, x: number, y: number, ti
 
 export function drawMonster(ctx: CanvasRenderingContext2D, monster: Monster) {
   const half = MONSTER_SIZE / 2;
-  const wobble = Math.sin(performance.now() / 220 + monster.x) * 1.5;
+  const bob = Math.sin(performance.now() / 220 + monster.x) * 1.5;
 
   // Health pips — each monster's own maxHp, since a pack isn't all equally
   // tough.
@@ -443,36 +451,19 @@ export function drawMonster(ctx: CanvasRenderingContext2D, monster: Monster) {
     ctx.fillRect(Math.round(monster.x - half + i * (half / 1.2)), monster.y - half - 12, 6, 4);
   }
 
-  ctx.fillStyle = "#3f6212";
-  ctx.beginPath();
-  ctx.arc(monster.x, monster.y + wobble * 0.3, half, 0, Math.PI * 2);
-  ctx.fill();
+  const variants = ["/monster/tile_0108.png", "/monster/tile_0109.png", "/monster/tile_0121.png"];
+  const variantIndex = [...monster.id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % variants.length;
+  const img = getSprite(variants[variantIndex]);
+  if (!img) return;
 
-  ctx.fillStyle = "#65a30d";
-  for (const [dx, dy] of [
-    [-half * 0.6, -half * 0.5],
-    [half * 0.6, -half * 0.5],
-    [0, -half * 0.85],
-  ]) {
-    ctx.beginPath();
-    ctx.moveTo(monster.x + dx, monster.y + dy + wobble * 0.3);
-    ctx.lineTo(monster.x + dx - 4, monster.y + dy + 6 + wobble * 0.3);
-    ctx.lineTo(monster.x + dx + 4, monster.y + dy + 6 + wobble * 0.3);
-    ctx.closePath();
-    ctx.fill();
+  const size = MONSTER_SIZE * 1.55;
+  ctx.save();
+  if (monster.aggroPlayerId) {
+    const pulse = 0.55 + 0.25 * Math.sin(performance.now() / 100);
+    ctx.shadowColor = `rgba(239,68,68,${pulse})`;
+    ctx.shadowBlur = 9;
   }
-
-  const isAggro = !!monster.aggroPlayerId;
-  const eyeY = monster.y - 2 + wobble * 0.3;
-  ctx.fillStyle = isAggro ? "#fecaca" : "#fef9c3";
-  ctx.beginPath();
-  ctx.arc(monster.x - 5, eyeY, 3.5, 0, Math.PI * 2);
-  ctx.arc(monster.x + 5, eyeY, 3.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = isAggro ? "#b91c1c" : "#7f1d1d";
-  ctx.beginPath();
-  ctx.arc(monster.x - 5, eyeY, isAggro ? 2.2 : 1.6, 0, Math.PI * 2);
-  ctx.arc(monster.x + 5, eyeY, isAggro ? 2.2 : 1.6, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, Math.round(monster.x - size / 2), Math.round(monster.y - size / 2 + bob), size, size);
+  ctx.restore();
 }
-

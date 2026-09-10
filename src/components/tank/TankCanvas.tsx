@@ -31,7 +31,8 @@ import {
   drawHazardSpikes,
   drawMinimap,
   drawNestPuddle,
-  isBushHidden,
+  drawSmoke,
+  isCoverHidden,
   MINIMAP_H,
   MINIMAP_W,
 } from "./render/map-background";
@@ -92,7 +93,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     stateRef.current = state;
   }
 
-  const { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, killFeed } = useTankEffects(state, selfId);
+  const { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, damageNumbersRef, killFeed } = useTankEffects(state, selfId);
   const input = useTankInput({ send, selfId, stateRef, canvasRef });
 
   const bgCacheRef = useRef<{ mapId: string; canvas: HTMLCanvasElement } | null>(null);
@@ -202,6 +203,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           const tile = m.layout[row][col];
           if (tile === "H") drawHazardSpikes(ctx, col * TILE_SIZE, row * TILE_SIZE, now);
           else if (tile === "B") drawBush(ctx, col * TILE_SIZE, row * TILE_SIZE, row, col, bushNeighborBias(m, row, col), now, 0.9);
+          else if (tile === "S") drawSmoke(ctx, col * TILE_SIZE, row * TILE_SIZE, row, col, now, 0.42);
         }
       }
 
@@ -296,7 +298,11 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         drawMonster(ctx, { ...monster, x: mp.x, y: mp.y });
       }
 
-      const visiblePlayers = s.players.filter((p) => p.alive && (p.id === selfId || !self || !isBushHidden(m, p, self)));
+      const visiblePlayers = s.players.filter((p) => {
+        if (!p.alive) return false;
+        const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
+        return isAlly || !self || !isCoverHidden(m, p, self);
+      });
       for (const p of visiblePlayers) {
         const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
         const rp = renderPos(p.id, p.x, p.y);
@@ -349,6 +355,13 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         drawBush(ctx, col * TILE_SIZE, row * TILE_SIZE, row, col, bushNeighborBias(m, row, col), now, 0.5);
       }
 
+      for (const p of visiblePlayers) {
+        const row = Math.floor(p.y / TILE_SIZE);
+        const col = Math.floor(p.x / TILE_SIZE);
+        if ((m.layout[row]?.[col] ?? "#") !== "S") continue;
+        drawSmoke(ctx, col * TILE_SIZE, row * TILE_SIZE, row, col, now, 0.72);
+      }
+
       // Dark's charging sniper telegraph — only for players currently
       // visible (same bush-hiding rules as everything else), on top of
       // tanks so it always reads clearly.
@@ -388,6 +401,23 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       muzzleFlashesRef.current = muzzleFlashesRef.current.filter((f) => now - f.start < MUZZLE_FLASH_DURATION_MS);
       for (const f of muzzleFlashesRef.current) {
         drawMuzzleFlash(ctx, f, (now - f.start) / MUZZLE_FLASH_DURATION_MS);
+      }
+
+      damageNumbersRef.current = damageNumbersRef.current.filter((d) => now - d.start < 600);
+      for (const damage of damageNumbersRef.current) {
+        const progress = (now - damage.start) / 600;
+        ctx.save();
+        ctx.globalAlpha = 1 - progress;
+        ctx.fillStyle = damage.amount >= 40 ? "#fbbf24" : "#ffffff";
+        ctx.strokeStyle = "rgba(127,29,29,0.9)";
+        ctx.lineWidth = 3;
+        ctx.font = `bold ${damage.amount >= 40 ? 16 : 14}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const textY = damage.y - 18 - progress * 20;
+        ctx.strokeText(`-${damage.amount}`, damage.x, textY);
+        ctx.fillText(`-${damage.amount}`, damage.x, textY);
+        ctx.restore();
       }
 
       // Bombers fly above everything else in the scene. Small in the
@@ -451,6 +481,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     leavesRef,
     sandWavesRef,
     hooksRef,
+    damageNumbersRef,
   ]);
 
   const self = state.players.find((p) => p.id === selfId);

@@ -63,7 +63,7 @@ export function stepHooks(ctx: HookFieldCtx, map: TankMapDef, pending: PendingHo
       if (!target || !target.alive) continue;
       const targetX = target.x;
       const targetY = target.y;
-      damageThroughShield(ctx, target, HOOK_DAMAGE, hook.casterId);
+      damageThroughShield(ctx, target, HOOK_DAMAGE, hook.casterId, "Móc câu");
       if (target.alive) {
         target.stunnedUntil = now + HOOK_STUN_MS;
         target.hookedUntil = now + HOOK_STUN_MS;

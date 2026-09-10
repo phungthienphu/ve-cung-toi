@@ -127,7 +127,7 @@ export function stepAirstrikes(ctx: AirstrikeTickCtx, map: TankMapDef, now: numb
     ctx.nextAirstrikeAt = now + randomAirstrikeDelay();
   }
   for (const strike of ctx.airstrikes) {
-    strike.bombs = resolveBombs(ctx, strike.bombs, BOMB_DAMAGE, null, now);
+    strike.bombs = resolveBombs(ctx, strike.bombs, BOMB_DAMAGE, null, "Không kích", now);
   }
   ctx.airstrikes = ctx.airstrikes.filter((s) => now < s.planeArriveAt);
 }

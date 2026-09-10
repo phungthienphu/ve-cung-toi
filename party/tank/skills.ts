@@ -99,6 +99,7 @@ export function fireSniperShot(ctx: SniperCtx, player: TankPlayer) {
     y: player.y + Math.sin(angle) * offset,
     angle,
     kind: "big",
+    cause: "Bắn tỉa",
     speed: SNIPER_BULLET_SPEED,
   });
   player.ultimateEnergy = 0;
@@ -170,7 +171,7 @@ export function activateSandWave(ctx: SandWaveCtx, player: TankPlayer, map: Tank
 
   for (const target of ctx.players.values()) {
     if (target.id === player.id || !target.alive || !inCone(target.x, target.y)) continue;
-    damagePlayer(ctx, target, SAND_WAVE_DAMAGE, player.id);
+    damagePlayer(ctx, target, SAND_WAVE_DAMAGE, player.id, "Sóng cát");
     target.stunnedUntil = now + SAND_WAVE_STUN_MS;
     knockBack(target);
   }

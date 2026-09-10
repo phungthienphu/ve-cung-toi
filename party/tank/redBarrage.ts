@@ -41,7 +41,7 @@ export interface RedBarrageTickCtx extends BombFieldCtx {
  * of its bombs has gone off. */
 export function stepRedBarrages(ctx: RedBarrageTickCtx, now: number) {
   for (const barrage of ctx.redBarrages) {
-    barrage.bombs = resolveBombs(ctx, barrage.bombs, RED_BARRAGE_BOMB_DAMAGE, barrage.ownerId, now);
+    barrage.bombs = resolveBombs(ctx, barrage.bombs, RED_BARRAGE_BOMB_DAMAGE, barrage.ownerId, "Pháo kích", now);
   }
   ctx.redBarrages = ctx.redBarrages.filter((b) => b.bombs.length > 0);
 }

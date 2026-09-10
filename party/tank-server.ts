@@ -251,6 +251,11 @@ export default class TankRoom implements Party.Server {
         alive: true,
         hp: MAX_HP,
         score: 0,
+        damageDealt: 0,
+        damageTaken: 0,
+        deaths: 0,
+        velocityX: 0,
+        velocityY: 0,
         connected: true,
         isHost: this.players.size === 0,
         respawnAt: null,
@@ -285,6 +290,11 @@ export default class TankRoom implements Party.Server {
       player.connected = true;
       player.name = cleanName;
       player.color = color;
+      player.damageDealt ??= 0;
+      player.damageTaken ??= 0;
+      player.deaths ??= 0;
+      player.velocityX ??= 0;
+      player.velocityY ??= 0;
     }
 
     if (!this.hostId || !this.players.get(this.hostId)?.connected) {
@@ -336,6 +346,11 @@ export default class TankRoom implements Party.Server {
       p.alive = true;
       p.hp = MAX_HP;
       p.score = 0;
+      p.damageDealt = 0;
+      p.damageTaken = 0;
+      p.deaths = 0;
+      p.velocityX = 0;
+      p.velocityY = 0;
       p.respawnAt = null;
       p.dir = "down";
       p.items = [];
@@ -539,6 +554,7 @@ export default class TankRoom implements Party.Server {
       y: player.y + Math.sin(angle) * offset,
       angle,
       kind: big ? "big" : isFire ? "fire" : "normal",
+      cause: big ? "Đạn lớn" : isFire ? "Đạn lửa" : "Đạn thường",
       speed: BULLET_SPEED,
     });
   }
@@ -589,6 +605,7 @@ export default class TankRoom implements Party.Server {
         y: player.y + Math.sin(angle) * offset,
         angle,
         kind: "blind",
+        cause: "Đạn thường",
         speed: BULLET_SPEED,
       });
     } else if (kind === "shield") {

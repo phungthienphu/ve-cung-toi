@@ -29,10 +29,11 @@ export function tileCharAt(m: ReturnType<typeof getMap>, x: number, y: number): 
 }
 
 /** Same "server sends everything, client just doesn't render it" trick used
- * for the blind item's fog-of-war: bushes hide enemy tanks standing in them
- * unless the viewer is close enough to have spotted them anyway. */
-export function isBushHidden(m: ReturnType<typeof getMap>, target: TankPlayer, self: TankPlayer): boolean {
-  if (tileCharAt(m, target.x, target.y) !== "B") return false;
+ * for the blind item's fog-of-war: bushes and smoke hide enemy tanks standing
+ * in them unless the viewer is close enough to have spotted them anyway. */
+export function isCoverHidden(m: ReturnType<typeof getMap>, target: TankPlayer, self: TankPlayer): boolean {
+  const tile = tileCharAt(m, target.x, target.y);
+  if (tile !== "B" && tile !== "S") return false;
   return Math.hypot(target.x - self.x, target.y - self.y) > BUSH_REVEAL_RADIUS;
 }
 
@@ -119,6 +120,9 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
     m.terrain === "sand" ? ["/Retina/tileSand1.png", "/Retina/tileSand2.png"] : ["/Retina/tileGrass1.png", "/Retina/tileGrass2.png"];
   const floorTiles = floorSrcs.map(getSprite);
   if (floorTiles.some((img) => !img)) return null;
+  const hasIce = m.layout.some((row) => row.includes("I"));
+  const iceTiles = [getSprite("/ices/iceBlock.png"), getSprite("/ices/iceBlockAlt.png")];
+  if (hasIce && iceTiles.some((img) => !img)) return null;
 
   // Only this map's actually-used road variants need to be ready — gating on
   // the full 18-sprite set would delay every map's first paint needlessly.
@@ -186,6 +190,15 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
         ctx.fill();
       }
 
+      if (tile === "I") {
+        // The supplied ice block has transparent rounded corners. A matching
+        // underlay keeps adjacent I cells visually continuous at tile scale.
+        ctx.fillStyle = "#8addec";
+        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        const iceImg = iceTiles[(row + col) % iceTiles.length];
+        if (iceImg) ctx.drawImage(iceImg, x, y, TILE_SIZE, TILE_SIZE);
+      }
+
       if (isWallTile(m, row - 1, col)) drawEdgeTufts(ctx, x, y, "top", rng);
       if (isWallTile(m, row + 1, col)) drawEdgeTufts(ctx, x, y, "bottom", rng);
       if (isWallTile(m, row, col - 1)) drawEdgeTufts(ctx, x, y, "left", rng);
@@ -242,6 +255,8 @@ function getMinimapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement {
       if (tile === "#") octx.fillStyle = "#475569";
       else if (tile === "H") octx.fillStyle = "#dc2626";
       else if (tile === "B") octx.fillStyle = "#166534";
+      else if (tile === "I") octx.fillStyle = "#7dd3fc";
+      else if (tile === "S") octx.fillStyle = "#94a3b8";
       else continue;
       octx.fillRect(col * TILE_SIZE * scaleX, row * TILE_SIZE * scaleY, TILE_SIZE * scaleX + 0.5, TILE_SIZE * scaleY + 0.5);
     }
@@ -291,8 +306,11 @@ export function drawMinimap(
     ctx.fill();
   }
 
+  const self = s.players.find((candidate) => candidate.id === selfId);
   for (const p of s.players) {
     if (!p.alive) continue;
+    const isAlly = p.id === selfId || (s.mode === "team" && !!self && p.team === self.team);
+    if (!isAlly && self && isCoverHidden(m, p, self)) continue;
     ctx.fillStyle = p.color;
     ctx.beginPath();
     ctx.arc(p.x * scaleX, p.y * scaleY, p.id === selfId ? 3 : 2.2, 0, Math.PI * 2);
@@ -303,6 +321,30 @@ export function drawMinimap(
       ctx.stroke();
     }
   }
+}
+
+/** Persistent smoke cover. Adjacent cells overlap slightly so a cluster
+ * reads as one tactical cloud instead of separate square decals. */
+export function drawSmoke(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, row: number, col: number, time: number, opacity: number) {
+  const rng = mulberry32(row * 7919 + col * 104729 + 83);
+  ctx.save();
+  for (let i = 0; i < 7; i++) {
+    const baseX = tileX + (0.1 + rng() * 0.8) * TILE_SIZE;
+    const baseY = tileY + (0.15 + rng() * 0.7) * TILE_SIZE;
+    const radius = TILE_SIZE * (0.28 + rng() * 0.2);
+    const phase = time / (850 + rng() * 500) + i * 1.7 + row;
+    const x = baseX + Math.sin(phase) * 3;
+    const y = baseY + Math.cos(phase * 0.8) * 2;
+    const grad = ctx.createRadialGradient(x, y, radius * 0.12, x, y, radius);
+    grad.addColorStop(0, `rgba(241,245,249,${opacity * 0.9})`);
+    grad.addColorStop(0.58, `rgba(148,163,184,${opacity * 0.72})`);
+    grad.addColorStop(1, "rgba(71,85,105,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 export function drawHazardSpikes(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, time: number) {

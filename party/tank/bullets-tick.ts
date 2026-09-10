@@ -51,7 +51,7 @@ export function stepBullets(ctx: BulletsTickCtx, map: TankMapDef, now: number) {
       const dy = target.y - bullet.y;
       if (Math.hypot(dx, dy) < TANK_SIZE / 2) {
         hit = true;
-        applyHit(ctx, target, bullet.kind, bullet.ownerId);
+        applyHit(ctx, target, bullet.kind, bullet.ownerId, bullet.cause);
         break;
       }
     }

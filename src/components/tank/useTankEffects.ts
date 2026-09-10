@@ -61,6 +61,13 @@ function preloadTankSprites() {
     "/Retina/treeGreen_twigs.png",
     "/Retina/treeBrown_twigs.png",
     "/Retina/oilSpill_small.png",
+    "/ices/iceBlock.png",
+    "/ices/iceBlockAlt.png",
+    "/monster/tile_0108.png",
+    "/monster/tile_0109.png",
+    "/monster/tile_0121.png",
+    "/items/heart-hp.png",
+    "/items/shield.png",
     "/trap_scope.png",
     "/Retina/barrelRed_top.png",
     "/Retina/shotOrange.png",
@@ -85,6 +92,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
   const leavesRef = useRef<LeafParticle[]>([]);
   const sandWavesRef = useRef<SandWaveEffect[]>([]);
   const hooksRef = useRef<HookEffect[]>([]);
+  const damageNumbersRef = useRef<{ id: string; x: number; y: number; amount: number; start: number }[]>([]);
   const prevBulletsRef = useRef<Map<string, Bullet>>(new Map());
 
   // Kick every sprite this screen could possibly need off loading the moment
@@ -151,7 +159,9 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     for (const p of state.players) {
       const last = prevHp.get(p.id);
       if (last !== undefined && p.hp < last) {
-        oilSpillsRef.current.push({ id: `${p.id}-${p.hp}-${performance.now()}`, x: p.x, y: p.y, start: performance.now() });
+        const effectNow = performance.now();
+        oilSpillsRef.current.push({ id: `${p.id}-${p.hp}-${effectNow}`, x: p.x, y: p.y, start: effectNow });
+        damageNumbersRef.current.push({ id: `damage-${p.id}-${effectNow}`, x: p.x, y: p.y, amount: last - p.hp, start: effectNow });
       }
       prevHp.set(p.id, p.hp);
     }
@@ -274,7 +284,7 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
       ...prev,
       ...state.kills.map((k) => ({
         id: k.id,
-        text: k.killerName ? `${k.killerName} đã hạ gục ${k.victimName}` : `${k.victimName} đã gục ngã`,
+        text: k.killerName ? `${k.killerName} đã hạ gục ${k.victimName} bằng ${k.cause}` : `${k.victimName} đã gục ngã vì ${k.cause}`,
         expiresAt: now + 4000,
       })),
     ]);
@@ -326,5 +336,5 @@ export function useTankEffects(state: TankPublicState, selfId: string) {
     };
   }, [state.players, selfId, state.serverNow]);
 
-  return { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, killFeed };
+  return { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, damageNumbersRef, killFeed };
 }

@@ -275,7 +275,7 @@ export function stepMonsters(ctx: MonstersTickCtx, map: TankMapDef, now: number)
       const last = ctx.lastMonsterContactAt.get(key) ?? 0;
       if (now - last >= MONSTER_CONTACT_COOLDOWN_MS) {
         ctx.lastMonsterContactAt.set(key, now);
-        damageThroughShield(ctx, player, MONSTER_DAMAGE, null);
+        damageThroughShield(ctx, player, MONSTER_DAMAGE, null, "Quái vật");
         monster.aggroPlayerId = player.id;
         ctx.monsterAggroUntil.set(monster.id, now + MONSTER_AGGRO_TIMEOUT_MS);
       }

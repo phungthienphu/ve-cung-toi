@@ -15,6 +15,9 @@ import {
   HAZARD_DAMAGE,
   HAZARD_DAMAGE_INTERVAL_MS,
   HOOK_PULL_DURATION_MS,
+  ICE_ACCELERATION,
+  ICE_FRICTION,
+  ICE_STOP_SPEED,
   MAX_BOOST_ENERGY,
   MAX_HELD_ITEMS,
   MAX_HP,
@@ -101,6 +104,8 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.fireShotsLeft = 0;
         player.burningUntil = null;
         player.burnOwnerId = null;
+        player.velocityX = 0;
+        player.velocityY = 0;
         resetSkillState(player);
       }
       continue;
@@ -146,6 +151,8 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       player.x = player.hookPullFromX + (player.hookPullToX - player.hookPullFromX) * eased;
       player.y = player.hookPullFromY + (player.hookPullToY - player.hookPullFromY) * eased;
       player.moving = false;
+      player.velocityX = 0;
+      player.velocityY = 0;
       player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
       player.isBoosting = false;
     } else if (isDashing) {
@@ -160,6 +167,8 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       if (!tankBlocked(map, nx, player.y)) player.x = nx;
       if (!tankBlocked(map, player.x, ny)) player.y = ny;
       player.moving = true;
+      player.velocityX = 0;
+      player.velocityY = 0;
       player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
       player.isBoosting = false;
 
@@ -209,35 +218,54 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         if (!tankBlocked(map, monster.x, ky)) monster.y = ky;
         ctx.impacts.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shove" });
       }
-    } else if (!input) {
-      player.moving = false;
-      player.boostEnergy = Math.min(MAX_BOOST_ENERGY, player.boostEnergy + BOOST_REGEN_PER_TICK);
-      player.isBoosting = false;
     } else {
       let dir: Direction | null = null;
-      if (input.up) dir = "up";
-      else if (input.down) dir = "down";
-      else if (input.left) dir = "left";
-      else if (input.right) dir = "right";
+      if (input?.up) dir = "up";
+      else if (input?.down) dir = "down";
+      else if (input?.left) dir = "left";
+      else if (input?.right) dir = "right";
 
       const isShielded = player.shieldHitsLeft > 0;
       const isStunned = player.stunnedUntil !== null && now < player.stunnedUntil;
       const isImmobilized = isShielded || isStunned;
-      player.moving = dir !== null && !isImmobilized;
       // The shield is a "turtle" tool — it holds position entirely while
       // active. Stunned is the same "can't relocate" effect, just inflicted
       // by someone else. You can still turn to face/shoot while shielded
       // (not stunned — see tank-server.ts's isStunned, which blocks acting
       // entirely), just not relocate.
-      const wantsBoost = dir !== null && input.boost && player.boostEnergy > 0 && !isImmobilized;
+      const wantsBoost = dir !== null && !!input?.boost && player.boostEnergy > 0 && !isImmobilized;
       if (dir && !isStunned) {
         player.dir = dir;
       }
-      if (dir && !isImmobilized) {
-        const speed = wantsBoost ? TANK_SPEED * BOOST_SPEED_MULTIPLIER : TANK_SPEED;
-        const v = DIR_VECTOR[dir];
-        const nx = player.x + v.dx * speed;
-        const ny = player.y + v.dy * speed;
+      const speed = wantsBoost ? TANK_SPEED * BOOST_SPEED_MULTIPLIER : TANK_SPEED;
+      const desired = dir ? DIR_VECTOR[dir] : { dx: 0, dy: 0 };
+      const onIce = tileAt(map, player.x, player.y) === "I";
+      if (isImmobilized) {
+        player.velocityX = 0;
+        player.velocityY = 0;
+      } else if (onIce) {
+        if (dir) {
+          player.velocityX += (desired.dx * speed - player.velocityX) * ICE_ACCELERATION;
+          player.velocityY += (desired.dy * speed - player.velocityY) * ICE_ACCELERATION;
+        } else {
+          player.velocityX *= ICE_FRICTION;
+          player.velocityY *= ICE_FRICTION;
+          if (Math.hypot(player.velocityX, player.velocityY) < ICE_STOP_SPEED) {
+            player.velocityX = 0;
+            player.velocityY = 0;
+          }
+        }
+      } else {
+        player.velocityX = desired.dx * speed;
+        player.velocityY = desired.dy * speed;
+      }
+
+      const moveDx = player.velocityX;
+      const moveDy = player.velocityY;
+      player.moving = !isImmobilized && Math.hypot(moveDx, moveDy) >= ICE_STOP_SPEED;
+      if (player.moving) {
+        const nx = player.x + moveDx;
+        const ny = player.y + moveDy;
 
         if (!tankBlocked(map, nx, player.y)) {
           const blocker = findOverlappingTank(ctx.players.values(), new Set([player.id]), nx, player.y);
@@ -247,18 +275,20 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
           } else if (blocker && winsShovingContest(player, wantsBoost, blocker)) {
             const impactX = blocker.x;
             const impactY = blocker.y;
-            if (tryPushTank(blocker, v.dx * speed, v.dy * speed, map, ctx.players, player.id)) {
+            if (tryPushTank(blocker, moveDx, 0, map, ctx.players, player.id)) {
               player.x = nx;
               ctx.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
             }
           } else if (crateBlocker) {
             const impactX = crateBlocker.x;
             const impactY = crateBlocker.y;
-            if (tryPushCrate(crateBlocker, v.dx * speed, v.dy * speed, map, ctx.crates, ctx.players)) {
+            if (tryPushCrate(crateBlocker, moveDx, 0, map, ctx.crates, ctx.players)) {
               player.x = nx;
               ctx.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
             }
           }
+        } else {
+          player.velocityX = 0;
         }
         if (!tankBlocked(map, player.x, ny)) {
           const blocker = findOverlappingTank(ctx.players.values(), new Set([player.id]), player.x, ny);
@@ -268,18 +298,20 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
           } else if (blocker && winsShovingContest(player, wantsBoost, blocker)) {
             const impactX = blocker.x;
             const impactY = blocker.y;
-            if (tryPushTank(blocker, v.dx * speed, v.dy * speed, map, ctx.players, player.id)) {
+            if (tryPushTank(blocker, 0, moveDy, map, ctx.players, player.id)) {
               player.y = ny;
               ctx.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
             }
           } else if (crateBlocker) {
             const impactX = crateBlocker.x;
             const impactY = crateBlocker.y;
-            if (tryPushCrate(crateBlocker, v.dx * speed, v.dy * speed, map, ctx.crates, ctx.players)) {
+            if (tryPushCrate(crateBlocker, 0, moveDy, map, ctx.crates, ctx.players)) {
               player.y = ny;
               ctx.impacts.push({ id: makeId(), x: impactX, y: impactY, kind: "shove" });
             }
           }
+        } else {
+          player.velocityY = 0;
         }
       }
       if (wantsBoost) {
@@ -314,7 +346,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       const dist = Math.hypot(player.x - trap.x, player.y - trap.y);
       if (dist < TANK_SIZE / 2 + TRAP_SIZE / 2) {
         ctx.traps.splice(i, 1);
-        damagePlayer(ctx, player, TRAP_DAMAGE, trap.ownerId);
+        damagePlayer(ctx, player, TRAP_DAMAGE, trap.ownerId, "Bẫy");
         ctx.impacts.push({ id: makeId(), x: trap.x, y: trap.y, kind: "trap" });
       }
     }
@@ -325,7 +357,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
       const last = ctx.lastHazardDamageAt.get(player.id) ?? 0;
       if (now - last >= HAZARD_DAMAGE_INTERVAL_MS) {
         ctx.lastHazardDamageAt.set(player.id, now);
-        damagePlayer(ctx, player, HAZARD_DAMAGE, null);
+        damagePlayer(ctx, player, HAZARD_DAMAGE, null, "Chông");
       }
     }
 
@@ -343,7 +375,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         const last = ctx.lastBurnDamageAt.get(player.id) ?? 0;
         if (now - last >= BURN_TICK_INTERVAL_MS) {
           ctx.lastBurnDamageAt.set(player.id, now);
-          damagePlayer(ctx, player, BURN_DAMAGE_PER_TICK, player.burnOwnerId);
+          damagePlayer(ctx, player, BURN_DAMAGE_PER_TICK, player.burnOwnerId, "Thiêu đốt");
         }
       }
     }

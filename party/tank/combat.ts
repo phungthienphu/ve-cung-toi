@@ -11,6 +11,7 @@ import {
   RESPAWN_DELAY_MS,
   ULTIMATE_DAMAGE_MULTIPLIER,
   type Team,
+  type DamageCause,
   type TankImpact,
   type TankKillEvent,
   type TankPlayer,
@@ -43,16 +44,24 @@ function isUnderAuraShield(target: TankPlayer): boolean {
 }
 
 /** Applies flat damage to a tank; kills + credits `killerId` (if any) once hp runs out. */
-export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number, killerId: string | null) {
+export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number, killerId: string | null, cause: DamageCause) {
   if (!target.alive) return;
   if (isUnderAuraShield(target)) {
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
     return;
   }
+  const appliedDamage = Math.min(target.hp, amount);
+  // Keep the raw post-hit value until respawn so the existing client-side
+  // HP diff can show the attack's full nominal number (e.g. -40), including
+  // on an overkill. Bars already clamp visually at zero.
   target.hp -= amount;
+  target.damageTaken = (target.damageTaken ?? 0) + appliedDamage;
+  const damageOwner = killerId ? ctx.players.get(killerId) : undefined;
+  if (damageOwner && damageOwner.id !== target.id) damageOwner.damageDealt = (damageOwner.damageDealt ?? 0) + appliedDamage;
   if (target.hp > 0) return;
 
   target.alive = false;
+  target.deaths = (target.deaths ?? 0) + 1;
   target.respawnAt = Date.now() + RESPAWN_DELAY_MS;
   const killer = killerId ? ctx.players.get(killerId) : undefined;
   if (killer) {
@@ -75,7 +84,7 @@ export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number,
       ctx.winnerId = killer.id;
     }
   }
-  ctx.kills.push({ id: makeId(), killerName: killer ? killer.name : null, victimName: target.name });
+  ctx.kills.push({ id: makeId(), killerName: killer ? killer.name : null, victimName: target.name, cause });
 }
 
 /** Same as damagePlayer, but a standing shield eats the hit first (one of
@@ -84,7 +93,7 @@ export function damagePlayer(ctx: CombatCtx, target: TankPlayer, amount: number,
  * contact damage is the current example: it used to call damagePlayer
  * directly, which meant a shielded tank getting mauled by a monster took
  * full damage anyway). */
-export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: number, ownerId: string | null) {
+export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: number, ownerId: string | null, cause: DamageCause) {
   if (isUnderAuraShield(target)) {
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
     return;
@@ -94,7 +103,7 @@ export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: 
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
     return;
   }
-  damagePlayer(ctx, target, amount, ownerId);
+  damagePlayer(ctx, target, amount, ownerId, cause);
 }
 
 /** Applies bullet damage/effects to a hit tank; returns true if the tank died.
@@ -103,7 +112,13 @@ export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: 
  * see combat.ts's isUnderAuraShield doc); only the actual damage-consuming
  * paths below check the aura first, so a free aura block gets used up
  * before a limited item-shield charge does. */
-export function applyHit(ctx: CombatCtx, target: TankPlayer, bulletKind: "normal" | "blind" | "big" | "fire", ownerId: string): boolean {
+export function applyHit(
+  ctx: CombatCtx,
+  target: TankPlayer,
+  bulletKind: "normal" | "blind" | "big" | "fire",
+  ownerId: string,
+  cause: DamageCause
+): boolean {
   if ((bulletKind === "blind" || bulletKind === "fire") && target.shieldHitsLeft > 0) {
     target.shieldHitsLeft -= 1;
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
@@ -128,6 +143,6 @@ export function applyHit(ctx: CombatCtx, target: TankPlayer, bulletKind: "normal
   }
   const wasAlive = target.alive;
   const damage = bulletKind === "big" ? BULLET_DAMAGE * ULTIMATE_DAMAGE_MULTIPLIER : BULLET_DAMAGE;
-  damagePlayer(ctx, target, damage, ownerId);
+  damagePlayer(ctx, target, damage, ownerId, cause);
   return wasAlive && !target.alive;
 }

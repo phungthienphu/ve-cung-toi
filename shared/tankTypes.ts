@@ -10,7 +10,8 @@ export interface TankMapDef {
   // Which real tile art to use for floor rendering — purely a client
   // concern, but kept on the map def so it travels with mapId.
   terrain: "grass" | "sand";
-  // '#' = wall, '.' = empty floor, 'H' = natural hazard (spikes), 'B' = bush
+  // '#' = wall, '.' = empty floor, 'H' = natural hazard (spikes), 'B' = bush,
+  // 'I' = slippery ice, 'S' = smoke cover
   // (hides tanks standing in it), 'C' = wooden crate (blocks movement/bullets
   // until rammed — then it gets shoved like a tank being pushed), 'R' = road
   // (purely cosmetic — walkable exactly like '.', just rendered as a path
@@ -30,18 +31,18 @@ export const TANK_MAPS: TankMapDef[] = [
     layout: [
       "###############################",
       "#B.B..........................#",
-      "#...RRRRRRRR....C.........B...#",
+      "#...RRRRRRRR.IIIC.........B...#",
       "#B.BR....#####.....#######....#",
       "#...R....#...#.....#######....#",
       "#...R....#...#.....#..........#",
       "#...RRRRR#...#.....#........C.#",
       "#....###R.......HHH#..........#",
       "#....###R........H....######..#",
-      "#.......R........H....######..#",
+      "#.......R...SSS..H....######..#",
       "#.......RRRRRRRR....RRRRRR....#",
       "#.......####...R....R....R....#",
       "#.....B.####RRRCRRRRR....R.R..#",
-      "#.......####...R.......B.R.R..#",
+      "#.......####IIIR.......B.R.R..#",
       "#...####.......R###......R.R..#",
       "#..R#R##RRRRRRRR###RRRRRRR.R..#",
       "#..R#R##....HHH.###..C.....R..#",
@@ -58,7 +59,7 @@ export const TANK_MAPS: TankMapDef[] = [
     layout: [
       "#####################################",
       "#B.B................................#",
-      "#....####...####.....####....####...#",
+      "#....####...####..III####....####...#",
       "#B.B.####...###RRRRRRR###....####...#",
       "#.RRRRRRRRRRR###.R.......C...####...#",
       "#...........R....R##RRRRRRRRR####...#",
@@ -66,16 +67,16 @@ export const TANK_MAPS: TankMapDef[] = [
       "#...###...##R#...R###.....##R#......#",
       "#...###.....R....RHHH.....##R#......#",
       "#...###.RRRRRRRRRR.H......##R#..###.#",
-      "#.......R.....####.H........RRRRRRR.#",
+      "#.......R..SSS####.H........RRRRRRR.#",
       "#......#R##...####..........R..R##R.#",
       "#....C.#R##...####...###RRRRR..R##R.#",
-      "#......#R##..........###R......R..R.#",
+      "#......#R##....III...###R......R..R.#",
       "#......#R##..........###R.HHH..R##R.#",
       "#.......R..###.......###R......R##R.#",
       "#...####RRRRRRR.C.......R..####R##R.#",
       "#...#####..###R...##RRRRRRRRRRRR..R.#",
       "#...#####..HH#R...#####..C.####...R.#",
-      "#..........###R..RRRRRRRRRR......BRB#",
+      "#.....SSS..###R..RRRRRRRRRR......BRB#",
       "#.....###RRRRRRRRRRRR...#####.....R.#",
       "#.........RRRRRRRRRRRRRRR####....B.B#",
       "#####################################",
@@ -91,25 +92,25 @@ export const TANK_MAPS: TankMapDef[] = [
       "#B.B..................................#",
       "#.RRRRRRR######.........######........#",
       "#BRB....#######.........###R##........#",
-      "#.R.....#######............R..C.......#",
+      "#.R.....#######...SSS......R..C.......#",
       "#.R..........RR..HHH.......RRRRRR###..#",
       "#.RRRRRRRRRR..R###H#............####..#",
       "#...####...R...###H#............####..#",
       "#...####...R...#####...............RR.#",
-      "#...####...R........RR...C..........R.#",
+      "#...####...R...IIII.RR...C..........R.#",
       "#...####...R.........R######........R.#",
       "#.........HHH.......R#######........R.#",
-      "#..........RC.......R......RR....C..R.#",
+      "#...SSS....RC.......R......RR....C..R.#",
       "#.....##RRRRRRRRRRRRR.......R######.R.#",
       "#.....######.......CR.......#######.R.#",
       "#.....######........R.......RRRRRRRRR.#",
-      "#...................R.####..R.........#",
+      "#.........IIII......R.####..R.........#",
       "#............#####..R.####..R.HHH.....#",
       "#............###RRRRRRRRRRRRR..H......#",
       "#...####.....#####....####.....####...#",
       "#...####.....R####.............####...#",
       "#...###RRRRRRR...........HH....R###B.B#",
-      "#.......C......................R###...#",
+      "#.......C........SSSS..........R###...#",
       "#............RRRRRRRRRRRRRRRRRRR...B.B#",
       "#######################################",
     ],
@@ -195,6 +196,11 @@ export const MATCH_DURATION_MS = 4 * 60 * 1000; // 4-minute match clock
 
 export const TANK_SIZE = 22;
 export const TANK_SPEED = 2.4; // px/tick
+// Ice keeps a tank's velocity between ticks. Input still turns the hull at
+// once, but only gradually bends the actual travel vector toward that input.
+export const ICE_ACCELERATION = 0.12;
+export const ICE_FRICTION = 0.965;
+export const ICE_STOP_SPEED = 0.08;
 export const BULLET_SIZE = 6;
 export const BULLET_SPEED = 6.5; // px/tick
 export const FIRE_COOLDOWN_MS = 480; // was 400 — still felt spammable even with the spread penalty below, so slowed the base rate too
@@ -423,6 +429,11 @@ export interface TankPlayer {
   alive: boolean;
   hp: number;
   score: number;
+  damageDealt: number;
+  damageTaken: number;
+  deaths: number;
+  velocityX: number;
+  velocityY: number;
   connected: boolean;
   isHost: boolean;
   respawnAt: number | null;
@@ -496,6 +507,7 @@ export interface Bullet {
   // being locked to the 4-directional movement grid.
   angle: number;
   kind: BulletKind;
+  cause: DamageCause;
   // Per-bullet travel speed (px/tick) — lets a skill's own bullet (e.g.
   // Dark's sniper round) fly faster than the shared BULLET_SPEED default
   // without needing a whole separate bullet kind.
@@ -722,12 +734,27 @@ export interface TankImpact {
 
 /** A single-tick elimination event — consumed client-side to show a
  * PUBG-style kill-feed line for a few seconds. `killerName` is null for
- * environmental deaths (hazard tiles, forest monsters). */
+ * environmental deaths; `cause` is declared at each damage source. */
 export interface TankKillEvent {
   id: string;
   killerName: string | null;
   victimName: string;
+  cause: DamageCause;
 }
+
+export type DamageCause =
+  | "Đạn thường"
+  | "Đạn lớn"
+  | "Bắn tỉa"
+  | "Đạn lửa"
+  | "Thiêu đốt"
+  | "Bẫy"
+  | "Móc câu"
+  | "Sóng cát"
+  | "Quái vật"
+  | "Chông"
+  | "Không kích"
+  | "Pháo kích";
 
 export type TankRoomStatus = "lobby" | "playing" | "ended";
 
