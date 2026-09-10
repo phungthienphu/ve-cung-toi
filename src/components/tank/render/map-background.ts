@@ -46,6 +46,10 @@ function isRoadTile(m: ReturnType<typeof getMap>, row: number, col: number): boo
   return m.layout[row]?.[col] === "R";
 }
 
+function isTrackTile(m: ReturnType<typeof getMap>, row: number, col: number): boolean {
+  return m.layout[row]?.[col] === "T";
+}
+
 /** Picks the right connected-road sprite name (Kenney "Tanks" pack naming)
  * for a road tile based on which of its 4 orthogonal neighbors are also
  * road — a straight, corner, T-junction ("Split"), or 4-way crossing. */
@@ -124,6 +128,24 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
   const hasIce = m.layout.some((row) => row.includes("I"));
   const iceTiles = [getSprite("/ices/iceBlock.png"), getSprite("/ices/iceBlockAlt.png")];
   if (hasIce && iceTiles.some((img) => !img)) return null;
+  const hasSnow = m.layout.some((row) => row.includes("N"));
+  const snowTiles = [getSprite("/snow-map/tundraCenter.png"), getSprite("/snow-map/tundraCenter_rounded.png")];
+  if (hasSnow && snowTiles.some((img) => !img)) return null;
+  const hasTrack = m.layout.some((row) => row.includes("T"));
+  const railVerticalTiles = [getSprite("/rails/railVertical1.png"), getSprite("/rails/railVertical2.png"), getSprite("/rails/railVertical3.png")];
+  const railHorizontalTiles = [
+    getSprite("/rails/railHorizontal1.png"),
+    getSprite("/rails/railHorizontal2.png"),
+    getSprite("/rails/railHorizontal3.png"),
+    getSprite("/rails/railHorizontal4.png"),
+  ];
+  // railCorner1-4 = top-left, top-right, bottom-left, bottom-right.
+  const railCornerUL = getSprite("/rails/railCorner1.png");
+  const railCornerUR = getSprite("/rails/railCorner2.png");
+  const railCornerLL = getSprite("/rails/railCorner3.png");
+  const railCornerLR = getSprite("/rails/railCorner4.png");
+  const railCorners = [railCornerUL, railCornerUR, railCornerLL, railCornerLR];
+  if (hasTrack && [...railVerticalTiles, ...railHorizontalTiles, ...railCorners].some((img) => !img)) return null;
 
   // Only this map's actually-used road variants need to be ready — gating on
   // the full 18-sprite set would delay every map's first paint needlessly.
@@ -198,6 +220,38 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
         ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
         const iceImg = iceTiles[(row + col) % iceTiles.length];
         if (iceImg) ctx.drawImage(iceImg, x, y, TILE_SIZE, TILE_SIZE);
+      }
+
+      if (tile === "N") {
+        // A fully-opaque ground texture (unlike ice) — just replaces the
+        // grass/sand floor already drawn underneath it.
+        const snowImg = snowTiles[rng() > 0.6 ? 1 : 0];
+        if (snowImg) ctx.drawImage(snowImg, x, y, TILE_SIZE, TILE_SIZE);
+      }
+
+      if (tile === "T") {
+        // The rail art is a rounded-corner "card" shape, not a full-bleed
+        // square — all 4 corners of the 16x16 source are transparent, so
+        // tiling it edge-to-edge left a visible gap at every seam between
+        // pieces (rounded corner meeting rounded corner). Overdrawing each
+        // piece slightly past the tile's own bounds lets the next tile drawn
+        // (this loop runs row-major, so right/below tiles paint after
+        // left/above ones) bleed over that gap instead of leaving it bare.
+        const n = isTrackTile(m, row - 1, col);
+        const s = isTrackTile(m, row + 1, col);
+        const e = isTrackTile(m, row, col + 1);
+        const w = isTrackTile(m, row, col - 1);
+        let railImg: HTMLImageElement | undefined;
+        if (n && w && !s && !e) railImg = railCornerUL;
+        else if (n && e && !s && !w) railImg = railCornerUR;
+        else if (s && w && !n && !e) railImg = railCornerLL;
+        else if (s && e && !n && !w) railImg = railCornerLR;
+        else if (e || w) railImg = railHorizontalTiles[Math.floor(rng() * railHorizontalTiles.length)];
+        else railImg = railVerticalTiles[Math.floor(rng() * railVerticalTiles.length)];
+        if (railImg) {
+          const overscan = 5;
+          ctx.drawImage(railImg, x - overscan / 2, y - overscan / 2, TILE_SIZE + overscan, TILE_SIZE + overscan);
+        }
       }
 
       if (isWallTile(m, row - 1, col)) drawEdgeTufts(ctx, x, y, "top", rng);
