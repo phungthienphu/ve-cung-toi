@@ -4,7 +4,7 @@ import SoundToggle from "@/components/SoundToggle";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ve-cung-toi.vercel.app";
 const title = "Vẽ Cùng Tôi";
-const description = "Game vẽ - đoán chữ nhiều người chơi";
+const description = "Các game nhiều người chơi trên trình duyệt — vẽ đoán chữ, đại chiến xe tăng, đối kháng";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

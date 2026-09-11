@@ -41,7 +41,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
     if (!confirm("Rời khỏi phòng?")) return;
     playClick();
     send({ type: "leave_room" });
-    router.push("/");
+    router.push("/draw-guess");
   }
 
   function handleCopyLink() {

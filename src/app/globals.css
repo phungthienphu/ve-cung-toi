@@ -46,6 +46,14 @@ body {
   background-color: #8ec6e8;
 }
 
+/* No dedicated hero background was supplied for the brawler yet (only small
+   parallax pieces — background_cloudA/B, background_tree*) — a flat sky
+   gradient stands in until one exists. Swap for a url()/background-color
+   pair the same way .bg-tank-scene does once real art is ready. */
+.bg-brawler-scene {
+  background: linear-gradient(180deg, #bfe3ff 0%, #eaf6ff 60%, #fdf6e3 100%);
+}
+
 /* Tailwind's min-h-dvh alone can render short on first paint on some mobile
    browsers before they recompute the dynamic viewport (leaving a blank strip
    top/bottom until a scroll/resize triggers a relayout). Stacking 100vh first

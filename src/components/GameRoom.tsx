@@ -63,7 +63,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   useEffect(() => {
     if (kicked) {
       alert("Bạn đã bị chủ phòng mời ra khỏi phòng.");
-      router.push("/");
+      router.push("/draw-guess");
     }
   }, [kicked, router]);
 
@@ -126,7 +126,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
             Xếp hạng
           </Link>
           <Link
-            href="/"
+            href="/draw-guess"
             className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
           >
             Về trang chủ
@@ -173,7 +173,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
               if (!confirm("Rời khỏi phòng?")) return;
               playClick();
               send({ type: "leave_room" });
-              router.push("/");
+              router.push("/draw-guess");
             }}
             className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-red-500 shadow-xl transition hover:border-red-300 hover:bg-red-50"
           >

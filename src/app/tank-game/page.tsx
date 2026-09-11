@@ -119,7 +119,7 @@ export default function TankGameHomePage() {
         )}
 
         <Link href="/" className="mt-8 block text-center text-xs font-medium text-ink/40 hover:text-ink/70">
-          ← Về game vẽ đoán chữ
+          ← Về trang chủ
         </Link>
       </div>
     </main>

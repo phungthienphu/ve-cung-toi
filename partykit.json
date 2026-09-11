@@ -4,7 +4,8 @@
   "main": "party/server.ts",
   "parties": {
     "tanks": "party/tank-server.ts",
-    "tanklobby": "party/tank-directory.ts"
+    "tanklobby": "party/tank-directory.ts",
+    "brawler": "party/brawler-server.ts"
   },
   "compatibilityDate": "2024-11-01"
 }

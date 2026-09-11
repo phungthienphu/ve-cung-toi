@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Bảng xếp hạng</h1>
         <Link
-          href="/"
+          href="/draw-guess"
           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
         >
           Về trang chủ
