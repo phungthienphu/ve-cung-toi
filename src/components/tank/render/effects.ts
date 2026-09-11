@@ -22,11 +22,11 @@ export function explosionDurationFor(kind: ExplosionKind): number {
 // cooling ring -> dissipating embers), not standalone icons — playing them
 // in order over an explosion's lifetime is what makes it read as one blast.
 export const EXPLOSION_FRAMES = [
-  "/Retina/explosion1.png",
-  "/Retina/explosion2.png",
-  "/Retina/explosion3.png",
-  "/Retina/explosion4.png",
-  "/Retina/explosion5.png",
+  "/tank/Retina/explosion1.png",
+  "/tank/Retina/explosion2.png",
+  "/tank/Retina/explosion3.png",
+  "/tank/Retina/explosion4.png",
+  "/tank/Retina/explosion5.png",
 ];
 // explosion1 is a plain white flash silhouette; the rest already ship their
 // own orange/yellow color, so only tint kinds that need a different palette.
@@ -40,7 +40,7 @@ const EXPLOSION_TINT: Partial<Record<ExplosionKind, string>> = {
 
 // Bomb explosions use their own dedicated 4-frame flipbook (already fully
 // colored, no tint needed) instead of the shared Retina one.
-export const BOMB_EXPLOSION_FRAMES = ["/ship/tile_0004.png", "/ship/tile_0005.png", "/ship/tile_0006.png", "/ship/tile_0007.png"];
+export const BOMB_EXPLOSION_FRAMES = ["/tank/ship/tile_0004.png", "/tank/ship/tile_0005.png", "/tank/ship/tile_0006.png", "/tank/ship/tile_0007.png"];
 
 export interface Explosion {
   id: string;
@@ -150,7 +150,7 @@ export interface OilSpill {
 }
 
 export function drawOilSpill(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number) {
-  const img = getSprite("/Retina/oilSpill_small.png");
+  const img = getSprite("/tank/Retina/oilSpill_small.png");
   const growIn = Math.min(1, progress * 6); // pops in quickly, then lingers and fades
   const fadeOut = progress < 0.7 ? 1 : 1 - (progress - 0.7) / 0.3;
   const alpha = growIn * fadeOut * 0.85;
@@ -365,7 +365,7 @@ export function spawnLeafBurst(ref: { current: LeafParticle[] }, x: number, y: n
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 30, // a little upward pop before gravity takes over
       spin: (Math.random() - 0.5) * 10,
-      sprite: Math.random() > 0.5 ? "/Retina/treeGreen_leaf.png" : "/Retina/treeBrown_leaf.png",
+      sprite: Math.random() > 0.5 ? "/tank/Retina/treeGreen_leaf.png" : "/tank/Retina/treeBrown_leaf.png",
       start: performance.now(),
     });
   }

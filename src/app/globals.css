@@ -40,7 +40,7 @@ body {
 }
 
 .bg-tank-scene {
-  background-image: url("/tank-bg.png");
+  background-image: url("/tank/tank-bg.png");
   background-size: cover;
   background-position: center;
   background-color: #8ec6e8;

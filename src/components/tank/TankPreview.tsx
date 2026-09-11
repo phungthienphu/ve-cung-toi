@@ -58,13 +58,13 @@ export default function TankPreview({ color }: Props) {
       const renderSize = SIZE * 0.62;
 
       if (TANK_SKINS_WITH_TURRET.has(skin)) {
-        const body = getSprite(`/Retina/tankBody_${skin}.png`);
+        const body = getSprite(`/tank/Retina/tankBody_${skin}.png`);
         if (body) {
           const h = renderSize;
           const w = h * (body.width / body.height);
           ctx.drawImage(body, cx - w / 2, y - h / 2, w, h);
         }
-        const barrel = getSprite(`/Retina/tank${capitalize(skin)}_barrel1.png`);
+        const barrel = getSprite(`/tank/Retina/tank${capitalize(skin)}_barrel1.png`);
         if (barrel) {
           const turretAngle = Math.sin(t / 1100) * 0.7 - Math.PI / 2;
           ctx.save();
@@ -76,7 +76,7 @@ export default function TankPreview({ color }: Props) {
           ctx.restore();
         }
       } else {
-        const composed = getSprite(`/Retina/tank_${skin}.png`);
+        const composed = getSprite(`/tank/Retina/tank_${skin}.png`);
         if (composed) {
           const h = renderSize * 1.3;
           const w = h * (composed.width / composed.height);

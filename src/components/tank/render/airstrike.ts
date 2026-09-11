@@ -9,8 +9,8 @@ import { drawRotatedSprite, getTintedSprite } from "./sprite-utils";
 // The last stretch before impact where the marker gives way to a visibly
 // falling bomb instead of just a static blinking icon.
 export const BOMB_FALL_MS = 650;
-export const FALLING_BOMB_FRAMES = ["/ship/bomb.png", "/ship/bombdub.png", "/ship/bombdup.png"];
-export const PLANE_FRAMES = ["/ship/ship_0012.png", "/ship/ship_0013.png", "/ship/ship_0014.png"];
+export const FALLING_BOMB_FRAMES = ["/tank/ship/bomb.png", "/tank/ship/bombdub.png", "/tank/ship/bombdup.png"];
+export const PLANE_FRAMES = ["/tank/ship/ship_0012.png", "/tank/ship/ship_0013.png", "/tank/ship/ship_0014.png"];
 
 /** Ground danger-zone for an incoming airstrike bomb — visible to everyone
  * (it's an environmental hazard, not a player-set trap). Sized to the real
@@ -34,7 +34,7 @@ export function drawBombDangerZone(ctx: CanvasRenderingContext2D, x: number, y: 
  * falling (see `drawFallingBomb`). */
 export function drawBombTargetIcon(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
   const pulse = 0.55 + 0.45 * Math.sin(time / 180);
-  const tinted = getTintedSprite("/ship/bomb.png", "#dc2626");
+  const tinted = getTintedSprite("/tank/ship/bomb.png", "#dc2626");
   const size = TILE_SIZE * 0.6;
   if (tinted) {
     ctx.save();

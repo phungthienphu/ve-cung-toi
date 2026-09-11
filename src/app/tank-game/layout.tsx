@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     description,
     url: `${siteUrl}/tank-game`,
     siteName: title,
-    images: [{ url: "/tank-bg.png", width: 1672, height: 941, alt: title }],
+    images: [{ url: "/tank/tank-bg.png", width: 1672, height: 941, alt: title }],
     locale: "vi_VN",
     type: "website",
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: ["/tank-bg.png"],
+    images: ["/tank/tank-bg.png"],
   },
 };
 

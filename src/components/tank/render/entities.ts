@@ -151,7 +151,7 @@ export function drawTank(
   const renderSize = TANK_SIZE * 1.7;
 
   if (TANK_SKINS_WITH_TURRET.has(skin)) {
-    const body = getSprite(`/Retina/tankBody_${skin}.png`);
+    const body = getSprite(`/tank/Retina/tankBody_${skin}.png`);
     if (body) {
       ctx.save();
       ctx.translate(x, y);
@@ -161,7 +161,7 @@ export function drawTank(
       ctx.drawImage(body, -w / 2, -h / 2, w, h);
       ctx.restore();
     }
-    const barrel = getSprite(`/Retina/tank${capitalize(skin)}_barrel1.png`);
+    const barrel = getSprite(`/tank/Retina/tank${capitalize(skin)}_barrel1.png`);
     if (barrel) {
       const turretAngle = aimAngle ?? bodyAngle;
       ctx.save();
@@ -175,7 +175,7 @@ export function drawTank(
   } else {
     // Heavy skins (bigRed/darkLarge/huge) ship one fused body+turret sprite
     // with no independent aim — the whole vehicle turns to face movement.
-    const composed = getSprite(`/Retina/tank_${skin}.png`);
+    const composed = getSprite(`/tank/Retina/tank_${skin}.png`);
     if (composed) {
       ctx.save();
       ctx.translate(x, y);
@@ -322,7 +322,7 @@ export function drawHookedOverlay(ctx: CanvasRenderingContext2D, x: number, y: n
   }
   ctx.restore();
 
-  const sprite = getSprite("/Retina/barrelRed_top.png");
+  const sprite = getSprite("/tank/Retina/barrelRed_top.png");
   if (sprite) {
     const w = 20;
     const h = (sprite.naturalHeight / sprite.naturalWidth) * w;
@@ -396,7 +396,7 @@ export function drawSpreadCone(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const img = getSprite("/items/heart-hp.png");
+  const img = getSprite("/tank/items/heart-hp.png");
   if (!img) return;
   const size = PICKUP_SIZE * 1.5;
   const bob = Math.sin(performance.now() / 280 + x) * 1.5;
@@ -408,7 +408,7 @@ export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: nu
 
 export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: number, kind: "trap" | "blind" | "shield" | "fire" | "emp") {
   if (kind === "shield") {
-    const img = getSprite("/items/shield.png");
+    const img = getSprite("/tank/items/shield.png");
     if (!img) return;
     const size = PICKUP_SIZE * 1.5;
     const bob = Math.sin(performance.now() / 280 + x) * 1.5;
@@ -440,7 +440,7 @@ export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawCrate(ctx: CanvasRenderingContext2D, crate: Crate) {
-  const img = getSprite("/Retina/crateWood.png");
+  const img = getSprite("/tank/Retina/crateWood.png");
   const size = CRATE_SIZE * 1.5;
   if (img) {
     ctx.drawImage(img, Math.round(crate.x - size / 2), Math.round(crate.y - size / 2), size, size);
@@ -458,7 +458,7 @@ export function drawCrate(ctx: CanvasRenderingContext2D, crate: Crate) {
 }
 
 export function drawTrap(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
-  const tinted = getTintedSprite("/trap_scope.png", "#f59e0b");
+  const tinted = getTintedSprite("/tank/trap_scope.png", "#f59e0b");
   const pulse = 0.75 + 0.25 * Math.sin(time / 260);
   const size = TRAP_SIZE * 1.5;
   if (tinted) {
@@ -487,7 +487,7 @@ export function drawMonster(ctx: CanvasRenderingContext2D, monster: PublicMonste
     ctx.fillRect(Math.round(monster.x - half + i * (half / 1.2)), monster.y - half - 12, 6, 4);
   }
 
-  const variants = ["/monster/tile_0108.png", "/monster/tile_0109.png", "/monster/tile_0121.png"];
+  const variants = ["/tank/monster/tile_0108.png", "/tank/monster/tile_0109.png", "/tank/monster/tile_0121.png"];
   const variantIndex = [...monster.id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % variants.length;
   const img = getSprite(variants[variantIndex]);
   if (!img) return;

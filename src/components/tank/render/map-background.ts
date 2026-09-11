@@ -121,28 +121,28 @@ function drawEdgeTufts(ctx: CanvasRenderingContext2D, x: number, y: number, side
  */
 export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement | null {
   const floorSrcs =
-    m.terrain === "sand" ? ["/Retina/tileSand1.png", "/Retina/tileSand2.png"] : ["/Retina/tileGrass1.png", "/Retina/tileGrass2.png"];
+    m.terrain === "sand" ? ["/tank/Retina/tileSand1.png", "/tank/Retina/tileSand2.png"] : ["/tank/Retina/tileGrass1.png", "/tank/Retina/tileGrass2.png"];
   const floorTiles = floorSrcs.map(getSprite);
   if (floorTiles.some((img) => !img)) return null;
   const hasIce = m.layout.some((row) => row.includes("I"));
-  const iceTiles = [getSprite("/ices/iceBlock.png"), getSprite("/ices/iceBlockAlt.png")];
+  const iceTiles = [getSprite("/tank/ices/iceBlock.png"), getSprite("/tank/ices/iceBlockAlt.png")];
   if (hasIce && iceTiles.some((img) => !img)) return null;
   const hasSnow = m.layout.some((row) => row.includes("N"));
-  const snowTiles = [getSprite("/snow-map/tundraCenter.png"), getSprite("/snow-map/tundraCenter_rounded.png")];
+  const snowTiles = [getSprite("/tank/snow-map/tundraCenter.png"), getSprite("/tank/snow-map/tundraCenter_rounded.png")];
   if (hasSnow && snowTiles.some((img) => !img)) return null;
   const hasTrack = m.layout.some((row) => row.includes("T"));
-  const railVerticalTiles = [getSprite("/rails/railVertical1.png"), getSprite("/rails/railVertical2.png"), getSprite("/rails/railVertical3.png")];
+  const railVerticalTiles = [getSprite("/tank/rails/railVertical1.png"), getSprite("/tank/rails/railVertical2.png"), getSprite("/tank/rails/railVertical3.png")];
   const railHorizontalTiles = [
-    getSprite("/rails/railHorizontal1.png"),
-    getSprite("/rails/railHorizontal2.png"),
-    getSprite("/rails/railHorizontal3.png"),
-    getSprite("/rails/railHorizontal4.png"),
+    getSprite("/tank/rails/railHorizontal1.png"),
+    getSprite("/tank/rails/railHorizontal2.png"),
+    getSprite("/tank/rails/railHorizontal3.png"),
+    getSprite("/tank/rails/railHorizontal4.png"),
   ];
   // railCorner1-4 = top-left, top-right, bottom-left, bottom-right.
-  const railCornerUL = getSprite("/rails/railCorner1.png");
-  const railCornerUR = getSprite("/rails/railCorner2.png");
-  const railCornerLL = getSprite("/rails/railCorner3.png");
-  const railCornerLR = getSprite("/rails/railCorner4.png");
+  const railCornerUL = getSprite("/tank/rails/railCorner1.png");
+  const railCornerUR = getSprite("/tank/rails/railCorner2.png");
+  const railCornerLL = getSprite("/tank/rails/railCorner3.png");
+  const railCornerLR = getSprite("/tank/rails/railCorner4.png");
   const railCorners = [railCornerUL, railCornerUR, railCornerLL, railCornerLR];
   if (hasTrack && [...railVerticalTiles, ...railHorizontalTiles, ...railCorners].some((img) => !img)) return null;
 
@@ -154,7 +154,7 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
     for (let col = 0; col < m.layout[row].length; col++) {
       if (!isRoadTile(m, row, col)) continue;
       const name = roadTileName(isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
-      neededRoadSrcs.add(`/Retina/${roadPrefix}_${name}.png`);
+      neededRoadSrcs.add(`/tank/Retina/${roadPrefix}_${name}.png`);
     }
   }
   if ([...neededRoadSrcs].some((src) => !getSprite(src))) return null;
@@ -176,7 +176,7 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
         // Ground shows underneath (sandbag art doesn't fill a perfect square),
         // then a real sandbag sprite as the obstacle itself.
         ctx.drawImage(floorTiles[rng() > 0.5 ? 1 : 0]!, x, y, TILE_SIZE, TILE_SIZE);
-        const wallImg = getSprite(rng() > 0.5 ? "/Retina/sandbagBeige.png" : "/Retina/sandbagBrown.png");
+        const wallImg = getSprite(rng() > 0.5 ? "/tank/Retina/sandbagBeige.png" : "/tank/Retina/sandbagBrown.png");
         if (wallImg) {
           ctx.drawImage(wallImg, x - 1, y - 1, TILE_SIZE + 2, TILE_SIZE + 2);
         } else {
@@ -201,7 +201,7 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
       if (tile === "R") {
         const prefix = m.terrain === "sand" ? "tileSand" : "tileGrass";
         const name = roadTileName(isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
-        const roadImg = getSprite(`/Retina/${prefix}_${name}.png`);
+        const roadImg = getSprite(`/tank/Retina/${prefix}_${name}.png`);
         if (roadImg) ctx.drawImage(roadImg, x, y, TILE_SIZE, TILE_SIZE);
       }
 
@@ -262,7 +262,7 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
       // ground clutter, baked into the static background so it costs nothing
       // per frame. Sparse (~1 in 9 tiles) so it reads as texture, not noise.
       if (tile === "." && rng() < 0.11) {
-        const twigImg = getSprite(m.terrain === "sand" ? "/Retina/treeBrown_twigs.png" : "/Retina/treeGreen_twigs.png");
+        const twigImg = getSprite(m.terrain === "sand" ? "/tank/Retina/treeBrown_twigs.png" : "/tank/Retina/treeGreen_twigs.png");
         if (twigImg) {
           const size = TILE_SIZE * 0.7;
           ctx.save();
@@ -467,7 +467,7 @@ export function bushNeighborBias(m: ReturnType<typeof getMap>, row: number, col:
   };
 }
 
-const BUSH_SPRITES = ["/Retina/treeGreen_large.png", "/Retina/treeGreen_small.png", "/Retina/treeBrown_large.png"];
+const BUSH_SPRITES = ["/tank/Retina/treeGreen_large.png", "/tank/Retina/treeGreen_small.png", "/tank/Retina/treeBrown_large.png"];
 
 /**
  * Real tree/bush sprite, deterministically picked+placed per tile (row/col)

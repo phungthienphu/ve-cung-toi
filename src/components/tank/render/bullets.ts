@@ -9,7 +9,7 @@ import { BULLET_SKIN_MAP, drawRotatedSprite, getTintedSprite } from "./sprite-ut
  * reads clearly even against a same-colored floor, e.g. sand bullets over
  * sand terrain. */
 export function drawNormalBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, skin: TankSkin) {
-  const ok = drawRotatedSprite(ctx, `/Retina/bullet${BULLET_SKIN_MAP[skin]}1_outline.png`, x, y, angle, 20);
+  const ok = drawRotatedSprite(ctx, `/tank/Retina/bullet${BULLET_SKIN_MAP[skin]}1_outline.png`, x, y, angle, 20);
   if (!ok) {
     ctx.fillStyle = "#facc15";
     ctx.fillRect(Math.round(x - 3), Math.round(y - 3), 6, 6);
@@ -18,7 +18,7 @@ export function drawNormalBullet(ctx: CanvasRenderingContext2D, x: number, y: nu
 
 /** The blind item's shot — a generic bullet shape tinted purple. */
 export function drawBlindBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {
-  const tinted = getTintedSprite("/Retina/bulletDark1_outline.png", "#a855f7");
+  const tinted = getTintedSprite("/tank/Retina/bulletDark1_outline.png", "#a855f7");
   if (tinted) {
     ctx.save();
     ctx.translate(x, y);
@@ -37,7 +37,7 @@ export function drawBlindBullet(ctx: CanvasRenderingContext2D, x: number, y: num
  * same construction as drawBlindBullet just a different color so the two
  * status-effect rounds still read as visually distinct in flight. */
 export function drawEmpBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {
-  const tinted = getTintedSprite("/Retina/bulletDark1_outline.png", "#facc15");
+  const tinted = getTintedSprite("/tank/Retina/bulletDark1_outline.png", "#facc15");
   if (tinted) {
     ctx.save();
     ctx.translate(x, y);
@@ -64,7 +64,7 @@ export function drawFireBullet(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.arc(x, y, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  if (!drawRotatedSprite(ctx, "/Retina/shotOrange.png", x, y, angle, 20)) {
+  if (!drawRotatedSprite(ctx, "/tank/Retina/shotOrange.png", x, y, angle, 20)) {
     ctx.fillStyle = "#ea580c";
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, Math.PI * 2);
@@ -85,7 +85,7 @@ export function drawBigBullet(ctx: CanvasRenderingContext2D, x: number, y: numbe
   ctx.arc(x, y, 13, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  if (!drawRotatedSprite(ctx, "/Retina/shotRed.png", x, y, angle, 26)) {
+  if (!drawRotatedSprite(ctx, "/tank/Retina/shotRed.png", x, y, angle, 26)) {
     ctx.fillStyle = "#b91c1c";
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);

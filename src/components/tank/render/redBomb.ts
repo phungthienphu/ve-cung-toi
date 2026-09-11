@@ -13,7 +13,7 @@ const RETICLE_COLOR = "#dc2626";
 
 export function drawTrapScopeReticle(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
   const pulse = 0.6 + 0.4 * Math.sin(time / 200);
-  const tinted = getTintedSprite("/trap_scope.png", RETICLE_COLOR);
+  const tinted = getTintedSprite("/tank/trap_scope.png", RETICLE_COLOR);
   const size = TILE_SIZE * 0.7;
   if (tinted) {
     ctx.save();

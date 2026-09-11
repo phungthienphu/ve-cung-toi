@@ -219,7 +219,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                       aria-label={TANK_SKIN_LABELS[TANK_SKINS[i]]}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`/Retina/tank_${TANK_SKINS[i]}.png`} alt="" className="h-8 w-8 object-contain" />
+                      <img src={`/tank/Retina/tank_${TANK_SKINS[i]}.png`} alt="" className="h-8 w-8 object-contain" />
                       <span className="truncate text-[10px] font-medium text-ink/60">{TANK_SKIN_LABELS[TANK_SKINS[i]]}</span>
                     </button>
                   ))}

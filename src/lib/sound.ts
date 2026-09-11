@@ -440,7 +440,7 @@ let tankBgMusicEl: HTMLAudioElement | null = null;
 export function startTankBgMusic() {
   if (typeof window === "undefined" || isMuted()) return;
   if (!tankBgMusicEl) {
-    tankBgMusicEl = new Audio("/nhac_nen_hoi_hop_nghiem_trong-www_tiengdong_com.mp3");
+    tankBgMusicEl = new Audio("/tank/nhac_nen_hoi_hop_nghiem_trong-www_tiengdong_com.mp3");
     tankBgMusicEl.loop = true;
     tankBgMusicEl.volume = 0.35;
   }
