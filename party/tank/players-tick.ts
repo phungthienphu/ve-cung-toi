@@ -254,7 +254,13 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
           ctx.pickups.splice(i, 1);
         }
       } else if (player.items.length < MAX_HELD_ITEMS && !player.items.includes(pickup.kind)) {
-        player.items.push(pickup.kind);
+        // Reassigns rather than mutating in place — the per-tick delta diff
+        // (diffPlayer in geometry.ts) keeps the last-broadcast player object
+        // around to compare against; if this array were mutated in place
+        // instead, that "previous" snapshot's `items` would be the exact
+        // same array reference as the current one, so the diff would never
+        // see a change. See tank-server.ts's handleUseItem for the same fix.
+        player.items = [...player.items, pickup.kind];
         ctx.pickups.splice(i, 1);
       }
     }

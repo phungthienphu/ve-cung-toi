@@ -655,7 +655,10 @@ export default class TankRoom implements Party.Server {
     } else if (kind === "fire") {
       player.fireShotsLeft = FIRE_SHOTS_PER_ITEM;
     }
-    player.items.splice(slot, 1);
+    // Reassigns rather than mutating in place — see players-tick.ts's pickup
+    // branch for why (the delta diff compares against a same-reference
+    // "previous" array otherwise, so it never sees the change).
+    player.items = player.items.filter((_, i) => i !== slot);
   }
 
   private handleLeaveRoom(sender: Party.Connection) {

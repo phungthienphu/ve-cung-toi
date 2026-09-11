@@ -341,7 +341,7 @@ export const MAX_HELD_ITEMS = 3;
 // ULTIMATE_CONFIG below.
 export const MAX_ULTIMATE_ENERGY = 100;
 export const ULTIMATE_REGEN_PER_TICK = 0.5; // ~10s to charge from empty at 20Hz
-export const ULTIMATE_DAMAGE_MULTIPLIER = 2;
+export const ULTIMATE_DAMAGE_MULTIPLIER = 3;
 
 /** Per-skin "R" ultimate energy meter — every skin gets its own unique skill
  * built on this same slot/button, so a skill's power level is balanced by how
@@ -407,7 +407,7 @@ export const ULTIMATE_ACTIVATION_MODE: Record<TankSkin, UltimateActivationMode> 
 
 // Blue's ultimate: hold-to-fire cooldown drops sharply for a short window
 // instead of firing one heavy shot.
-export const RAPID_FIRE_DURATION_MS = 2000;
+export const RAPID_FIRE_DURATION_MS = 3000;
 export const RAPID_FIRE_COOLDOWN_MS = 140; // vs. the normal FIRE_COOLDOWN_MS
 
 // Dark's ultimate: press R to toggle on a scope (shows a telegraphed line
@@ -418,7 +418,7 @@ export const RAPID_FIRE_COOLDOWN_MS = 140; // vs. the normal FIRE_COOLDOWN_MS
 // but the round travels much faster than any other bullet.
 export const SNIPER_BULLET_SPEED = 12; // vs. the normal BULLET_SPEED (6.5)
 export const SNIPER_MAX_CHARGE_MS = 6000; // auto-fires if left scoped this long without firing
-export const SNIPER_SCOPE_RANGE = 600; // px — how far the telegraph line reaches if it hits no wall first
+export const SNIPER_SCOPE_RANGE = 700; // px — how far the telegraph line reaches if it hits no wall first
 
 // Follow-camera viewport (MOBA-style zoomed-in view) — the client only ever
 // renders this many pixels around the local player; the rest of the map is
@@ -692,7 +692,7 @@ export const RED_BARRAGE_DURATION_MS = 2000; // spread of impact times after the
 export const RED_BARRAGE_BOMB_COUNT = 5;
 export const RED_BARRAGE_BOMB_RADIUS = TILE_SIZE * 0.75;
 export const RED_BARRAGE_BOMB_DAMAGE = 22; // all 5 landing on a stationary target is ~lethal
-export const RED_BARRAGE_SPREAD_RADIUS = TILE_SIZE * 1.8; // how scattered the impacts are around the aim point
+export const RED_BARRAGE_SPREAD_RADIUS = TILE_SIZE * 3; // how scattered the impacts are around the aim point — was 1.8
 
 // Sand's ultimate: an instant sinking-sand shockwave fanned out from the
 // tank along its current aim — a rectangle SAND_WAVE_RANGE long by
@@ -700,10 +700,10 @@ export const RED_BARRAGE_SPREAD_RADIUS = TILE_SIZE * 1.8; // how scattered the i
 // knocks anyone caught in it back and stuns them, both cheap to land and
 // cheap to eat since the payoff is control, not raw damage.
 export const SAND_WAVE_DAMAGE = 10;
-export const SAND_WAVE_RANGE = TILE_SIZE * 5.5;
-export const SAND_WAVE_WIDTH = TILE_SIZE * 3;
+export const SAND_WAVE_RANGE = TILE_SIZE * 6;
+export const SAND_WAVE_WIDTH = TILE_SIZE * 5;
 export const SAND_WAVE_KNOCKBACK_DIST = TILE_SIZE * 2;
-export const SAND_WAVE_STUN_MS = 1000;
+export const SAND_WAVE_STUN_MS = 3000;
 
 // Huge's ultimate: a forced-movement dash along the current aim, passing
 // straight through other tanks (not blocked by them, unlike normal
@@ -723,11 +723,11 @@ export const DASH_KNOCKBACK_DIST = TILE_SIZE * 2;
 // HOOK_PULL_DISTANCE in front of bigRed, takes a flat hit of damage, and is
 // stunned — long enough for bigRed's follow-up shots to land before the
 // target can react or flee.
-export const HOOK_RANGE = TILE_SIZE * 6.5;
+export const HOOK_RANGE = TILE_SIZE * 7.5;
 export const HOOK_WIDTH = TANK_SIZE * 1.1;
 export const HOOK_PULL_DISTANCE = TANK_SIZE * 1.2;
 export const HOOK_DAMAGE = 8;
-export const HOOK_STUN_MS = 900;
+export const HOOK_STUN_MS = 2000;
 // Full flow: chain snaps out (HOOK_THROW_MS) — nothing happens to the target
 // until it actually lands — then damage/stun kick in the instant it lands,
 // then it reels back in over HOOK_PULL_DURATION_MS (eased, not linear) with
@@ -745,7 +745,7 @@ export const HOOK_PULL_DURATION_MS = 220;
 // overtuned hit. Doesn't lock movement, unlike Sand/Huge/bigRed's ultimates.
 export const GREEN_BURST_BULLET_COUNT = 12;
 export const GREEN_BURST_VOLLEYS = 3;
-export const GREEN_BURST_INTERVAL_MS = 220;
+export const GREEN_BURST_INTERVAL_MS = 330;
 
 // darkLarge's ultimate: a mobile damage-immunity bubble around the tank
 // itself, refreshed onto any ally still inside DARKLARGE_AURA_RADIUS every
