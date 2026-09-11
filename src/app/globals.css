@@ -127,11 +127,6 @@ body {
   animation: brawler-recoil-x 1.1s ease-in-out infinite;
 }
 
-/* Tailwind's min-h-dvh alone can render short on first paint on some mobile
-   browsers before they recompute the dynamic viewport (leaving a blank strip
-   top/bottom until a scroll/resize triggers a relayout). Stacking 100vh first
-   as a floor, then letting 100dvh override it in the same rule, avoids that
-   gap without losing the dynamic-viewport benefit. */
 .min-h-app {
   min-height: 100vh;
   min-height: 100dvh;
