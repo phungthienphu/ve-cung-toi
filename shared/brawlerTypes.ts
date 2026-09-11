@@ -60,6 +60,63 @@ export const BRAWLER_WEAPON_LABELS: Record<BrawlerWeapon, string> = {
   pencil: "Bút chì",
 };
 
+/** How a weapon's attack actually resolves once combat exists — decided now
+ * (per weapon, not per game) so building the real attack/hit-detection code
+ * later is "switch on attackType and read this table" instead of designing
+ * each weapon's behavior from scratch mid-implementation. Also doubles as
+ * the single source of truth for the lobby's weapon-showcase animation
+ * (CharacterPreview.tsx's WEAPON_ANIM_CLASS) — one enum, not a separate
+ * gameplay category and a separate animation category that have to be kept
+ * in sync by hand.
+ * - "melee-swing": a wide arcing hitbox — sword's chop.
+ * - "melee-thrust": a narrow poke straight ahead, shorter windup than a
+ *   swing — spear/pencil.
+ * - "ranged": spawns a travelling projectile, same shape as tank's bullets.
+ * - "hook": bigRed's hook mechanic from the tank game, reused here — fires
+ *   out, and on landing pulls the target toward the caster instead of (or
+ *   in addition to) dealing damage.
+ * range/speed/knockback are qualitative on purpose — the actual px/ms
+ * numbers get tuned once there's a real match loop to tune them against;
+ * this table exists to lock in each weapon's *category* and relative feel
+ * ahead of time, not its exact constants. */
+export type BrawlerAttackType = "melee-swing" | "melee-thrust" | "ranged" | "hook";
+
+export interface BrawlerWeaponConfig {
+  attackType: BrawlerAttackType;
+  range: "short" | "medium" | "long";
+  speed: "slow" | "medium" | "fast";
+  knockback: "none" | "light" | "heavy";
+  // "hook" only: the rod isn't purely a control tool — up close it can also
+  // throw a plain melee hit, just a weaker one than any dedicated melee
+  // weapon. The design intent (see BRAWLER_WEAPON_CONFIG.rod) is a
+  // counter-pick against ranged weapons — reel them in, then finish with a
+  // mediocre hit — rather than something worth using for its own damage.
+  secondaryMeleeDamage?: "weak";
+  description: string;
+}
+
+export const BRAWLER_WEAPON_CONFIG: Record<BrawlerWeapon, BrawlerWeaponConfig> = {
+  sword: { attackType: "melee-swing", range: "short", speed: "medium", knockback: "light", description: "Chém cận chiến, tốc độ vừa phải." },
+  spear: { attackType: "melee-thrust", range: "medium", speed: "slow", knockback: "light", description: "Đâm cận chiến, tầm xa hơn kiếm nhưng ra đòn chậm hơn." },
+  pencil: { attackType: "melee-thrust", range: "short", speed: "fast", knockback: "none", description: "Đâm rất nhanh, tầm ngắn, sát thương nhẹ." },
+  bow: { attackType: "ranged", range: "long", speed: "medium", knockback: "none", description: "Bắn tên tầm xa." },
+  gun: { attackType: "ranged", range: "long", speed: "fast", knockback: "none", description: "Bắn nhanh, tầm xa." },
+  blaster: { attackType: "ranged", range: "long", speed: "fast", knockback: "light", description: "Bắn tia laser, tầm xa, hất nhẹ khi trúng." },
+  // Same mechanic as bigRed's hook in the tank game — fires out along the
+  // aim, pulls the target in on landing. Unlike bigRed, it also has a plain
+  // melee swing for once the target's already close — deliberately weaker
+  // than a real melee weapon, so its value is "counters ranged players by
+  // dragging them into a fight they didn't want", not raw damage.
+  rod: {
+    attackType: "hook",
+    range: "medium",
+    speed: "slow",
+    knockback: "heavy",
+    secondaryMeleeDamage: "weak",
+    description: "Móc câu kéo địch lại gần; ở tầm gần đánh thường được nhưng sát thương yếu hơn vũ khí cận chiến — khắc chế vũ khí tầm xa.",
+  },
+};
+
 // Matches public/brawler/item_{headgear}.png — "none" isn't a real asset,
 // it just means "skip this slot" in the selection flow.
 export const BRAWLER_HEADGEAR_OPTIONS = ["none", "hat", "hatTop", "helmet", "helmetModern"] as const;

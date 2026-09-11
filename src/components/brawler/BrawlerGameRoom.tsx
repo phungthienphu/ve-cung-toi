@@ -6,14 +6,16 @@
 // currently lands on a placeholder instead of a real match — this file only
 // covers getting a group of players into that state cleanly.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBrawlerRoom } from "@/lib/useBrawlerRoom";
 import { playClick } from "@/lib/sound";
+import CharacterPreview from "./CharacterPreview";
 import {
   BRAWLER_CHARACTERS,
   BRAWLER_HEADGEAR_OPTIONS,
   BRAWLER_ROOM_MODE_LABELS,
+  BRAWLER_WEAPON_CONFIG,
   BRAWLER_WEAPONS,
   BRAWLER_CHARACTER_LABELS,
   BRAWLER_WEAPON_LABELS,
@@ -83,6 +85,22 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
     if (self?.ready && sessionStorage.getItem(setupDoneKey) === "1") setSetupDone(true);
   }, [self?.ready, setupDoneKey]);
 
+  // Explicit, button-driven wizard position — NOT derived from whether
+  // self.character/self.weapon are already set. Picking an option in
+  // OptionGrid only sends the choice (so the live preview/showcase updates
+  // instantly); advancing to the next step is a separate "Tiếp theo" click,
+  // so there's time to actually see the weapon's showcase animation before
+  // moving on instead of the screen jumping away the instant a pick lands.
+  const [wizardStep, setWizardStep] = useState<"character" | "weapon" | "headgear">("character");
+  const seededWizardRef = useRef(false);
+  useEffect(() => {
+    if (seededWizardRef.current || !self) return;
+    seededWizardRef.current = true;
+    if (self.character === null) setWizardStep("character");
+    else if (self.weapon === null) setWizardStep("weapon");
+    else setWizardStep("headgear");
+  }, [self]);
+
   useEffect(() => {
     if (kicked) router.push("/brawler");
   }, [kicked, router]);
@@ -136,19 +154,24 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
   }
 
   // ---------- Step wizard: character → weapon → headgear (first-time setup) ----------
-  const step: "character" | "weapon" | "headgear" | null =
-    editing ?? (!setupDone && !self.character ? "character" : !setupDone && !self.weapon ? "weapon" : editing);
+  const step: "character" | "weapon" | "headgear" | null = editing ?? (!setupDone ? wizardStep : null);
 
   if (step === "character" || step === "weapon" || step === "headgear") {
     const stepIndex = { character: 1, weapon: 2, headgear: 3 }[step];
     return (
       <main className="flex min-h-app items-center justify-center bg-brawler-scene px-4 py-10">
         <div className="w-full max-w-2xl rounded-xl border border-cream-200 bg-white p-6 shadow-xl">
-          <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-ink">
-              {step === "character" ? "Chọn nhân vật" : step === "weapon" ? "Chọn vũ khí" : "Chọn trang bị (tùy chọn)"}
-            </h2>
-            <span className="text-xs font-medium text-ink/40">Bước {stepIndex}/3</span>
+          <div className="mb-1 flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-ink">
+                {step === "character" ? "Chọn nhân vật" : step === "weapon" ? "Chọn vũ khí" : "Chọn trang bị (tùy chọn)"}
+              </h2>
+              <span className="text-xs font-medium text-ink/40">Bước {stepIndex}/3</span>
+            </div>
+            <div className="flex shrink-0 flex-col items-center gap-1">
+              <CharacterPreview character={self.character} weapon={self.weapon} headgear={self.headgear} sizeClassName="h-16 w-16" />
+              <span className="text-[10px] font-medium text-ink/40">Xem trước</span>
+            </div>
           </div>
           <p className="mb-4 text-xs text-ink/50">
             {step === "character" && "Đại diện cho bạn trên chiến trường — sẽ hiện với người chơi khác."}
@@ -163,7 +186,6 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
               onPick={(character: BrawlerCharacter) => {
                 playClick();
                 send({ type: "choose_character", character });
-                if (editing) setEditing(null);
               }}
               labelFor={(c) => BRAWLER_CHARACTER_LABELS[c]}
               iconSrcFor={(c) => `/brawler/character_${c}.png`}
@@ -176,11 +198,30 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
               onPick={(weapon: BrawlerWeapon) => {
                 playClick();
                 send({ type: "choose_weapon", weapon });
-                if (editing) setEditing(null);
               }}
               labelFor={(w) => BRAWLER_WEAPON_LABELS[w]}
               iconSrcFor={(w) => `/brawler/item_${w}.png`}
             />
+          )}
+          {step === "weapon" && self.weapon && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-cream-200 bg-amber-50 px-3 py-2.5">
+              <span className="shrink-0 rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
+                {
+                  { "melee-swing": "Cận chiến", "melee-thrust": "Cận chiến", ranged: "Tầm xa", hook: "Móc câu" }[
+                    BRAWLER_WEAPON_CONFIG[self.weapon].attackType
+                  ]
+                }
+              </span>
+              <p className="text-xs leading-snug text-ink/70">{BRAWLER_WEAPON_CONFIG[self.weapon].description}</p>
+            </div>
+          )}
+          {step === "weapon" && self.weapon && (
+            <div className="mt-3 flex items-center gap-4 rounded-lg border border-cream-200 bg-slate-50 p-3">
+              <CharacterPreview character={self.character} weapon={self.weapon} headgear={self.headgear} sizeClassName="h-24 w-24 shrink-0" animate />
+              <p className="text-xs leading-snug text-ink/60">
+                Đúng kiểu đánh thật của vũ khí này (cận chiến/tầm xa/móc câu) — tốc độ và tầm chính xác sẽ tinh chỉnh khi làm engine chiến đấu.
+              </p>
+            </div>
           )}
           {step === "headgear" && (
             <OptionGrid
@@ -189,7 +230,6 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
               onPick={(headgear: BrawlerHeadgear) => {
                 playClick();
                 send({ type: "choose_headgear", headgear });
-                if (editing) setEditing(null);
               }}
               labelFor={(h) => BRAWLER_HEADGEAR_LABELS[h]}
               iconSrcFor={(h) => (h === "none" ? null : `/brawler/item_${h}.png`)}
@@ -197,6 +237,30 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
           )}
 
           <div className="mt-6 flex justify-end gap-2">
+            {!editing && step === "character" && (
+              <button
+                onClick={() => {
+                  playClick();
+                  setWizardStep("weapon");
+                }}
+                disabled={!self.character}
+                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Tiếp theo →
+              </button>
+            )}
+            {!editing && step === "weapon" && (
+              <button
+                onClick={() => {
+                  playClick();
+                  setWizardStep("headgear");
+                }}
+                disabled={!self.weapon}
+                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Tiếp theo →
+              </button>
+            )}
             {!editing && step === "headgear" && (
               <button
                 onClick={() => {
@@ -212,9 +276,9 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
             {editing && (
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-lg border border-cream-200 px-4 py-2 text-sm font-medium text-ink/70 transition hover:border-amber-400"
+                className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
               >
-                Xong
+                Đồng ý
               </button>
             )}
           </div>
@@ -232,17 +296,8 @@ export default function BrawlerGameRoom({ roomId, playerId, name }: Props) {
 
   const playerRow = (p: (typeof state.players)[number]) => (
     <div key={p.id} className={`flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ${!p.connected ? "opacity-40" : ""}`}>
-      {p.character ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/brawler/character_${p.character}.png`} alt="" className="h-6 w-6 shrink-0 object-contain" />
-      ) : (
-        <span className="h-6 w-6 shrink-0 rounded bg-slate-100" />
-      )}
+      <CharacterPreview character={p.character} weapon={p.weapon} headgear={p.headgear} sizeClassName="h-9 w-9 shrink-0" />
       <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-      {p.weapon && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/brawler/item_${p.weapon}.png`} alt="" title={BRAWLER_WEAPON_LABELS[p.weapon]} className="h-5 w-5 shrink-0 object-contain" />
-      )}
       {p.isHost && <span className="shrink-0">👑</span>}
     </div>
   );
