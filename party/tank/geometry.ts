@@ -24,6 +24,12 @@ import {
   type TankMapDef,
   type TankPlayer,
 } from "../../shared/tankTypes";
+// tileAt/tankBlocked/DIR_VECTOR now live in shared/tankMovement.ts — the
+// client's self-movement prediction needs them too, so they moved to the
+// one module both sides import. Re-exported here so every existing
+// `import { tileAt, ... } from "./geometry"` in this directory still works.
+import { DIR_VECTOR, tankBlocked, tileAt } from "../../shared/tankMovement";
+export { DIR_VECTOR, tankBlocked, tileAt };
 
 export function makeId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -119,25 +125,8 @@ export function diffMonster(prev: PublicMonster | undefined, cur: PublicMonster)
   return changed ? delta : null;
 }
 
-export function tileAt(map: TankMapDef, px: number, py: number): string {
-  const col = Math.floor(px / TILE_SIZE);
-  const row = Math.floor(py / TILE_SIZE);
-  if (row < 0 || row >= mapRows(map) || col < 0 || col >= mapCols(map)) return "#";
-  return map.layout[row][col] ?? "#";
-}
-
 export function spawnPixel(tile: { x: number; y: number }) {
   return { x: tile.x * TILE_SIZE + TILE_SIZE / 2, y: tile.y * TILE_SIZE + TILE_SIZE / 2 };
-}
-
-export function tankBlocked(map: TankMapDef, x: number, y: number): boolean {
-  const half = TANK_SIZE / 2;
-  return (
-    tileAt(map, x - half, y - half) === "#" ||
-    tileAt(map, x + half, y - half) === "#" ||
-    tileAt(map, x - half, y + half) === "#" ||
-    tileAt(map, x + half, y + half) === "#"
-  );
 }
 
 export function findOverlappingTank(
@@ -276,13 +265,6 @@ export function pickSpawnTile(
   }
   return best ?? { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 }
-
-export const DIR_VECTOR: Record<Direction, { dx: number; dy: number }> = {
-  up: { dx: 0, dy: -1 },
-  down: { dx: 0, dy: 1 },
-  left: { dx: -1, dy: 0 },
-  right: { dx: 1, dy: 0 },
-};
 
 export const DIR_ANGLE: Record<Direction, number> = {
   right: 0,

@@ -21,6 +21,7 @@ import {
   type TankClientMessage,
 } from "@shared/tankTypes";
 import type { ClientTankPublicState } from "@/lib/useTankRoom";
+import { createSelfPredictor, type SelfPredictor } from "./predictSelf";
 import { DIR_ANGLE, skinForColor } from "./render/sprite-utils";
 import { computeScopeEndpoint, drawScopeLine } from "./render/sniper";
 import {
@@ -88,10 +89,25 @@ export default function TankCanvas({ state, selfId, send }: Props) {
   // tick rate of 20Hz looks like on a ~60fps screen with no interpolation.
   const prevStateRef = useRef<ClientTankPublicState | null>(null);
   const stateChangedAtRef = useRef(performance.now());
+  // Local-only prediction of this player's own tank — see predictSelf.ts.
+  // Reconciled against every fresh server confirmation right here (runs
+  // once per incoming "state"/"state_delta", same cadence as the
+  // interpolation reset above), independent of whether draw() ends up using
+  // its output this frame (see the hookedUntil check there).
+  const selfPredictorRef = useRef<SelfPredictor | null>(null);
   if (stateRef.current !== state) {
     prevStateRef.current = stateRef.current;
     stateChangedAtRef.current = performance.now();
     stateRef.current = state;
+    const self = state.players.find((p) => p.id === selfId);
+    if (self) {
+      const baseline = { x: self.x, y: self.y, dir: self.dir, moving: self.moving, isBoosting: self.isBoosting, boostEnergy: self.boostEnergy };
+      if (!selfPredictorRef.current) {
+        selfPredictorRef.current = createSelfPredictor({ ...baseline, velocityX: 0, velocityY: 0 });
+      } else {
+        selfPredictorRef.current.reconcile(baseline);
+      }
+    }
   }
 
   const { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, damageNumbersRef, killFeed } = useTankEffects(state, selfId);
@@ -120,8 +136,12 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     ctx.scale(dpr, dpr);
 
     let raf = 0;
+    let lastFrameTime = performance.now();
     function draw() {
       if (!ctx) return;
+      const nowMs = performance.now();
+      const elapsedMs = nowMs - lastFrameTime;
+      lastFrameTime = nowMs;
       const s = stateRef.current;
       const prevS = prevStateRef.current;
       const m = getMap(s.mapId);
@@ -156,7 +176,30 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         if (!prev) return { x: curX, y: curY };
         return { x: prev.x + (curX - prev.x) * tickT, y: prev.y + (curY - prev.y) * tickT };
       }
-      const selfRender = self ? renderPos(self.id, self.x, self.y) : null;
+      let selfRender = self ? renderPos(self.id, self.x, self.y) : null;
+      // Prediction takes over self's render position — see predictSelf.ts.
+      // Skipped while hooked: the eased pull needs hookPullFrom/To, which
+      // the client never receives (see PublicTankPlayer), so this window
+      // falls back to the plain server interpolation above instead. The
+      // predictor keeps reconciling in the background regardless (see the
+      // component-body effect above), so it's already caught up the instant
+      // the hook ends.
+      if (self && selfPredictorRef.current) {
+        const isHooked = self.hookedUntil !== null && self.hookedUntil > s.serverNow;
+        if (!isHooked) {
+          selfRender = selfPredictorRef.current.advance(
+            m,
+            input.heldRef.current,
+            {
+              isShielded: self.shieldHitsLeft > 0,
+              isStunned: self.stunnedUntil !== null && self.stunnedUntil > s.serverNow,
+              dashUntil: self.dashUntil,
+              dashAngle: self.dashAngle,
+            },
+            elapsedMs
+          );
+        }
+      }
 
       // Same idea, extended to a free-running clock: airstrike bombers fly
       // on a fixed timeline independent of tank positions, so instead of a
@@ -471,6 +514,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     // custom hooks to verify that stability itself.
   }, [
     selfId,
+    input.heldRef,
     input.cameraOffsetRef,
     input.aimDistanceRef,
     input.aimPointRef,

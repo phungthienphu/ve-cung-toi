@@ -359,6 +359,7 @@ export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
   }
 
   return {
+    heldRef,
     cameraOffsetRef,
     aimDistanceRef,
     aimPointRef,
