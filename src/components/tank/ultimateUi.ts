@@ -16,7 +16,7 @@ export interface UltimateUi {
 export const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
   blue: {
     icon: "🔥",
-    label: "Xả đạn liên hoàn (R) — bắn nhanh trong 2s",
+    label: "Xả đạn liên hoàn (R) — bắn nhanh trong 3s",
     activeClasses: "border-cyan-400 bg-cyan-50 text-cyan-700 hover:bg-cyan-100",
     barClass: "bg-cyan-500",
   },
@@ -40,7 +40,7 @@ export const ULTIMATE_UI: Record<TankSkin, UltimateUi> = {
   },
   sand: {
     icon: "🌪️",
-    label: "Sóng cát (R) — đẩy lùi + choáng 1s kẻ địch phía trước",
+    label: "Sóng cát (R) — đẩy lùi + choáng 3s kẻ địch phía trước",
     activeClasses: "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100",
     barClass: "bg-amber-500",
   },
