@@ -66,10 +66,29 @@ body {
    weapon's individual WEAPON_HOLD rotation. No sprite frames exist for
    these characters — this is the only way to show "attacking" motion with
    a single static illustration per weapon. */
+/* Rotating around the box's own center (the default pivot) makes the blade
+   end and the hilt end swing in *opposite* vertical directions — chop the
+   blade down and the center-pivot math lifts the hilt up, which reads as
+   "raising the hilt", not "chopping down". A real swing pivots near the
+   grip instead, so the hilt stays roughly put while the blade does the
+   sweeping. That needs a different pivot than the resting frame uses
+   though (see the doc lower down on why transform-origin itself can't just
+   move), so instead of rotate() alone, the 40% keyframe wraps the *extra*
+   swing angle in translate-to-pivot / rotate / translate-back:
+   `translate(0, 45%) rotate(55deg) translate(0, -45%)` rotates that 55deg
+   around a point 45% below the box's center (roughly where the grip sits,
+   since the sword image fills the box's height) instead of around the
+   center. At the resting keyframes this extra wrapper isn't applied at
+   all — just rotate(base), identical to the non-animated static hold — so
+   the rest frame stays pixel-identical to the static preview (this is
+   exactly what an earlier version got wrong: moving transform-origin
+   itself changes the pivot for *every* frame including rest, which is why
+   that version drifted from the static preview; wrapping only the extra
+   swing angle like this avoids that entirely, since translate(D) rotate(0)
+   translate(-D) is the identity transform). */
 @keyframes brawler-swing {
-  0%, 15% { transform: rotate(var(--brawler-base-rot, 0deg)); }
-  40% { transform: rotate(calc(var(--brawler-base-rot, 0deg) + 55deg)); }
-  65%, 100% { transform: rotate(var(--brawler-base-rot, 0deg)); }
+  0%, 15%, 65%, 100% { transform: rotate(var(--brawler-base-rot, 0deg)); }
+  40% { transform: rotate(var(--brawler-base-rot, 0deg)) translate(0, 45%) rotate(55deg) translate(0, -45%); }
 }
 /* Short, quick poke forward along the weapon's own length. IMPORTANT: the
    cropped art for these (spear/pencil/rod, and bow for recoil below) is a
@@ -106,12 +125,6 @@ body {
   55%, 100% { transform: rotate(var(--brawler-base-rot, 0deg)) translateX(0); }
 }
 .brawler-anim-swing {
-  /* Pivoting around the box's own center left the hilt almost stationary
-     while only the blade end visibly swung — moving the pivot below the
-     box (past where the hand grips it, toward where a shoulder would be)
-     makes the whole sword, hilt included, sweep outward together like a
-     real swing instead of spinning in place. */
-  transform-origin: 50% 145%;
   animation: brawler-swing 1.3s ease-in-out infinite;
 }
 .brawler-anim-thrust {

@@ -92,7 +92,7 @@ interface WeaponHold {
   attackRotateDeg?: number;
 }
 
-const DEFAULT_HOLD: WeaponHold =  { left: 20, top: -20, box: 92, rotateDeg: 25, handLeft: 85, handTop: 60 };
+const DEFAULT_HOLD: WeaponHold =  { left: 60, top: -20, box: 92, rotateDeg: 25, handLeft: 85, handTop: 60 };
 
 // Only weapons whose shape doesn't work with DEFAULT_HOLD get their own
 // entry — sword/bow read fine as "held diagonally like a sword" so they
