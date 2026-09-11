@@ -12,13 +12,14 @@ import {
   HOOK_PULL_DURATION_MS,
   HOOK_STUN_MS,
   MONSTER_AGGRO_TIMEOUT_MS,
+  MONSTER_DROP_WEIGHTS,
   MONSTER_RESPAWN_DELAY_MS,
   type Monster,
   type Pickup,
   type TankMapDef,
 } from "../../shared/tankTypes";
 import { type CombatCtx, damageThroughShield } from "./combat";
-import { makeId, tankBlocked } from "./geometry";
+import { makeId, randomPickupKind, tankBlocked } from "./geometry";
 
 export interface PendingHook {
   id: string;
@@ -84,7 +85,7 @@ export function stepHooks(ctx: HookFieldCtx, map: TankMapDef, pending: PendingHo
         monster.alive = false;
         monster.respawnAt = now + MONSTER_RESPAWN_DELAY_MS;
         monster.aggroPlayerId = null;
-        ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shield" });
+        ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: randomPickupKind(MONSTER_DROP_WEIGHTS) });
       } else {
         monster.aggroPlayerId = hook.casterId;
         ctx.monsterAggroUntil.set(monster.id, now + MONSTER_AGGRO_TIMEOUT_MS);

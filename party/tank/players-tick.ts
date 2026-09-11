@@ -77,6 +77,7 @@ export function stepPlayers(ctx: PlayersTickCtx, map: TankMapDef, now: number) {
         player.hp = MAX_HP;
         player.respawnAt = null;
         player.blindedUntil = null;
+        player.weaponJammedUntil = null;
         player.stunnedUntil = null;
         player.hookedUntil = null;
         player.hookPullUntil = null;

@@ -285,6 +285,7 @@ export default class TankRoom implements Party.Server {
         respawnAt: null,
         items: [],
         blindedUntil: null,
+        weaponJammedUntil: null,
         stunnedUntil: null,
         hookedUntil: null,
         hookPullUntil: null,
@@ -385,6 +386,7 @@ export default class TankRoom implements Party.Server {
       p.dir = "down";
       p.items = [];
       p.blindedUntil = null;
+      p.weaponJammedUntil = null;
       p.stunnedUntil = null;
       p.hookedUntil = null;
       p.hookPullUntil = null;
@@ -506,9 +508,15 @@ export default class TankRoom implements Party.Server {
     return player.stunnedUntil !== null && player.stunnedUntil > Date.now();
   }
 
+  /** EMP item: blocks every attack action (plain shot, ultimate, item use)
+   * while the cannon is jammed — unlike a stun, movement is unaffected. */
+  private isWeaponJammed(player: TankPlayer): boolean {
+    return player.weaponJammedUntil !== null && player.weaponJammedUntil > Date.now();
+  }
+
   private handleShoot(sender: Party.Connection, big: boolean) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const skin = skinForColor(player.color);
 
     if (big && ULTIMATE_ACTIVATION_MODE[skin] === "charge") {
@@ -607,7 +615,7 @@ export default class TankRoom implements Party.Server {
    * re-checks server-side to be safe. */
   private handleChargeUltimate(sender: Party.Connection) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const skin = skinForColor(player.color);
     if (ULTIMATE_ACTIVATION_MODE[skin] !== "charge") return;
     if (player.sniperChargingSince !== null) return;
@@ -621,7 +629,7 @@ export default class TankRoom implements Party.Server {
    * so this is the only place server-side that skin's skill is triggered. */
   private handleThrowBomb(x: number, y: number, sender: Party.Connection) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const skin = skinForColor(player.color);
     if (ULTIMATE_ACTIVATION_MODE[skin] !== "target") return;
     if (player.ultimateEnergy < ULTIMATE_CONFIG[skin].maxEnergy) return;
@@ -630,7 +638,7 @@ export default class TankRoom implements Party.Server {
 
   private handleUseItem(kind: ItemKind, sender: Party.Connection) {
     const player = this.players.get(sender.id);
-    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player)) return;
+    if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const slot = player.items.indexOf(kind);
     if (slot === -1) return;
 
@@ -649,6 +657,20 @@ export default class TankRoom implements Party.Server {
         causeCode: causeCode("Đạn thường"),
         speed: BULLET_SPEED,
         ticksLeft: bulletTicksLeft("blind", BULLET_SPEED),
+      });
+    } else if (kind === "emp") {
+      const angle = aimAngleOf(player);
+      const offset = TANK_SIZE / 2 + BULLET_SIZE;
+      this.bullets.push({
+        id: makeId(),
+        ownerId: player.id,
+        x: player.x + Math.cos(angle) * offset,
+        y: player.y + Math.sin(angle) * offset,
+        angle,
+        kind: "emp",
+        causeCode: causeCode("Đạn thường"),
+        speed: BULLET_SPEED,
+        ticksLeft: bulletTicksLeft("emp", BULLET_SPEED),
       });
     } else if (kind === "shield") {
       player.shieldHitsLeft = SHIELD_MAX_HITS;

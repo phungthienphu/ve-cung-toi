@@ -235,12 +235,26 @@ export const PICKUP_HEAL_AMOUNT = 35;
 // Odds a freshly-spawned map pickup is each kind (must sum to 1). Shield is
 // deliberately excluded here — it only ever drops from a killed monster, so
 // its weight stays 0 for this general spawner.
-export const PICKUP_WEIGHTS: Record<ItemKind, number> = { health: 0.4, trap: 0.2, blind: 0.2, fire: 0.2, shield: 0 };
+export const PICKUP_WEIGHTS: Record<ItemKind, number> = { health: 0.3, trap: 0.175, blind: 0.175, fire: 0.175, emp: 0.175, shield: 0 };
+
+// Odds a killed monster's drop is each kind (must sum to 1) — separate table
+// from PICKUP_WEIGHTS since shield is only ever reachable this way, so it
+// gets a real slice here instead of every monster kill dropping the exact
+// same thing every time.
+export const MONSTER_DROP_WEIGHTS: Record<ItemKind, number> = { health: 0.25, trap: 0.125, blind: 0.125, fire: 0.125, emp: 0.125, shield: 0.25 };
 
 export const TRAP_DAMAGE = 30;
 export const TRAP_SIZE = 18;
 export const BLIND_DURATION_MS = 5000;
 export const VISION_RADIUS = 110; // px around the blinded player's own tank
+
+// EMP item: the next hit jams the target's cannon instead of dealing damage
+// — same "fire a special bullet, apply a status effect on hit" shape as
+// blind, just disabling the weapon instead of vision. See TankPlayer's
+// weaponJammedUntil and tank-server.ts's isWeaponJammed for where it's
+// actually enforced (blocks every attack action, not just the plain shot
+// trigger — see the doc there for why).
+export const EMP_JAM_DURATION_MS = 3000;
 
 // Shield item: a standing barrier that blocks a fixed number of incoming
 // bullets (any kind) instead of the player taking the hit. While active the
@@ -431,8 +445,8 @@ export const VIEWPORT_W = VIEWPORT_COLS * TILE_SIZE;
 export const VIEWPORT_H = VIEWPORT_ROWS * TILE_SIZE;
 
 export type Direction = "up" | "down" | "left" | "right";
-export type ItemKind = "health" | "trap" | "blind" | "shield" | "fire";
-export type BulletKind = "normal" | "blind" | "big" | "fire";
+export type ItemKind = "health" | "trap" | "blind" | "shield" | "fire" | "emp";
+export type BulletKind = "normal" | "blind" | "big" | "fire" | "emp";
 
 export interface TankPlayer {
   id: string;
@@ -456,6 +470,10 @@ export interface TankPlayer {
   respawnAt: number | null;
   items: ItemKind[];
   blindedUntil: number | null;
+  // EMP item: non-null while the cannon is jammed — see EMP_JAM_DURATION_MS
+  // and tank-server.ts's isWeaponJammed. Reset alongside
+  // stunnedUntil/blindedUntil/burningUntil.
+  weaponJammedUntil: number | null;
   boostEnergy: number;
   isBoosting: boolean;
   ultimateEnergy: number;

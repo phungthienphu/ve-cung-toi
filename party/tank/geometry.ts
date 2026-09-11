@@ -205,10 +205,13 @@ export function tryPushCrate(crate: Crate, dx: number, dy: number, map: TankMapD
   return true;
 }
 
-export function randomPickupKind(): ItemKind {
+/** Draws a random ItemKind from a weight table (defaults to the map
+ * spawner's PICKUP_WEIGHTS) — monster deaths pass MONSTER_DROP_WEIGHTS
+ * instead, since shield is only ever reachable that way. */
+export function randomPickupKind(weights: Record<ItemKind, number> = PICKUP_WEIGHTS): ItemKind {
   const r = Math.random();
   let acc = 0;
-  for (const [kind, weight] of Object.entries(PICKUP_WEIGHTS) as [ItemKind, number][]) {
+  for (const [kind, weight] of Object.entries(weights) as [ItemKind, number][]) {
     acc += weight;
     if (r <= acc) return kind;
   }

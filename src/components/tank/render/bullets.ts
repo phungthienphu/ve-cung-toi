@@ -33,6 +33,25 @@ export function drawBlindBullet(ctx: CanvasRenderingContext2D, x: number, y: num
   }
 }
 
+/** The EMP item's shot — a generic bullet shape tinted electric yellow,
+ * same construction as drawBlindBullet just a different color so the two
+ * status-effect rounds still read as visually distinct in flight. */
+export function drawEmpBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number) {
+  const tinted = getTintedSprite("/Retina/bulletDark1_outline.png", "#facc15");
+  if (tinted) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2);
+    const h = 18;
+    const w = h * (tinted.width / tinted.height);
+    ctx.drawImage(tinted, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(Math.round(x - 3), Math.round(y - 3), 6, 6);
+  }
+}
+
 /** Flame projectile fired while a fire item's charges are active. */
 export function drawFireBullet(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, time: number) {
   const flicker = 0.75 + 0.25 * Math.sin(time / 40);

@@ -252,6 +252,41 @@ export function drawStunnedOverlay(ctx: CanvasRenderingContext2D, x: number, y: 
   }
 }
 
+/** EMP item: jagged yellow sparks crackling over a tank whose cannon is
+ * jammed — same "electric arcs" technique as drawHookedOverlay but yellow
+ * (not hook's cyan) and without the flipped-barrel sprite, since movement
+ * still works here, only firing is disabled. Visible to everyone, same
+ * reasoning as the burning/stunned overlays. */
+export function drawJammedOverlay(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  const half = TANK_SIZE / 2;
+  const flickerSeed = Math.floor(time / 60);
+  const rand = (seed: number) => {
+    const v = Math.sin(seed * 12.9898 + flickerSeed * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+
+  ctx.save();
+  ctx.strokeStyle = "#facc15";
+  ctx.lineWidth = 1.25;
+  ctx.globalAlpha = 0.85;
+  const boltCount = 3;
+  for (let i = 0; i < boltCount; i++) {
+    const angle = (i / boltCount) * Math.PI * 2 + rand(i) * Math.PI * 0.5;
+    const outerR = half + 9;
+    const sx = x + Math.cos(angle) * outerR;
+    const sy = y + Math.sin(angle) * outerR;
+    const midAngle = angle + (rand(i + 10) - 0.5) * 1.0;
+    const midR = half + 2;
+    const mx = x + Math.cos(midAngle) * midR;
+    const my = y + Math.sin(midAngle) * midR;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /** bigRed's hook holding a target still — jagged electric arcs crackling
  * around the tank plus its own barrel hovering upside-down overhead, reading
  * as "aimed at / pinned" rather than the generic dizzy-stars stun look. Drawn
@@ -371,7 +406,7 @@ export function drawHealthPickup(ctx: CanvasRenderingContext2D, x: number, y: nu
   ctx.restore();
 }
 
-export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: number, kind: "trap" | "blind" | "shield" | "fire") {
+export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: number, kind: "trap" | "blind" | "shield" | "fire" | "emp") {
   if (kind === "shield") {
     const img = getSprite("/items/shield.png");
     if (!img) return;
@@ -388,6 +423,7 @@ export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: numb
     trap: ["#fef3c7", "#b45309", "💣"],
     blind: ["#ede9fe", "#6d28d9", "M"],
     fire: ["#ffedd5", "#c2410c", "🔥"],
+    emp: ["#fef9c3", "#a16207", "⚡"],
   };
   const [bg, fg, label] = palette[kind];
   ctx.fillStyle = bg;

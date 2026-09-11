@@ -46,13 +46,14 @@ import {
   drawHealthPickup,
   drawHookedOverlay,
   drawItemPickup,
+  drawJammedOverlay,
   drawMonster,
   drawSpreadCone,
   drawStunnedOverlay,
   drawTank,
   drawTrap,
 } from "./render/entities";
-import { drawBigBullet, drawBlindBullet, drawFireBullet, drawNormalBullet } from "./render/bullets";
+import { drawBigBullet, drawBlindBullet, drawEmpBullet, drawFireBullet, drawNormalBullet } from "./render/bullets";
 import {
   MARK_DURATION_MS,
   MUZZLE_FLASH_DURATION_MS,
@@ -330,6 +331,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           drawFireBullet(ctx, bp.x, bp.y, b.angle, now);
         } else if (b.kind === "blind") {
           drawBlindBullet(ctx, bp.x, bp.y, b.angle);
+        } else if (b.kind === "emp") {
+          drawEmpBullet(ctx, bp.x, bp.y, b.angle);
         } else {
           const owner = s.players.find((p) => p.id === b.ownerId);
           drawNormalBullet(ctx, bp.x, bp.y, b.angle, owner ? skinForColor(owner.color) : "blue");
@@ -371,6 +374,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
         if (p.burningUntil && p.burningUntil > s.serverNow) drawBurningOverlay(ctx, rp.x, rp.y, now);
         if (p.hookedUntil && p.hookedUntil > s.serverNow) drawHookedOverlay(ctx, rp.x, rp.y, now);
         else if (p.stunnedUntil && p.stunnedUntil > s.serverNow) drawStunnedOverlay(ctx, rp.x, rp.y, now);
+        if (p.weaponJammedUntil && p.weaponJammedUntil > s.serverNow) drawJammedOverlay(ctx, rp.x, rp.y, now);
         if (p.shieldAuraUntil && p.shieldAuraUntil > s.serverNow) drawAuraEmitterRing(ctx, rp.x, rp.y, DARKLARGE_AURA_RADIUS, now);
         if (p.auraShieldUntil && p.auraShieldUntil > s.serverNow) drawAuraShieldGlow(ctx, rp.x, rp.y, now);
 

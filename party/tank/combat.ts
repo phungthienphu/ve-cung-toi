@@ -7,10 +7,12 @@ import {
   BLIND_DURATION_MS,
   BULLET_DAMAGE,
   BURN_DURATION_MS,
+  EMP_JAM_DURATION_MS,
   KILL_TARGET,
   RESPAWN_DELAY_MS,
   ULTIMATE_DAMAGE_MULTIPLIER,
   type Team,
+  type BulletKind,
   type DamageCause,
   type TankImpact,
   type TankKillEvent,
@@ -112,20 +114,18 @@ export function damageThroughShield(ctx: CombatCtx, target: TankPlayer, amount: 
  * see combat.ts's isUnderAuraShield doc); only the actual damage-consuming
  * paths below check the aura first, so a free aura block gets used up
  * before a limited item-shield charge does. */
-export function applyHit(
-  ctx: CombatCtx,
-  target: TankPlayer,
-  bulletKind: "normal" | "blind" | "big" | "fire",
-  ownerId: string,
-  cause: DamageCause
-): boolean {
-  if ((bulletKind === "blind" || bulletKind === "fire") && target.shieldHitsLeft > 0) {
+export function applyHit(ctx: CombatCtx, target: TankPlayer, bulletKind: BulletKind, ownerId: string, cause: DamageCause): boolean {
+  if ((bulletKind === "blind" || bulletKind === "fire" || bulletKind === "emp") && target.shieldHitsLeft > 0) {
     target.shieldHitsLeft -= 1;
     ctx.impacts.push({ id: makeId(), x: target.x, y: target.y, kind: "shield" });
     return false;
   }
   if (bulletKind === "blind") {
     target.blindedUntil = Date.now() + BLIND_DURATION_MS;
+    return false;
+  }
+  if (bulletKind === "emp") {
+    target.weaponJammedUntil = Date.now() + EMP_JAM_DURATION_MS;
     return false;
   }
   if (bulletKind === "fire") {

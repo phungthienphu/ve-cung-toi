@@ -250,6 +250,31 @@ export function playDash() {
   tone(140, 0, 0.15, 0.08, "square");
 }
 
+/** Self just got hit by an EMP round — a jittery electric crackle, distinct
+ * from playStunned's smooth descending warble since this is an electrical
+ * zap, not a woozy daze. */
+export function playWeaponJammed() {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = "square";
+  const t0 = audio.currentTime;
+  // Rapid up/down frequency jitter reads as an electric crackle rather than
+  // a musical tone.
+  for (let i = 0; i < 8; i++) {
+    const t = t0 + i * 0.045;
+    osc.frequency.setValueAtTime(i % 2 === 0 ? 900 : 220, t);
+  }
+  gain.gain.setValueAtTime(0.12, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+  osc.connect(gain);
+  gain.connect(audio.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.4);
+  noiseBurst(0.2, 0.08, 3000);
+}
+
 /** bigRed's hook fires out, then snaps back on a hit — a quick metallic
  * whip-crack rather than an explosion. */
 export function playHook() {

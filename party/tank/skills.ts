@@ -19,6 +19,7 @@ import {
   HOOK_THROW_MS,
   HOOK_WIDTH,
   MONSTER_AGGRO_TIMEOUT_MS,
+  MONSTER_DROP_WEIGHTS,
   MONSTER_RESPAWN_DELAY_MS,
   RAPID_FIRE_DURATION_MS,
   RED_BOMB_MAX_RANGE,
@@ -39,7 +40,7 @@ import {
 } from "../../shared/tankTypes";
 import { type CombatCtx, damagePlayer } from "./combat";
 import { fireGreenVolley, type GreenBurstFieldCtx, type PendingGreenBurst } from "./greenBurst";
-import { aimAngleOf, bulletTicksLeft, makeId, tankBlocked } from "./geometry";
+import { aimAngleOf, bulletTicksLeft, makeId, randomPickupKind, tankBlocked } from "./geometry";
 import type { PendingHook } from "./hook";
 import { createRedBarrage } from "./redBarrage";
 
@@ -185,7 +186,7 @@ export function activateSandWave(ctx: SandWaveCtx, player: TankPlayer, map: Tank
       monster.alive = false;
       monster.respawnAt = now + MONSTER_RESPAWN_DELAY_MS;
       monster.aggroPlayerId = null;
-      ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shield" });
+      ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: randomPickupKind(MONSTER_DROP_WEIGHTS) });
     } else {
       monster.aggroPlayerId = player.id;
       ctx.monsterAggroUntil.set(monster.id, now + MONSTER_AGGRO_TIMEOUT_MS);

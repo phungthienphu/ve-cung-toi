@@ -26,6 +26,7 @@ import {
   playTankImpact,
   playTankPickup,
   playUltimateReady,
+  playWeaponJammed,
 } from "@/lib/sound";
 import {
   BOMB_EXPLOSION_FRAMES,
@@ -315,6 +316,7 @@ export function useTankEffects(state: ClientTankPublicState, selfId: string) {
     itemCount: number;
     burning: boolean;
     stunned: boolean;
+    jammed: boolean;
     alive: boolean;
     isBoosting: boolean;
     ultimateEnergy: number;
@@ -324,6 +326,7 @@ export function useTankEffects(state: ClientTankPublicState, selfId: string) {
     if (!self) return;
     const isBurning = !!self.burningUntil && self.burningUntil > state.serverNow;
     const isStunned = !!self.stunnedUntil && self.stunnedUntil > state.serverNow;
+    const isJammed = !!self.weaponJammedUntil && self.weaponJammedUntil > state.serverNow;
     const prev = prevSelfRef.current;
     if (prev) {
       if (!self.alive && prev.alive) playTankDestroyed();
@@ -331,6 +334,7 @@ export function useTankEffects(state: ClientTankPublicState, selfId: string) {
       else if (self.hp > prev.hp || self.items.length > prev.itemCount) playTankPickup();
       if (isBurning && !prev.burning) playFireIgnite();
       if (isStunned && !prev.stunned) playStunned();
+      if (isJammed && !prev.jammed) playWeaponJammed();
       if (self.isBoosting && !prev.isBoosting) playBoostStart();
       const maxEnergy = ULTIMATE_CONFIG[skinForColor(self.color)].maxEnergy;
       if (self.ultimateEnergy >= maxEnergy && prev.ultimateEnergy < maxEnergy) playUltimateReady();
@@ -340,6 +344,7 @@ export function useTankEffects(state: ClientTankPublicState, selfId: string) {
       itemCount: self.items.length,
       burning: isBurning,
       stunned: isStunned,
+      jammed: isJammed,
       alive: self.alive,
       isBoosting: self.isBoosting,
       ultimateEnergy: self.ultimateEnergy,

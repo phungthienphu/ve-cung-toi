@@ -4,9 +4,9 @@
 // a third bomb-dropping mechanic later reuses the exact same damage/crate/
 // impact behavior instead of re-deriving it.
 
-import { findOverlappingCrate, makeId } from "./geometry";
+import { findOverlappingCrate, makeId, randomPickupKind } from "./geometry";
 import { damagePlayer, type CombatCtx } from "./combat";
-import { MONSTER_RESPAWN_DELAY_MS, type AirstrikeBomb, type Crate, type DamageCause, type Monster, type Pickup } from "../../shared/tankTypes";
+import { MONSTER_DROP_WEIGHTS, MONSTER_RESPAWN_DELAY_MS, type AirstrikeBomb, type Crate, type DamageCause, type Monster, type Pickup } from "../../shared/tankTypes";
 
 export interface BombFieldCtx extends CombatCtx {
   crates: Crate[];
@@ -44,7 +44,7 @@ export function resolveBombs(
         monster.alive = false;
         monster.respawnAt = now + MONSTER_RESPAWN_DELAY_MS;
         monster.aggroPlayerId = null;
-        ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shield" });
+        ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: randomPickupKind(MONSTER_DROP_WEIGHTS) });
       }
     }
     const hitCrate = findOverlappingCrate(ctx.crates, bomb.x, bomb.y);

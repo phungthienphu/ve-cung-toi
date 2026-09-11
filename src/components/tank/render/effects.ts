@@ -8,7 +8,7 @@ import { SAND_WAVE_RANGE, SAND_WAVE_WIDTH, TANK_SIZE } from "@shared/tankTypes";
 import { getSprite } from "@/lib/imageCache";
 import { getTintedSprite } from "./sprite-utils";
 
-export type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire" | "crate" | "bomb" | "ultimate";
+export type ExplosionKind = "normal" | "blind" | "shove" | "big" | "shield" | "fire" | "crate" | "bomb" | "ultimate" | "emp";
 const EXPLOSION_DURATION_MS = 380;
 export function explosionDurationFor(kind: ExplosionKind): number {
   if (kind === "bomb") return 560;
@@ -35,6 +35,7 @@ const EXPLOSION_TINT: Partial<Record<ExplosionKind, string>> = {
   shove: "#fde68a",
   crate: "#c2825a",
   big: "#ef4444",
+  emp: "#facc15",
 };
 
 // Bomb explosions use their own dedicated 4-frame flipbook (already fully

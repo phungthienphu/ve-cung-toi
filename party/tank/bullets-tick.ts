@@ -1,12 +1,14 @@
 // Bullet advancement + collision resolution: walls, crates, tanks, and
-// (unless it's a blind round) monsters. Rewrites `ctx.bullets` in place to
-// just the survivors, same as the original inline tick logic did.
+// (unless it's a blind or EMP round — neither makes sense against a monster)
+// monsters. Rewrites `ctx.bullets` in place to just the survivors, same as
+// the original inline tick logic did.
 
 import {
   CRATE_SIZE,
   DAMAGE_CAUSES,
   MAX_BULLETS_TOTAL,
   MONSTER_AGGRO_TIMEOUT_MS,
+  MONSTER_DROP_WEIGHTS,
   MONSTER_RESPAWN_DELAY_MS,
   MONSTER_SIZE,
   TANK_SIZE,
@@ -18,7 +20,7 @@ import {
   type TankMapDef,
 } from "../../shared/tankTypes";
 import { applyHit, type CombatCtx } from "./combat";
-import { makeId, tileAt } from "./geometry";
+import { makeId, randomPickupKind, tileAt } from "./geometry";
 
 export interface BulletsTickCtx extends CombatCtx {
   bullets: Bullet[];
@@ -67,7 +69,7 @@ export function stepBullets(ctx: BulletsTickCtx, map: TankMapDef, now: number) {
         break;
       }
     }
-    if (!hit && bullet.kind !== "blind") {
+    if (!hit && bullet.kind !== "blind" && bullet.kind !== "emp") {
       for (const monster of ctx.monsters) {
         if (!monster.alive) continue;
         const dx = monster.x - bullet.x;
@@ -80,7 +82,7 @@ export function stepBullets(ctx: BulletsTickCtx, map: TankMapDef, now: number) {
             monster.respawnAt = now + MONSTER_RESPAWN_DELAY_MS;
             monster.aggroPlayerId = null;
             ctx.monsterAggroUntil.delete(monster.id);
-            ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: "shield" });
+            ctx.pickups.push({ id: makeId(), x: monster.x, y: monster.y, kind: randomPickupKind(MONSTER_DROP_WEIGHTS) });
           } else {
             monster.aggroPlayerId = bullet.ownerId;
             ctx.monsterAggroUntil.set(monster.id, now + MONSTER_AGGRO_TIMEOUT_MS);

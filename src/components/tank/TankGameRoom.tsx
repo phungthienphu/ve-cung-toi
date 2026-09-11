@@ -22,6 +22,7 @@ import {
   type Team,
 } from "@shared/tankTypes";
 import { DIR_ANGLE } from "./render/sprite-utils";
+import { ITEM_UI } from "./itemUi";
 import TankCanvas from "./TankCanvas";
 import { ULTIMATE_UI } from "./ultimateUi";
 
@@ -249,6 +250,21 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             </div>
           )}
 
+          <div className="mb-5">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Vật phẩm trong trận</label>
+            <div className="space-y-1.5 rounded-lg border border-cream-200 bg-slate-50 p-2.5">
+              {(Object.keys(ITEM_UI) as ItemKind[]).map((kind) => (
+                <div key={kind} className="flex items-start gap-2 text-xs leading-snug">
+                  <span className="shrink-0">{ITEM_UI[kind].icon}</span>
+                  <span>
+                    <span className="font-medium text-ink">{ITEM_UI[kind].label}:</span>{" "}
+                    <span className="text-slate-500">{ITEM_UI[kind].description}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {isHost ? (
               <button
@@ -453,7 +469,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                     kind ? "border-slate-300 bg-slate-50 hover:bg-slate-100" : "border-dashed border-slate-200 text-slate-300"
                   }`}
                 >
-                  {kind === "trap" ? "🪤" : kind === "blind" ? "😵" : kind === "shield" ? "🛡️" : kind === "fire" ? "🔥" : "—"}
+                  {kind ? ITEM_UI[kind].icon : "—"}
                   {kind && (
                     <span className="absolute -bottom-1 -right-1 rounded bg-slate-800 px-1 text-[9px] font-bold text-white">
                       {i + 1}
@@ -529,6 +545,11 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
         {self?.blindedUntil && self.blindedUntil > state.serverNow && (
           <div className="rounded-lg bg-purple-100 px-3 py-1.5 text-center text-xs font-medium text-purple-700 shadow-xl">
             😵 Bạn đang bị làm mù, chỉ thấy khu vực quanh xe!
+          </div>
+        )}
+        {self?.weaponJammedUntil && self.weaponJammedUntil > state.serverNow && (
+          <div className="rounded-lg bg-yellow-100 px-3 py-1.5 text-center text-xs font-medium text-yellow-700 shadow-xl">
+            ⚡ Nòng súng bị tê liệt, không thể bắn!
           </div>
         )}
         {self && self.shieldHitsLeft > 0 && (
