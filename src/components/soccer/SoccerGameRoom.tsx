@@ -1,0 +1,188 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { playClick } from "@/lib/sound";
+import { useSoccerRoom } from "@/lib/useSoccerRoom";
+import { SOCCER_TEAM_SIZES, type SoccerTeam } from "@shared/soccerTypes";
+import SoccerCanvas from "./SoccerCanvas";
+
+interface Props {
+  roomId: string;
+  playerId: string;
+  name: string;
+}
+
+export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
+  const router = useRouter();
+  const { state, connected, kicked, send } = useSoccerRoom(roomId, playerId, name);
+
+  useEffect(() => {
+    if (kicked) router.push("/soccer");
+  }, [kicked, router]);
+
+  if (!state) {
+    return (
+      <div className="flex min-h-app items-center justify-center text-slate-400">
+        {connected ? "Đang tải phòng..." : "Đang kết nối..."}
+      </div>
+    );
+  }
+
+  const self = state.players.find((p) => p.id === playerId);
+  const isHost = state.hostId === playerId;
+
+  function handleLeave() {
+    if (!confirm("Rời khỏi phòng?")) return;
+    playClick();
+    send({ type: "leave_room" });
+    router.push("/soccer");
+  }
+
+  if (state.status === "lobby") {
+    const teamA = state.players.filter((p) => p.connected && p.team === "A");
+    const teamB = state.players.filter((p) => p.connected && p.team === "B");
+    const canStart = teamA.length === state.teamSize && teamB.length === state.teamSize;
+
+    function chooseTeam(team: SoccerTeam) {
+      playClick();
+      send({ type: "choose_team", team });
+    }
+
+    return (
+      <main className="flex min-h-app items-center justify-center bg-soccer-scene px-4 py-8">
+        <div className="w-full max-w-2xl rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
+          <div className="mb-1 flex items-center justify-between">
+            <h1 className="text-xl font-bold text-ink">Phòng chờ bóng đá</h1>
+            <span className="font-mono text-sm tracking-wider text-ink/40">{roomId}</span>
+          </div>
+          <p className="mb-6 text-sm text-ink/60">Chọn đội, đợi đủ người rồi chủ phòng bấm bắt đầu.</p>
+
+          {isHost && (
+            <div className="mb-6">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Thể thức</label>
+              <div className="flex gap-2">
+                {SOCCER_TEAM_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => send({ type: "set_team_size", teamSize: size })}
+                    className={`rounded-lg border-2 px-3.5 py-2 text-sm font-semibold transition ${
+                      state.teamSize === size ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-cream-200 text-ink/60 hover:border-emerald-300"
+                    }`}
+                  >
+                    {size} vs {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-6 grid grid-cols-2 gap-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-bold text-blue-700">Đội Xanh ({teamA.length}/{state.teamSize})</span>
+                {self?.team !== "A" && teamA.length < state.teamSize && (
+                  <button onClick={() => chooseTeam("A")} className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-700">
+                    Vào đội
+                  </button>
+                )}
+              </div>
+              <ul className="space-y-1 text-sm text-ink/70">
+                {teamA.map((p) => (
+                  <li key={p.id}>{p.name}{p.id === playerId && " (bạn)"}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-bold text-red-700">Đội Đỏ ({teamB.length}/{state.teamSize})</span>
+                {self?.team !== "B" && teamB.length < state.teamSize && (
+                  <button onClick={() => chooseTeam("B")} className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700">
+                    Vào đội
+                  </button>
+                )}
+              </div>
+              <ul className="space-y-1 text-sm text-ink/70">
+                {teamB.map((p) => (
+                  <li key={p.id}>{p.name}{p.id === playerId && " (bạn)"}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {isHost ? (
+            <button
+              onClick={() => {
+                playClick();
+                send({ type: "start_game" });
+              }}
+              disabled={!canStart}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {canStart ? "Bắt đầu trận đấu" : `Cần đủ ${state.teamSize} vs ${state.teamSize}`}
+            </button>
+          ) : (
+            <p className="text-center text-sm text-ink/50">Đang đợi chủ phòng bắt đầu...</p>
+          )}
+
+          <button onClick={handleLeave} className="mt-4 block w-full text-center text-xs font-medium text-ink/40 hover:text-ink/70">
+            Rời phòng
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (state.status === "ended") {
+    const winnerLabel = state.winningTeam === "A" ? "Đội Xanh thắng!" : state.winningTeam === "B" ? "Đội Đỏ thắng!" : "Hòa!";
+    return (
+      <main className="flex min-h-app items-center justify-center bg-soccer-scene px-4">
+        <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 text-center shadow-xl">
+          <h1 className="mb-2 text-2xl font-bold text-ink">{winnerLabel}</h1>
+          <p className="mb-6 text-lg font-semibold text-ink/70">
+            <span className="text-blue-600">{state.teamScores.A}</span> — <span className="text-red-600">{state.teamScores.B}</span>
+          </p>
+          {isHost ? (
+            <button
+              onClick={() => {
+                playClick();
+                send({ type: "play_again" });
+              }}
+              className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Chơi lại
+            </button>
+          ) : (
+            <p className="mb-3 text-sm text-ink/50">Đang đợi chủ phòng...</p>
+          )}
+          <button onClick={handleLeave} className="text-xs font-medium text-ink/40 hover:text-ink/70">
+            Rời phòng
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  const remainingMs = typeof state.matchEndsAt === "number" ? Math.max(0, state.matchEndsAt - state.serverNow) : null;
+  const remainingLabel = remainingMs !== null ? `${Math.floor(remainingMs / 60000)}:${String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}` : null;
+
+  return (
+    <div className="min-h-app bg-soccer-scene">
+      <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-3 px-3 py-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-xl">
+          <div className="flex items-center gap-3 text-sm font-semibold">
+            {remainingLabel && <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700">⏱ {remainingLabel}</span>}
+            <span className="text-blue-600">Xanh {state.teamScores.A}</span>
+            <span className="text-slate-300">—</span>
+            <span className="text-red-600">{state.teamScores.B} Đỏ</span>
+          </div>
+          <button onClick={handleLeave} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50">
+            Rời phòng
+          </button>
+        </div>
+
+        <SoccerCanvas state={state} selfId={playerId} send={send} />
+      </div>
+    </div>
+  );
+}

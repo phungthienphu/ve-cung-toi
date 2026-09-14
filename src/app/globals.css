@@ -54,6 +54,12 @@ body {
   background: linear-gradient(180deg, #bfe3ff 0%, #eaf6ff 60%, #fdf6e3 100%);
 }
 
+/* No dedicated hero background for soccer either (see .bg-brawler-scene's
+   doc for the same situation) — a plain stadium-ish gradient stands in. */
+.bg-soccer-scene {
+  background: linear-gradient(180deg, #1e5c2e 0%, #2f8a44 55%, #eaf6ff 100%);
+}
+
 /* Brawler weapon-showcase loops (CharacterPreview.tsx's `animate` prop) — one
    per weapon (WEAPON_ANIM_CLASS there), not per BrawlerAttackType: sword is
    the only one that actually reads as a swung weapon, spear/pencil/rod are

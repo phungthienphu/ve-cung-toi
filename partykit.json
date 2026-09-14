@@ -5,7 +5,9 @@
   "parties": {
     "tanks": "party/tank-server.ts",
     "tanklobby": "party/tank-directory.ts",
-    "brawler": "party/brawler-server.ts"
+    "brawler": "party/brawler-server.ts",
+    "soccer": "party/soccer-server.ts",
+    "soccerlobby": "party/soccer-directory.ts"
   },
   "compatibilityDate": "2024-11-01"
 }

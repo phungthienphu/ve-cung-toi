@@ -30,6 +30,13 @@ const GAMES: GameCard[] = [
     description: "Đối kháng nhiều người chơi — chọn nhân vật, chọn vũ khí, cùng tranh tài.",
     accent: "hover:border-amber-500",
   },
+  {
+    href: "/soccer",
+    emoji: "⚽",
+    title: "Đại Chiến Bóng Đá",
+    description: "Đá bóng 2 đội — 1vs1 đến 4vs4, ghi nhiều bàn hơn trước khi hết giờ thì thắng.",
+    accent: "hover:border-emerald-500",
+  },
 ];
 
 export default function GamePickerPage() {
@@ -41,7 +48,7 @@ export default function GamePickerPage() {
           <p className="mt-2 text-sm text-ink/60">Chọn 1 game để bắt đầu — không cần tài khoản, chơi ngay trên trình duyệt.</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {GAMES.map((game) => (
             <Link
               key={game.href}
