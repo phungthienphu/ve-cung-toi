@@ -323,10 +323,17 @@ export default class SoccerRoom implements Party.Server {
     });
   }
 
+  /** True if `player` is close enough to a currently-loose ball to strike it
+   * first-time — a volley, without needing to trap/control it first (see
+   * handleKickRelease's doc). Same reach as picking up a loose ball at all. */
+  private canVolley(player: SoccerPlayer): boolean {
+    return this.ball.controllerId === null && Math.hypot(this.ball.x - player.x, this.ball.y - player.y) <= SOCCER_DRIBBLE_RADIUS;
+  }
+
   private handleKickStart(sender: Party.Connection) {
     const player = this.players.get(sender.id);
     if (!player || player.sentOff || this.status !== "playing" || this.isFrozen()) return;
-    if (this.ball.controllerId !== player.id) return;
+    if (this.ball.controllerId !== player.id && !this.canVolley(player)) return;
     player.kickChargeStartedAt = Date.now();
   }
 
@@ -336,7 +343,12 @@ export default class SoccerRoom implements Party.Server {
     const chargedMs = Date.now() - player.kickChargeStartedAt;
     player.kickChargeStartedAt = null;
     if (this.status !== "playing" || this.isFrozen()) return;
-    if (this.ball.controllerId !== player.id) return; // lost the ball mid-charge (e.g. tackled) — wasted press
+    // Either you're dribbling it (a normal shot/pass), or it's still loose
+    // and close enough to meet first-time (a volley) — either way the ball's
+    // current velocity gets overridden by the new strike. Anything else
+    // (lost the ball mid-charge — tackled, or it rolled out of reach) is a
+    // wasted press.
+    if (this.ball.controllerId !== player.id && !this.canVolley(player)) return;
 
     const t = Math.min(1, chargedMs / SOCCER_KICK_CHARGE_MAX_MS);
     const power = SOCCER_KICK_MIN_SPEED + (SOCCER_KICK_MAX_SPEED - SOCCER_KICK_MIN_SPEED) * t;

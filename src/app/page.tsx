@@ -24,18 +24,18 @@ const GAMES: GameCard[] = [
     accent: "hover:border-slate-600",
   },
   {
+    href: "/soccer",
+    emoji: "⚽",
+    title: "Sân cỏ đẫm máu",
+    description: "Đá bóng 2 đội — 1vs1 đến 4vs4, ghi nhiều bàn hơn trước khi hết giờ thì thắng.",
+    accent: "hover:border-emerald-500",
+  },
+  {
     href: "/brawler",
     emoji: "⚔️",
     title: "Đại Chiến Tí Hon",
     description: "Đối kháng nhiều người chơi — chọn nhân vật, chọn vũ khí, cùng tranh tài.",
     accent: "hover:border-amber-500",
-  },
-  {
-    href: "/soccer",
-    emoji: "⚽",
-    title: "Đại Chiến Bóng Đá",
-    description: "Đá bóng 2 đội — 1vs1 đến 4vs4, ghi nhiều bàn hơn trước khi hết giờ thì thắng.",
-    accent: "hover:border-emerald-500",
   },
 ];
 
@@ -53,7 +53,7 @@ export default function GamePickerPage() {
             <Link
               key={game.href}
               href={game.href}
-              className={`flex flex-col gap-2 rounded-xl border border-cream-200 bg-white/95 p-5 shadow-xl transition ${game.accent}`}
+              className={`flex flex-col gap-2 rounded-lg border border-cream-200 bg-white/95 p-5 shadow-xl transition ${game.accent}`}
             >
               <span className="text-3xl">{game.emoji}</span>
               <span className="text-base font-semibold text-ink">{game.title}</span>
