@@ -59,7 +59,7 @@ import {
 import { randomAirstrikeDelay, stepAirstrikes } from "./tank/airstrike";
 import { stepBullets } from "./tank/bullets-tick";
 import { spawnCratesFromLayout } from "./tank/crates";
-import { aimAngleOf, bulletTicksLeft, diffMonster, diffPlayer, makeId, pickSpawnTile, spawnPixel, toPublicMonster, toPublicPlayer } from "./tank/geometry";
+import { aimAngleOf, bulletTicksLeft, diffMonster, diffPlayer, makeId, pickSpawnTile, spawnPixel, toPublicBullet, toPublicMonster, toPublicPlayer } from "./tank/geometry";
 import { stepGreenBursts, type PendingGreenBurst } from "./tank/greenBurst";
 import { spawnMonsterPacks, stepMonsters } from "./tank/monsters-tick";
 import { maybeSpawnPickup } from "./tank/pickups";
@@ -778,7 +778,7 @@ export default class TankRoom implements Party.Server {
       mode: this.mode,
       hostId: this.hostId,
       players: [...this.players.values()].map(toPublicPlayer),
-      bullets: this.bullets,
+      bullets: this.bullets.map(toPublicBullet),
       pickups: this.pickups,
       traps: this.traps,
       crates: this.crates,
@@ -839,7 +839,7 @@ export default class TankRoom implements Party.Server {
       removedPlayerIds,
       monsters: monsterDeltas,
       removedMonsterIds,
-      bullets: this.bullets,
+      bullets: this.bullets.map(toPublicBullet),
       pickups: this.pickups,
       traps: this.traps,
       crates: this.crates,

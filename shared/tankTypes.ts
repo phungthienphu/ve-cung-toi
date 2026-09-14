@@ -602,6 +602,16 @@ export interface Bullet {
   ticksLeft: number;
 }
 
+/** What a bullet actually needs to be over the wire — no client ever reads
+ * causeCode/speed/ticksLeft (those are pure server-side damage-attribution
+ * and physics bookkeeping). With up to MAX_BULLETS_TOTAL bullets re-sent in
+ * full every tick (see TankStateDelta's doc — unlike players/monsters,
+ * bullets aren't diffed since x/y change every tick anyway), trimming these
+ * 3 of 9 fields meaningfully cuts the JSON size of the busiest broadcasts,
+ * which is exactly the case that scales with how many players are shooting
+ * at once. See toPublicBullet in party/tank/geometry.ts. */
+export type PublicBullet = Pick<Bullet, "id" | "ownerId" | "x" | "y" | "angle" | "kind">;
+
 export const BULLET_MAX_RANGE_PX = TILE_SIZE * 4;
 // A skill/ultimate shot is a deliberate, energy-gated commitment — it should
 // reach noticeably farther than a free-to-spam normal shot.
@@ -916,7 +926,7 @@ export interface TankPublicState {
   mode: TankRoomMode;
   hostId: string | null;
   players: PublicTankPlayer[];
-  bullets: Bullet[];
+  bullets: PublicBullet[];
   pickups: Pickup[];
   traps: Trap[];
   crates: Crate[];
@@ -947,8 +957,11 @@ export type MonsterDelta = { id: string } & Partial<Omit<PublicMonster, "id">>;
  * instead of the full TankPublicState — see broadcastStateDelta in
  * tank-server.ts. Only players/monsters are actually diffed (they're the
  * only rows that are frequently *unchanged* tick-to-tick); the remaining
- * arrays (bullets, pickups, ...) are small and/or change membership every
- * tick anyway, so they're just sent in full here too. Anything NOT present
+ * arrays (pickups, traps, ...) are small and/or change membership every
+ * tick anyway, so they're just sent in full here too. Bullets are the one
+ * exception worth noting (up to MAX_BULLETS_TOTAL of them under heavy fire)
+ * — not diffed either, since x/y move every tick regardless, but trimmed to
+ * PublicBullet's smaller field set for exactly that reason. Anything NOT present
  * on this type (roomId, status, mode, hostId, mapId, killTarget) can only
  * change through an event that already triggers a full "state" broadcast
  * (join/leave, start/end game, ...), so the client keeps whatever it last
@@ -958,7 +971,7 @@ export interface TankStateDelta {
   removedPlayerIds: string[];
   monsters: MonsterDelta[];
   removedMonsterIds: string[];
-  bullets: Bullet[];
+  bullets: PublicBullet[];
   pickups: Pickup[];
   traps: Trap[];
   crates: Crate[];

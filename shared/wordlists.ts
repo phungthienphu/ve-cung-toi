@@ -82,3 +82,25 @@ export function getWordsForIds(ids: string[]): string[] {
   }
   return words;
 }
+
+export function countWords(phrase: string): number {
+  return phrase.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** The actual pool of words a match would draw from for a given config —
+ * shared by party/server.ts (starting the game for real) and Lobby.tsx
+ * (warning about repeats before the host even hits start), so the two
+ * never disagree about what counts as "in the pool". */
+export function buildWordPool(config: {
+  wordlistIds: string[];
+  customWords: string[];
+  customOnly: boolean;
+  minWords: number;
+  maxWords: number;
+}): string[] {
+  const fullPool = config.customOnly ? config.customWords : [...getWordsForIds(config.wordlistIds), ...config.customWords];
+  return fullPool.filter((w) => {
+    const n = countWords(w);
+    return n >= config.minWords && n <= config.maxWords;
+  });
+}

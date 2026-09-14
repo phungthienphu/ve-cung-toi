@@ -12,6 +12,7 @@ import {
   TILE_SIZE,
   mapCols,
   mapRows,
+  type Bullet,
   type BulletKind,
   type Crate,
   type Direction,
@@ -19,6 +20,7 @@ import {
   type Monster,
   type MonsterDelta,
   type PlayerDelta,
+  type PublicBullet,
   type PublicMonster,
   type PublicTankPlayer,
   type TankMapDef,
@@ -77,6 +79,13 @@ export function toPublicMonster(m: Monster): PublicMonster {
     ...rest
   } = m;
   return rest;
+}
+
+/** Strips server-only physics/attribution fields before a bullet goes out
+ * over the wire — see PublicBullet's doc. Called once per bullet per
+ * broadcast tick (there is no per-bullet diffing, unlike players/monsters). */
+export function toPublicBullet(b: Bullet): PublicBullet {
+  return { id: b.id, ownerId: b.ownerId, x: b.x, y: b.y, angle: b.angle, kind: b.kind };
 }
 
 /** True if two field values differ, treating `items` (the only array-typed

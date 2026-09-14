@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientMessage, PublicRoomState, RoomConfig } from "@shared/types";
 import { DEFAULT_ROOM_CONFIG, MAX_WORD_COUNT, MIN_PLAYERS_TO_START, MIN_WORD_COUNT } from "@shared/types";
-import { DEFAULT_WORDLISTS } from "@shared/wordlists";
+import { DEFAULT_WORDLISTS, buildWordPool } from "@shared/wordlists";
 import { playClick } from "@/lib/sound";
 import PlayerList from "./PlayerList";
 
@@ -37,6 +37,29 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
   const connectedCount = state.players.filter((p) => p.connected).length;
   const canStart = connectedCount >= MIN_PLAYERS_TO_START;
 
+  // Shared by the live "will words repeat" warning below and handleStart's
+  // actual submit — one derivation, so the warning can never disagree with
+  // what start_game would actually send.
+  const suffix = difficulty === "hard" ? "hard" : "default";
+  const wordlistIds = [useVi && `vi-${suffix}`, useEn && `en-${suffix}`].filter(Boolean) as string[];
+  const custom = customWords
+    .split("\n")
+    .map((w) => w.trim())
+    .filter(Boolean);
+
+  // Same filtering party/server.ts's handleStartGame applies (via the same
+  // buildWordPool), computed here so the host sees "words will repeat"
+  // *before* starting instead of only discovering it turn after turn.
+  const liveWordPool = buildWordPool({
+    wordlistIds: wordlistIds.length ? wordlistIds : ["vi-default"],
+    customWords: custom,
+    customOnly,
+    minWords,
+    maxWords,
+  });
+  const turnsNeeded = Math.max(connectedCount, MIN_PLAYERS_TO_START) * rounds;
+  const willRepeatWords = liveWordPool.length >= 3 && liveWordPool.length < turnsNeeded;
+
   function handleLeave() {
     if (!confirm("Rời khỏi phòng?")) return;
     playClick();
@@ -54,13 +77,6 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
 
   function handleStart() {
     playClick();
-    const suffix = difficulty === "hard" ? "hard" : "default";
-    const wordlistIds = [useVi && `vi-${suffix}`, useEn && `en-${suffix}`].filter(Boolean) as string[];
-    const custom = customWords
-      .split("\n")
-      .map((w) => w.trim())
-      .filter(Boolean);
-
     if (customOnly && custom.length < 20) {
       alert("Chế độ chỉ dùng từ tùy chỉnh cần tối thiểu 20 từ.");
       return;
@@ -238,6 +254,13 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                   Chỉ dùng từ tùy chỉnh (bỏ qua bộ từ mặc định ở trên)
                 </label>
               </div>
+
+              {willRepeatWords && (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  ⚠️ Chỉ có {liveWordPool.length} từ phù hợp nhưng ván này cần {turnsNeeded} lượt vẽ ({Math.max(connectedCount, MIN_PLAYERS_TO_START)}{" "}
+                  người × {rounds} vòng) — một số từ sẽ bị lặp lại. Nới rộng khoảng số từ/câu, thêm bộ từ vựng, hoặc thêm từ tùy chỉnh để tránh.
+                </p>
+              )}
 
               <button
                 onClick={handleStart}

@@ -47,6 +47,22 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
     if (state?.status === "ended") fireworks();
   }, [state?.status]);
 
+  // The server stops ticking the instant the match timer runs out, and the
+  // moment status flips to "ended" this component used to swap straight
+  // from the live canvas to the results screen — a hard cut mid-action that
+  // read as the game just seizing up. Holding on the (now-frozen) canvas
+  // for a beat with a banner over it first, then cutting to results, gives
+  // the ending a moment to land instead.
+  const [showEndedScreen, setShowEndedScreen] = useState(false);
+  useEffect(() => {
+    if (state?.status !== "ended") {
+      setShowEndedScreen(false);
+      return;
+    }
+    const t = setTimeout(() => setShowEndedScreen(true), 1800);
+    return () => clearTimeout(t);
+  }, [state?.status]);
+
   // In-match background track — only while a round is actually being
   // played, not the lobby/results screens. Stopped on unmount too, so
   // leaving the room mid-match doesn't leave it playing in the background.
@@ -296,7 +312,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
     );
   }
 
-  if (state.status === "ended") {
+  if (state.status === "ended" && showEndedScreen) {
     const playAgainButtons = (
       <div className="flex flex-wrap justify-center gap-3">
         {isHost && (
@@ -568,7 +584,14 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
           </div>
         )}
 
-        <TankCanvas state={state} selfId={playerId} send={send} />
+        <div className="relative">
+          <TankCanvas state={state} selfId={playerId} send={send} />
+          {state.status === "ended" && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="animate-bounce-in rounded-xl bg-white px-6 py-3 text-lg font-bold text-ink shadow-xl">🏁 Trận đấu kết thúc!</div>
+            </div>
+          )}
+        </div>
 
         <p className="text-center text-xs text-ink/40">
           Di chuyển: mũi tên / WASD · Bắn: phím cách hoặc click chuột trái (ngắm theo chuột) · Dùng vật phẩm: 1/2/3 · Đạn to: R · Giữ Shift để tăng tốc

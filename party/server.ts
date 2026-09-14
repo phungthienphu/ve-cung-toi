@@ -16,7 +16,7 @@ import {
   type ServerMessage,
   type StrokeSegment,
 } from "../shared/types";
-import { getWordsForIds } from "../shared/wordlists";
+import { buildWordPool } from "../shared/wordlists";
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -37,10 +37,6 @@ function wordHint(word: string): string {
 
 function makeId(): string {
   return Math.random().toString(36).slice(2, 10);
-}
-
-function countWords(phrase: string): number {
-  return phrase.trim().split(/\s+/).filter(Boolean).length;
 }
 
 export default class GameRoom implements Party.Server {
@@ -233,13 +229,7 @@ export default class GameRoom implements Party.Server {
       maxWords,
     };
 
-    const fullPool = this.config.customOnly
-      ? this.config.customWords
-      : [...getWordsForIds(this.config.wordlistIds), ...this.config.customWords];
-    this.wordPool = fullPool.filter((w) => {
-      const n = countWords(w);
-      return n >= minWords && n <= maxWords;
-    });
+    this.wordPool = buildWordPool(this.config);
     if (this.wordPool.length < 3) {
       sender.send(
         JSON.stringify({
@@ -394,8 +384,21 @@ export default class GameRoom implements Party.Server {
     this.turnScoreDelta.clear();
     this.broadcast({ type: "clear_canvas" });
 
+    // turnOrder is a fixed snapshot from game start, reused every round via
+    // modulo — it's never shrunk when someone leaves/is kicked mid-game (on
+    // purpose: removing them would reshuffle everyone else's turn index).
+    // That means the eligible (connected) pool can be smaller than
+    // turnOrder.length, so skipping straight to "the next connected player
+    // from here" could land back on whoever just finished drawing — with
+    // enough departures, the same one or two remaining players could end up
+    // drawing several turns in a row. Excluding the just-finished drawer
+    // (unless they're truly the only connected player left) prevents that.
+    const lastDrawerId = this.drawerId;
     const candidateOrder = [...this.turnOrder.slice(this.turnIndex % this.turnOrder.length), ...this.turnOrder];
-    const drawer = candidateOrder.find((id) => this.players.get(id)?.connected) ?? this.turnOrder[this.turnIndex % this.turnOrder.length];
+    const drawer =
+      candidateOrder.find((id) => id !== lastDrawerId && this.players.get(id)?.connected) ??
+      candidateOrder.find((id) => this.players.get(id)?.connected) ??
+      this.turnOrder[this.turnIndex % this.turnOrder.length];
     this.drawerId = drawer;
 
     const pool = this.wordPool.filter((w) => !this.usedWords.has(w));

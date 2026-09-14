@@ -6,7 +6,7 @@
 // TankCanvas's draw loop reads the ref lists this returns every frame.
 
 import { useEffect, useRef, useState } from "react";
-import { TANK_SKINS, ULTIMATE_CONFIG, getMap, skinForColor, type Bullet } from "@shared/tankTypes";
+import { TANK_SKINS, ULTIMATE_CONFIG, getMap, skinForColor, type PublicBullet } from "@shared/tankTypes";
 import type { ClientTankPublicState } from "@/lib/useTankRoom";
 import { getSprite } from "@/lib/imageCache";
 import {
@@ -104,7 +104,7 @@ export function useTankEffects(state: ClientTankPublicState, selfId: string) {
   const sandWavesRef = useRef<SandWaveEffect[]>([]);
   const hooksRef = useRef<HookEffect[]>([]);
   const damageNumbersRef = useRef<{ id: string; x: number; y: number; amount: number; start: number }[]>([]);
-  const prevBulletsRef = useRef<Map<string, Bullet>>(new Map());
+  const prevBulletsRef = useRef<Map<string, PublicBullet>>(new Map());
 
   // Kick every sprite this screen could possibly need off loading the moment
   // the match starts, instead of discovering each one lazily mid-frame (which
@@ -183,7 +183,7 @@ export function useTankEffects(state: ClientTankPublicState, selfId: string) {
   // a short-lived explosion at their last known spot. Purely cosmetic.
   useEffect(() => {
     const prev = prevBulletsRef.current;
-    const now = new Map<string, Bullet>();
+    const now = new Map<string, PublicBullet>();
     for (const b of state.bullets) now.set(b.id, b);
 
     for (const [id, last] of prev) {
