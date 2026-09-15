@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { playClick } from "@/lib/sound";
+import { fireworks } from "@/lib/confetti";
+import { playClick, startSoccerBgMusic, stopSoccerBgMusic } from "@/lib/sound";
 import { useSoccerRoom } from "@/lib/useSoccerRoom";
 import { SOCCER_TEAM_SIZES, type SoccerPlayer, type SoccerTeam } from "@shared/soccerTypes";
 import SoccerCanvas from "./SoccerCanvas";
@@ -42,6 +43,28 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
     }
     const t = setTimeout(() => setShowEndedScreen(true), 1800);
     return () => clearTimeout(t);
+  }, [state?.status]);
+
+  // In-match background track — only while a round is actually being
+  // played, same pattern as tank's TankGameRoom. Stopped on unmount too, so
+  // leaving the room mid-match doesn't leave it playing in the background.
+  useEffect(() => {
+    if (state?.status === "playing") startSoccerBgMusic();
+    else stopSoccerBgMusic();
+    return () => stopSoccerBgMusic();
+  }, [state?.status]);
+
+  // Celebratory burst on the match-end screen — the same big fireworks()
+  // tank/draw-guess use, guarded so it only fires once per match end.
+  const fireworksPlayedRef = useRef(false);
+  useEffect(() => {
+    if (state?.status !== "ended") {
+      fireworksPlayedRef.current = false;
+      return;
+    }
+    if (fireworksPlayedRef.current) return;
+    fireworksPlayedRef.current = true;
+    fireworks();
   }, [state?.status]);
 
   if (!state) {

@@ -23,7 +23,9 @@ import {
   type SoccerReferee,
   type SoccerTackleEvent,
 } from "@shared/soccerTypes";
+import { burstConfetti } from "@/lib/confetti";
 import { getSprite } from "@/lib/imageCache";
+import { playCardShown, playSoccerGoal, playSoccerKick, playSoccerTackle, playWhistle, speakCommentary } from "@/lib/sound";
 import { useSoccerInput } from "./useSoccerInput";
 
 interface Props {
@@ -31,6 +33,36 @@ interface Props {
   selfId: string;
   send: (msg: SoccerClientMessage) => void;
 }
+
+// "Bình luận viên" — a random flavor headline picked per event, instead of
+// the same fixed sentence every single goal/card. The factual detail
+// (who/score) still shows underneath as the toast's subtext, so variety
+// here is purely color commentary, never the only place the real info lives.
+function pick<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+const GOAL_LINES = [
+  "GOOOAL! Một pha dứt điểm không thể cản phá!",
+  "Chấn động! Bóng đã nằm gọn trong lưới!",
+  "Tuyệt vời! Một bàn thắng đẳng cấp!",
+  "Không thể tin được — quá đẹp mắt!",
+  "Thủ môn đứng hình, bóng đã đi vào lưới!",
+] as const;
+const OWN_GOAL_LINES = [
+  "Ôi không, đá phản lưới nhà rồi!",
+  "Tình huống đáng tiếc cho đội nhà!",
+  "Một pha xử lý hớ hênh biến thành bàn thua!",
+] as const;
+const YELLOW_CARD_LINES = [
+  "Trọng tài rút thẻ cảnh cáo!",
+  "Một pha vào bóng hơi quá đà!",
+  "Lời nhắc nhở từ vị vua áo đen!",
+] as const;
+const RED_CARD_LINES = [
+  "Trọng tài không khoan nhượng — thẻ đỏ!",
+  "Pha vào bóng quá thô bạo, phải rời sân!",
+  "Đội hình còn lại phải chơi thiếu người!",
+] as const;
 
 const TACKLE_FX_DURATION_MS = 1000;
 
@@ -109,11 +141,13 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
   useEffect(() => {
     if (state.tackleEvents.length === 0) return;
     tackleFxRef.current.push(...state.tackleEvents.map(spawnTackleFx));
+    for (const e of state.tackleEvents) playSoccerTackle(e.hit);
   }, [state.tackleEvents]);
   const kickFxRef = useRef<KickFx[]>([]);
   useEffect(() => {
     if (state.kickEvents.length === 0) return;
     kickFxRef.current.push(...state.kickEvents.map(spawnKickFx));
+    for (const e of state.kickEvents) playSoccerKick(e.power);
   }, [state.kickEvents]);
 
   // Transient event toasts (goals, cards, free kicks) — detected the same
@@ -121,12 +155,14 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
   // `state` prop carries a non-empty events array, it's brand new this
   // broadcast (the server clears them right after sending, see
   // soccer-server.ts's tick()). Goals and cards get the big bounce-in
-  // banner (image + text, see the "banner" render branch below); free
+  // banner (image + a randomized "commentator" headline, see pick() below,
+  // with the factual score/name as a smaller subtext line); free
   // kicks/whistles stay a small text pill — they're common enough during a
   // match that a big banner every time would be more noise than signal.
   interface Toast {
     id: string;
     text: string;
+    subtext?: string;
     expiresAt: number;
     image?: string;
   }
@@ -139,7 +175,8 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
         // "GOAL" one for an own goal — still a banner-worthy moment, just
         // not one to celebrate the same way.
         image: g.ownGoal ? "/soccer/effect/goal_1.gif" : "/soccer/effect/goal.gif",
-        text: g.ownGoal
+        text: pick(g.ownGoal ? OWN_GOAL_LINES : GOAL_LINES),
+        subtext: g.ownGoal
           ? `${g.scorerName} đá phản lưới nhà! ${g.scoreA} - ${g.scoreB}`
           : g.scorerName
             ? `${g.scorerName} ghi bàn cho đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"}! ${g.scoreA} - ${g.scoreB}`
@@ -148,7 +185,8 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
       ...state.cardEvents.map((c: SoccerCardEvent) => ({
         id: c.id,
         image: c.card === "red" ? "/soccer/effect/red-card.webp" : "/soccer/effect/yellow-card.webp",
-        text: c.foulOnReferee
+        text: pick(c.card === "red" ? RED_CARD_LINES : YELLOW_CARD_LINES),
+        subtext: c.foulOnReferee
           ? `${c.playerName} phạm lỗi với trọng tài!`
           : `${c.playerName} nhận thẻ ${c.card === "red" ? "đỏ — bị đuổi khỏi sân!" : "vàng"}`,
       })),
@@ -162,6 +200,17 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
     if (events.length === 0) return;
     const now = Date.now();
     setToasts((prev) => [...prev, ...events.map((e) => ({ ...e, expiresAt: now + 3500 }))]);
+    if (state.goalEvents.length > 0) {
+      playSoccerGoal();
+      burstConfetti();
+    }
+    for (const c of state.cardEvents) if (c.card !== "none") playCardShown(c.card);
+    // The commentator reads the same headline + factual line the banner
+    // shows — `events` is built in goals-then-cards-then-free-kicks order
+    // above, so slicing by each array's own length picks out exactly the
+    // banner-worthy ones (free kicks stay a silent text pill).
+    const spoken = events.slice(0, state.goalEvents.length + state.cardEvents.length);
+    for (const e of spoken) speakCommentary(e.subtext ? `${e.text}. ${e.subtext}` : e.text);
   }, [state.goalEvents, state.cardEvents, state.freeKickEvents]);
   useEffect(() => {
     if (toasts.length === 0) return;
@@ -178,6 +227,7 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
     const isFrozen = state.kickoffUntil !== null && state.kickoffUntil > state.serverNow;
     if (wasFrozenRef.current && !isFrozen && state.status === "playing") {
       setToasts((prev) => [...prev, { id: `whistle-${Date.now()}`, text: "🔔 Bắt đầu!", expiresAt: Date.now() + 1200 }]);
+      playWhistle();
     }
     wasFrozenRef.current = isFrozen;
   }, [state.kickoffUntil, state.serverNow, state.status]);
@@ -272,6 +322,7 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={t.image} alt="" className="h-20 w-20 object-contain" />
                   <span className="max-w-[240px] text-center text-sm font-bold text-ink">{t.text}</span>
+                  {t.subtext && <span className="max-w-[240px] text-center text-xs text-ink/60">{t.subtext}</span>}
                 </div>
               ) : (
                 <div key={t.id} className="animate-bounce-in rounded-lg bg-black/75 px-3 py-1.5 text-sm font-semibold text-white shadow-lg">
