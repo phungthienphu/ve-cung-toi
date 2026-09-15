@@ -390,6 +390,7 @@ export default class SoccerRoom implements Party.Server {
     this.winningTeam = team === "A" ? "B" : "A";
     this.stopTicking();
     this.broadcastState();
+    this.saveGameHistory();
   }
 
   private isFrozen(): boolean {
@@ -422,6 +423,7 @@ export default class SoccerRoom implements Party.Server {
       this.winningTeam = this.teamScores.A === this.teamScores.B ? null : this.teamScores.A > this.teamScores.B ? "A" : "B";
       this.broadcastState();
       this.stopTicking();
+      this.saveGameHistory();
       return;
     }
 
@@ -521,5 +523,41 @@ export default class SoccerRoom implements Party.Server {
       .get("main")
       .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
       .catch(() => {});
+  }
+
+  /** Reports a finished match to the shared game-history collection — same
+   * fire-and-forget pattern as party/server.ts's drawing game / tank's
+   * saveGameHistory. Called from both ways a match can end: the clock
+   * running out (tick()) and a forfeit (checkForfeit()). */
+  private async saveGameHistory() {
+    try {
+      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      if (!base) return;
+      const players = [...this.players.values()];
+      await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gameType: "soccer",
+          roomId: this.party.id,
+          players: players.map((p) => ({ name: p.name, score: p.goals })),
+          mode: `${this.teamSize}v${this.teamSize}`,
+          winningTeam: this.winningTeam,
+          teamScores: this.teamScores,
+          detail: players.map((p) => ({
+            name: p.name,
+            team: p.team,
+            goals: p.goals,
+            shots: p.shots,
+            tacklesWon: p.tacklesWon,
+            fouls: p.fouls,
+            cardStatus: p.cardStatus,
+          })),
+          playedAt: new Date().toISOString(),
+        }),
+      });
+    } catch {
+      // Best-effort only — history persistence must never break the game loop.
+    }
   }
 }

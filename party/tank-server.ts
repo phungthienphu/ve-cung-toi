@@ -737,6 +737,7 @@ export default class TankRoom implements Party.Server {
       this.impacts = [];
       this.kills = [];
       this.stopTicking();
+      this.saveGameHistory();
       return;
     }
 
@@ -893,5 +894,42 @@ export default class TankRoom implements Party.Server {
       .get("main")
       .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
       .catch(() => {});
+  }
+
+  /** Reports a finished match to the shared game-history collection — same
+   * fire-and-forget pattern as party/server.ts's drawing game (the only
+   * other game that persists results). Practice mode never sets
+   * matchEndsAt, so this is only ever reached for a real ffa/team match. */
+  private async saveGameHistory() {
+    try {
+      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      if (!base) return;
+      const players = [...this.players.values()];
+      await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gameType: "tank",
+          roomId: this.party.id,
+          players: players.map((p) => ({ name: p.name, score: p.score })),
+          mode: this.mode,
+          winnerName: this.winnerId ? (this.players.get(this.winnerId)?.name ?? null) : null,
+          winningTeam: this.winningTeam,
+          teamScores: this.mode === "team" ? this.teamScores : undefined,
+          detail: players.map((p) => ({
+            name: p.name,
+            color: p.color,
+            team: p.team,
+            score: p.score,
+            deaths: p.deaths,
+            damageDealt: p.damageDealt,
+            damageTaken: p.damageTaken,
+          })),
+          playedAt: new Date().toISOString(),
+        }),
+      });
+    } catch {
+      // Best-effort only — history persistence must never break the game loop.
+    }
   }
 }

@@ -3,131 +3,268 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-interface GameHistoryEntry {
+// No login means no stable per-account identity to rank against — two
+// different people typing "An" look identical to the old aggregate
+// leaderboard, which quietly merged their scores into one row. A per-match
+// history (what actually happened, when) doesn't have that problem: every
+// entry is its own game, nothing to conflate.
+type GameType = "draw" | "tank" | "soccer";
+
+const TABS: { id: GameType; label: string; emptyText: string }[] = [
+  { id: "draw", label: "🎨 Vẽ Cùng Tôi", emptyText: "Chưa có ván vẽ nào được lưu lại." },
+  { id: "tank", label: "🎯 Tank", emptyText: "Chưa có trận tank nào được lưu lại." },
+  { id: "soccer", label: "⚽ Bóng đá", emptyText: "Chưa có trận bóng nào được lưu lại." },
+];
+
+interface DrawDetail {
+  name: string;
+  score: number;
+}
+interface TankDetail {
+  name: string;
+  color: string;
+  team: string;
+  score: number;
+  deaths: number;
+  damageDealt: number;
+  damageTaken: number;
+}
+interface SoccerDetail {
+  name: string;
+  team: "A" | "B";
+  goals: number;
+  shots: number;
+  tacklesWon: number;
+  fouls: number;
+  cardStatus: "none" | "yellow" | "red";
+}
+
+interface HistoryEntry {
   _id: string;
+  gameType: GameType;
   roomId: string;
   players: { name: string; score: number }[];
-  rounds: number;
+  rounds?: number;
+  mode?: string;
+  winnerName?: string | null;
+  winningTeam?: "A" | "B" | null;
+  teamScores?: { A: number; B: number };
+  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[];
   playedAt: string;
-  createdAt: string;
 }
 
-interface AggregateRow {
-  name: string;
-  totalScore: number;
-  games: number;
-  wins: number;
-}
-
-function aggregate(history: GameHistoryEntry[]): AggregateRow[] {
-  const byName = new Map<string, AggregateRow>();
-  for (const game of history) {
-    if (game.players.length === 0) continue;
-    const topScore = Math.max(...game.players.map((p) => p.score));
-    for (const p of game.players) {
-      const row = byName.get(p.name) ?? { name: p.name, totalScore: 0, games: 0, wins: 0 };
-      row.totalScore += p.score;
-      row.games += 1;
-      if (p.score === topScore) row.wins += 1;
-      byName.set(p.name, row);
-    }
+function summarize(e: HistoryEntry): string {
+  if (e.gameType === "draw") {
+    const top = [...e.players].sort((a, b) => b.score - a.score)[0];
+    return top ? `${top.name} dẫn đầu — ${top.score}đ (${e.players.length} người, ${e.rounds ?? "?"} vòng)` : "Không có dữ liệu";
   }
-  return [...byName.values()].sort((a, b) => b.totalScore - a.totalScore);
+  if (e.gameType === "tank") {
+    if (e.mode === "team") {
+      const a = e.teamScores?.A ?? 0;
+      const b = e.teamScores?.B ?? 0;
+      return e.winningTeam ? `Đội ${e.winningTeam === "A" ? "Xanh" : "Đỏ"} thắng — ${a} - ${b}` : `Hòa — ${a} - ${b}`;
+    }
+    return e.winnerName ? `${e.winnerName} thắng` : `Đấu tự do — hòa điểm (${e.players.length} người)`;
+  }
+  // soccer
+  const a = e.teamScores?.A ?? 0;
+  const b = e.teamScores?.B ?? 0;
+  return e.winningTeam ? `Đội ${e.winningTeam === "A" ? "Xanh" : "Đỏ"} thắng ${a} - ${b}` : `Hòa ${a} - ${b}`;
+}
+
+function DetailTable({ entry }: { entry: HistoryEntry }) {
+  if (entry.gameType === "tank") {
+    const rows = (entry.detail as TankDetail[] | undefined) ?? [];
+    if (rows.length === 0) return <SimpleScoreList players={entry.players} />;
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-slate-400">
+            <tr>
+              <th className="py-1 pr-3">Người chơi</th>
+              {entry.mode === "team" && <th className="py-1 pr-3">Đội</th>}
+              <th className="py-1 pr-3 text-right">Điểm</th>
+              <th className="py-1 pr-3 text-right">Chết</th>
+              <th className="py-1 pr-3 text-right">ST gây</th>
+              <th className="py-1 pr-3 text-right">ST nhận</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rows]
+              .sort((a, b) => b.score - a.score)
+              .map((p) => (
+                <tr key={p.name} className="border-t border-slate-100">
+                  <td className="py-1.5 pr-3 font-medium">{p.name}</td>
+                  {entry.mode === "team" && (
+                    <td className="py-1.5 pr-3">
+                      <span className={p.team === "A" ? "text-blue-600" : "text-red-600"}>{p.team === "A" ? "Xanh" : "Đỏ"}</span>
+                    </td>
+                  )}
+                  <td className="py-1.5 pr-3 text-right font-semibold text-brand-600">{p.score}</td>
+                  <td className="py-1.5 pr-3 text-right text-slate-500">{p.deaths}</td>
+                  <td className="py-1.5 pr-3 text-right text-slate-500">{p.damageDealt}</td>
+                  <td className="py-1.5 pr-3 text-right text-slate-500">{p.damageTaken}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (entry.gameType === "soccer") {
+    const rows = (entry.detail as SoccerDetail[] | undefined) ?? [];
+    if (rows.length === 0) return <SimpleScoreList players={entry.players} />;
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-slate-400">
+            <tr>
+              <th className="py-1 pr-3">Cầu thủ</th>
+              <th className="py-1 pr-3">Đội</th>
+              <th className="py-1 pr-3 text-right">Bàn</th>
+              <th className="py-1 pr-3 text-right">Dứt điểm</th>
+              <th className="py-1 pr-3 text-right">Tắc bóng</th>
+              <th className="py-1 pr-3 text-right">Lỗi</th>
+              <th className="py-1 pr-3 text-right">Thẻ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rows]
+              .sort((a, b) => b.goals - a.goals)
+              .map((p) => (
+                <tr key={p.name} className="border-t border-slate-100">
+                  <td className="py-1.5 pr-3 font-medium">{p.name}</td>
+                  <td className="py-1.5 pr-3">
+                    <span className={p.team === "A" ? "text-blue-600" : "text-red-600"}>{p.team === "A" ? "Xanh" : "Đỏ"}</span>
+                  </td>
+                  <td className="py-1.5 pr-3 text-right font-semibold text-brand-600">{p.goals}</td>
+                  <td className="py-1.5 pr-3 text-right text-slate-500">{p.shots}</td>
+                  <td className="py-1.5 pr-3 text-right text-slate-500">{p.tacklesWon}</td>
+                  <td className="py-1.5 pr-3 text-right text-slate-500">{p.fouls}</td>
+                  <td className="py-1.5 pr-3 text-right">{p.cardStatus === "red" ? "🟥" : p.cardStatus === "yellow" ? "🟨" : "—"}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return <SimpleScoreList players={entry.players} />;
+}
+
+function SimpleScoreList({ players }: { players: { name: string; score: number }[] }) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      {[...players]
+        .sort((a, b) => b.score - a.score)
+        .map((p) => (
+          <span key={p.name}>
+            <span className="font-medium">{p.name}</span> <span className="text-brand-600">{p.score}đ</span>
+          </span>
+        ))}
+    </div>
+  );
 }
 
 export default function LeaderboardPage() {
-  const [history, setHistory] = useState<GameHistoryEntry[] | null>(null);
+  const [activeTab, setActiveTab] = useState<GameType>("draw");
+  const [cache, setCache] = useState<Partial<Record<GameType, HistoryEntry[]>>>({});
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/game-history")
+    if (cache[activeTab]) return;
+    setLoading(true);
+    setError(false);
+    fetch(`/api/game-history?gameType=${activeTab}`)
       .then((res) => res.json())
-      .then((data) => setHistory(data.history ?? []))
-      .catch(() => setError(true));
-  }, []);
+      .then((data) => setCache((prev) => ({ ...prev, [activeTab]: data.history ?? [] })))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
-  const rows = history ? aggregate(history) : [];
+  const history = cache[activeTab];
+  const tab = TABS.find((t) => t.id === activeTab)!;
 
   return (
     <main className="bg-game-scene min-h-app">
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Bảng xếp hạng</h1>
-        <Link
-          href="/draw-guess"
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
-        >
-          Về trang chủ
-        </Link>
-      </div>
-      <p className="mb-6 text-sm text-slate-400">
-        Tổng hợp theo tên hiển thị từ {history?.length ?? 0} ván chơi gần nhất (chơi ẩn danh nên trùng tên sẽ được gộp chung).
-      </p>
-
-      {error && <p className="text-red-500">Không tải được dữ liệu. Kiểm tra kết nối MongoDB.</p>}
-      {!error && !history && <p className="text-slate-400">Đang tải...</p>}
-      {!error && history && history.length === 0 && (
-        <p className="text-slate-400">Chưa có ván chơi nào được lưu lại. Chơi xong một ván để thấy dữ liệu ở đây!</p>
-      )}
-
-      {rows.length > 0 && (
-        <div className="mb-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-3">#</th>
-                <th className="px-4 py-3">Tên</th>
-                <th className="px-4 py-3 text-right">Tổng điểm</th>
-                <th className="px-4 py-3 text-right">Số ván</th>
-                <th className="px-4 py-3 text-right">Thắng</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={row.name} className="border-t border-slate-100">
-                  <td className="px-4 py-2.5 text-slate-400">{i + 1}</td>
-                  <td className="px-4 py-2.5 font-medium">
-                    {i === 0 && "🥇 "}
-                    {i === 1 && "🥈 "}
-                    {i === 2 && "🥉 "}
-                    {row.name}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-brand-600">{row.totalScore}</td>
-                  <td className="px-4 py-2.5 text-right text-slate-500">{row.games}</td>
-                  <td className="px-4 py-2.5 text-right text-slate-500">{row.wins}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Lịch sử trận đấu</h1>
+          <Link
+            href="/"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+          >
+            Về trang chủ
+          </Link>
         </div>
-      )}
+        <p className="mb-6 text-sm text-slate-400">
+          Không có tài khoản nên không thể xếp hạng chính xác theo người chơi (trùng tên sẽ lẫn lộn) — thay vào đó, đây là lịch sử các
+          trận gần nhất của từng game.
+        </p>
 
-      {history && history.length > 0 && (
-        <>
-          <h2 className="mb-3 text-lg font-bold">Ván chơi gần đây</h2>
-          <div className="space-y-3">
-            {history.map((game) => (
-              <div key={game._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
-                <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
-                  <span>Phòng {game.roomId}</span>
-                  <span>{new Date(game.playedAt).toLocaleString("vi-VN")}</span>
+        <div className="mb-6 flex gap-2 border-b border-slate-200">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setActiveTab(t.id);
+                setExpandedId(null);
+              }}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition ${
+                activeTab === t.id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {error && <p className="text-red-500">Không tải được dữ liệu. Kiểm tra kết nối MongoDB.</p>}
+        {!error && loading && !history && <p className="text-slate-400">Đang tải...</p>}
+        {!error && history && history.length === 0 && <p className="text-slate-400">{tab.emptyText}</p>}
+
+        {history && history.length > 0 && (
+          <div className="space-y-2">
+            {history.map((entry) => {
+              const expanded = expandedId === entry._id;
+              return (
+                <div key={entry._id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                  <button
+                    onClick={() => setExpandedId(expanded ? null : entry._id)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-800">{summarize(entry)}</div>
+                      <div className="mt-0.5 flex gap-2 text-xs text-slate-400">
+                        <span>Phòng {entry.roomId}</span>
+                        <span>·</span>
+                        <span>{new Date(entry.playedAt).toLocaleString("vi-VN")}</span>
+                        {entry.mode && (
+                          <>
+                            <span>·</span>
+                            <span>{entry.mode}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-slate-300">{expanded ? "▲" : "▼"}</span>
+                  </button>
+                  {expanded && (
+                    <div className="border-t border-slate-100 px-4 py-3">
+                      <DetailTable entry={entry} />
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                  {[...game.players]
-                    .sort((a, b) => b.score - a.score)
-                    .map((p) => (
-                      <span key={p.name}>
-                        <span className="font-medium">{p.name}</span>{" "}
-                        <span className="text-brand-600">{p.score}đ</span>
-                      </span>
-                    ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </div>
     </main>
   );
 }

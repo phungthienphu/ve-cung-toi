@@ -123,7 +123,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
             href="/leaderboard"
             className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
           >
-            Xếp hạng
+            Lịch sử
           </Link>
           <Link
             href="/draw-guess"
