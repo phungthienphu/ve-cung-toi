@@ -60,7 +60,7 @@ export const SOCCER_PLAYER_SPEED = 2.6; // px/tick, plain 8-directional
 export const SOCCER_REFEREE_SPEED = 1.8; // px/tick — a jog, slower than a player's run
 // Stays roughly this far from the ball rather than standing right on top of
 // it — a real referee trails play, doesn't chase the ball itself.
-export const SOCCER_REFEREE_FOLLOW_DIST = 55;
+export const SOCCER_REFEREE_FOLLOW_DIST = 75;
 
 // ---------- sprint ----------
 
