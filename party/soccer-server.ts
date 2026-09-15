@@ -24,6 +24,7 @@ import {
   type SoccerKickEvent,
   type SoccerPlayer,
   type SoccerPublicState,
+  type SoccerReferee,
   type SoccerRoomListing,
   type SoccerRoomStatus,
   type SoccerServerMessage,
@@ -34,6 +35,7 @@ import {
 import { resolveTackle } from "./soccer/fouls";
 import { makeId } from "./soccer/geometry";
 import { resolvePlayerCollisions, stepBall, stepPlayers } from "./soccer/physics";
+import { stepReferee } from "./soccer/referee";
 import type { InputState } from "./soccer/types";
 
 const EMPTY_BALL = (): SoccerBall => ({
@@ -47,10 +49,15 @@ const EMPTY_BALL = (): SoccerBall => ({
   lastToucherId: null,
 });
 
+// Starts just off the halfway line, roughly where a real referee lines up
+// for kickoff — stepReferee takes over from there, trailing the ball.
+const START_REFEREE = (): SoccerReferee => ({ x: SOCCER_FIELD_W / 2, y: SOCCER_FIELD_H / 2 - 60, angle: Math.PI / 2, moving: false });
+
 export default class SoccerRoom implements Party.Server {
   players = new Map<string, SoccerPlayer>();
   inputs = new Map<string, InputState>();
   ball: SoccerBall = EMPTY_BALL();
+  referee: SoccerReferee = START_REFEREE();
   hostId: string | null = null;
   status: SoccerRoomStatus = "lobby";
   teamSize: SoccerTeamSize = 2;
@@ -235,6 +242,7 @@ export default class SoccerRoom implements Party.Server {
     place(teamA, SOCCER_FIELD_W * 0.25, 0);
     place(teamB, SOCCER_FIELD_W * 0.75, Math.PI);
     this.ball = EMPTY_BALL();
+    this.referee = START_REFEREE();
     this.kickoffUntil = Date.now() + SOCCER_KICKOFF_FREEZE_MS;
   }
 
@@ -420,6 +428,7 @@ export default class SoccerRoom implements Party.Server {
     if (this.kickoffUntil !== null && now >= this.kickoffUntil) this.kickoffUntil = null;
     if (!this.isFrozen()) {
       stepPlayers(this, now);
+      stepReferee(this);
       resolvePlayerCollisions(this);
       stepBall(this);
       this.checkGoal();
@@ -476,6 +485,7 @@ export default class SoccerRoom implements Party.Server {
       hostId: this.hostId,
       teamSize: this.teamSize,
       players: [...this.players.values()],
+      referee: this.referee,
       ball: this.ball,
       teamScores: this.teamScores,
       matchEndsAt: this.matchEndsAt,

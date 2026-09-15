@@ -20,6 +20,7 @@ import {
   type SoccerCardEvent,
   type SoccerFreeKickEvent,
   type SoccerPlayer,
+  type SoccerReferee,
   type SoccerRoomStatus,
   type SoccerTackleEvent,
   type SoccerTeam,
@@ -28,6 +29,7 @@ import { clampToField, makeId, otherTeam } from "./geometry";
 
 export interface TackleCtx {
   players: Map<string, SoccerPlayer>;
+  referee: SoccerReferee;
   ball: SoccerBall;
   status: SoccerRoomStatus;
   matchEndsAt: number | null;
@@ -49,6 +51,9 @@ export interface TackleCtx {
 export function resolveTackle(ctx: TackleCtx, tackler: SoccerPlayer, now: number, onSentOff: (team: SoccerTeam) => void) {
   // Any opposing player in range is a valid target — whether it resolves as
   // a clean steal or a foul depends on whether they actually have the ball.
+  // The referee is a candidate too — always a mistaken foul (it never has
+  // the ball), never a clean steal — and, being neutral, whichever's
+  // actually closest wins rather than always preferring a real player.
   let victim: SoccerPlayer | null = null;
   let victimDist = SOCCER_TACKLE_RANGE;
   for (const p of ctx.players.values()) {
@@ -58,6 +63,14 @@ export function resolveTackle(ctx: TackleCtx, tackler: SoccerPlayer, now: number
       victim = p;
       victimDist = dist;
     }
+  }
+  const refDist = Math.hypot(ctx.referee.x - tackler.x, ctx.referee.y - tackler.y);
+  // refDist <= victimDist can only trip once victimDist has already been
+  // confirmed <= SOCCER_TACKLE_RANGE (its starting value, only ever
+  // shrinking), so the referee is guaranteed in range here too.
+  if (refDist <= victimDist) {
+    foulReferee(ctx, tackler, onSentOff);
+    return;
   }
 
   if (!victim) {
@@ -130,6 +143,27 @@ export function resolveTackle(ctx: TackleCtx, tackler: SoccerPlayer, now: number
       }
     }
   }
+  ctx.tackleEvents.push({ id: makeId(), x: tackler.x, y: tackler.y, angle: tackler.angle, hit: true });
+}
+
+/** Tackling into the referee by mistake — always a foul (it never has the
+ * ball, so there's no "clean steal" outcome), and neutral (neither team's
+ * play, so no free kick/advantage to award). Still shoves the ref out of
+ * the way for the same physical consistency a player-victim gets. */
+function foulReferee(ctx: TackleCtx, tackler: SoccerPlayer, onSentOff: (team: SoccerTeam) => void) {
+  const kbDx = ctx.referee.x - tackler.x;
+  const kbDy = ctx.referee.y - tackler.y;
+  const kbLen = Math.hypot(kbDx, kbDy) || 1;
+  ctx.referee.x = clampToField(ctx.referee.x + (kbDx / kbLen) * SOCCER_TACKLE_KNOCKBACK_DIST, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_W);
+  ctx.referee.y = clampToField(ctx.referee.y + (kbDy / kbLen) * SOCCER_TACKLE_KNOCKBACK_DIST, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_H);
+
+  tackler.fouls += 1;
+  tackler.cardStatus = tackler.fouls >= 2 ? "red" : "yellow";
+  if (tackler.cardStatus === "red") {
+    tackler.sentOff = true;
+    onSentOff(tackler.team);
+  }
+  ctx.cardEvents.push({ id: makeId(), playerName: tackler.name, card: tackler.cardStatus, foulOnReferee: true });
   ctx.tackleEvents.push({ id: makeId(), x: tackler.x, y: tackler.y, angle: tackler.angle, hit: true });
 }
 

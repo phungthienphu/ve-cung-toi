@@ -51,6 +51,17 @@ export const SOCCER_KICKOFF_FREEZE_MS = 1500;
 
 export const SOCCER_PLAYER_SPEED = 2.6; // px/tick, plain 8-directional
 
+// ---------- referee ----------
+
+// A neutral NPC that jogs around watching play — never interacts with the
+// ball (see stepReferee's doc) but is a solid body to players, same as
+// another player would be (see resolvePlayerCollisions), and can be tackled
+// into by mistake for a foul (see resolveTackle).
+export const SOCCER_REFEREE_SPEED = 1.8; // px/tick — a jog, slower than a player's run
+// Stays roughly this far from the ball rather than standing right on top of
+// it — a real referee trails play, doesn't chase the ball itself.
+export const SOCCER_REFEREE_FOLLOW_DIST = 55;
+
 // ---------- sprint ----------
 
 export const SOCCER_BOOST_MAX_ENERGY = 100;
@@ -149,6 +160,9 @@ export interface SoccerCardEvent {
   id: string;
   playerName: string;
   card: SoccerCardStatus;
+  // True when the foul was tackling into the referee by mistake, rather
+  // than an opposing player — the client shows a distinct toast for it.
+  foulOnReferee?: boolean;
 }
 
 // `scorerId`/`scorerName` come from SoccerBall.lastToucherId at the moment
@@ -202,6 +216,16 @@ export interface SoccerKickEvent {
 }
 
 // ---------- entities ----------
+
+// A neutral NPC, not part of either team — no stats, no cards of its own,
+// never touches the ball (see SOCCER_REFEREE_FOLLOW_DIST's doc), but is a
+// solid body players collide with and can foul by tackling into by mistake.
+export interface SoccerReferee {
+  x: number;
+  y: number;
+  angle: number;
+  moving: boolean;
+}
 
 export interface SoccerPlayer {
   id: string;
@@ -300,6 +324,7 @@ export interface SoccerPublicState {
   hostId: string | null;
   teamSize: SoccerTeamSize;
   players: SoccerPlayer[];
+  referee: SoccerReferee;
   ball: SoccerBall;
   teamScores: Record<SoccerTeam, number>;
   matchEndsAt: number | null;

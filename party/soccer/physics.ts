@@ -30,6 +30,7 @@ import {
   SOCCER_TOUCH_COOLDOWN_MS,
   type SoccerBall,
   type SoccerPlayer,
+  type SoccerReferee,
 } from "../../shared/soccerTypes";
 import { clampToField } from "./geometry";
 import type { InputState } from "./types";
@@ -38,6 +39,7 @@ export interface PhysicsCtx {
   players: Map<string, SoccerPlayer>;
   inputs: Map<string, InputState>;
   ball: SoccerBall;
+  referee: SoccerReferee;
 }
 
 export function stepPlayers(ctx: PhysicsCtx, now: number) {
@@ -95,13 +97,17 @@ export function stepPlayers(ctx: PhysicsCtx, now: number) {
   }
 }
 
-/** Keeps players from overlapping — without this, two players could stand
- * exactly on top of each other, which read as walking straight through one
- * another instead of jostling for position. Simple pairwise circle
- * separation: push each half the overlap apart along the line between their
- * centers. At up to 8 players that's at most 28 pair checks a tick, trivial. */
+/** Keeps players (and the referee) from overlapping — without this, two
+ * bodies could stand exactly on top of each other, which read as walking
+ * straight through one another instead of jostling for position. Simple
+ * pairwise circle separation: push each half the overlap apart along the
+ * line between their centers. The referee is a solid body here too (players
+ * collide with it) even though it never touches the ball — see
+ * SoccerReferee's doc. At up to 8 players + 1 referee that's at most 36
+ * pair checks a tick, trivial. */
 export function resolvePlayerCollisions(ctx: PhysicsCtx) {
-  const list = [...ctx.players.values()].filter((p) => p.connected && !p.sentOff);
+  const list: { x: number; y: number }[] = [...ctx.players.values()].filter((p) => p.connected && !p.sentOff);
+  list.push(ctx.referee);
   const minDist = SOCCER_PLAYER_RADIUS * 2;
   for (let i = 0; i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {

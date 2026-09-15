@@ -20,6 +20,7 @@ import {
   type SoccerKickEvent,
   type SoccerPlayer,
   type SoccerPublicState,
+  type SoccerReferee,
   type SoccerTackleEvent,
 } from "@shared/soccerTypes";
 import { getSprite } from "@/lib/imageCache";
@@ -195,6 +196,12 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
         if (Math.hypot(s.ball.x - prev.x, s.ball.y - prev.y) > SOCCER_BALL_RADIUS * 8) return { x: s.ball.x, y: s.ball.y };
         return { x: prev.x + (s.ball.x - prev.x) * tickT, y: prev.y + (s.ball.y - prev.y) * tickT };
       })();
+      const refereePos = (() => {
+        const prev = prevS?.referee;
+        if (!prev) return { x: s.referee.x, y: s.referee.y };
+        if (Math.hypot(s.referee.x - prev.x, s.referee.y - prev.y) > SOCCER_PLAYER_RADIUS * 4) return { x: s.referee.x, y: s.referee.y };
+        return { x: prev.x + (s.referee.x - prev.x) * tickT, y: prev.y + (s.referee.y - prev.y) * tickT };
+      })();
 
       drawField(ctx);
 
@@ -208,6 +215,7 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
         const pos = lerpPlayer(p);
         drawPlayer(ctx, p, pos.x, pos.y, p.id === selfId, now);
       }
+      drawReferee(ctx, s.referee, refereePos.x, refereePos.y, now);
 
       drawBall(ctx, ballPos.x, ballPos.y);
 
@@ -465,6 +473,33 @@ function drawPlayer(ctx: CanvasRenderingContext2D, p: SoccerPlayer, x: number, y
       ctx.fillRect(cx, cy, 6, 9);
     }
   }
+}
+
+/** The referee — same body+limb composition as drawPlayer, minus everything
+ * that's per-match-player-only (no card badge, no kick-charge ring, no name
+ * label, no self-ring). public/soccer/referee/ only ships body.png and
+ * hand.png (no dedicated leg.png), so the same hand sprite stands in for
+ * both the arm slots and the leg slots — visually it's still "two arms, two
+ * legs", just built from one limb asset instead of two. */
+function drawReferee(ctx: CanvasRenderingContext2D, referee: SoccerReferee, x: number, y: number, now: number) {
+  const body = getSprite("/soccer/referee/body.png");
+  const limb = getSprite("/soccer/referee/hand.png");
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(x, y + SOCCER_PLAYER_RADIUS * 0.6, SOCCER_PLAYER_RADIUS * 0.8, SOCCER_PLAYER_RADIUS * 0.35, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fill();
+
+  ctx.translate(x, y);
+  ctx.rotate(referee.angle);
+  const phase = now / 90;
+  drawLimb(ctx, limb, referee.moving, phase, 0, -1, LEG_BASE_X, LEG_SIDE_OFFSET, LEG_STRIDE_AMPLITUDE, LEG_FLARE_RAD);
+  drawLimb(ctx, limb, referee.moving, phase, Math.PI, 1, LEG_BASE_X, LEG_SIDE_OFFSET, LEG_STRIDE_AMPLITUDE, LEG_FLARE_RAD);
+  drawLimb(ctx, limb, referee.moving, phase, Math.PI, -1, ARM_BASE_X, ARM_SIDE_OFFSET, ARM_STRIDE_AMPLITUDE, ARM_FLARE_RAD);
+  drawLimb(ctx, limb, referee.moving, phase, 0, 1, ARM_BASE_X, ARM_SIDE_OFFSET, ARM_STRIDE_AMPLITUDE, ARM_FLARE_RAD);
+  if (body) ctx.drawImage(body, -body.width / 2, -body.height / 2, body.width, body.height);
+  ctx.restore();
 }
 
 /** The "nền đất bị xới lên" mark itself — a scuffed streak of bare dirt at
