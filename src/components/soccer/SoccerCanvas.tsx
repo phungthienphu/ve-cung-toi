@@ -116,24 +116,41 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
     kickFxRef.current.push(...state.kickEvents.map(spawnKickFx));
   }, [state.kickEvents]);
 
-  // Transient event toasts (goals, cards) — detected the same way tank's
-  // useTankEffects.ts spots one-shot events: whenever a fresh `state` prop
-  // carries a non-empty events array, it's brand new this broadcast (the
-  // server clears them right after sending, see soccer-server.ts's tick()).
-  const [toasts, setToasts] = useState<{ id: string; text: string; expiresAt: number }[]>([]);
+  // Transient event toasts (goals, cards, free kicks) — detected the same
+  // way tank's useTankEffects.ts spots one-shot events: whenever a fresh
+  // `state` prop carries a non-empty events array, it's brand new this
+  // broadcast (the server clears them right after sending, see
+  // soccer-server.ts's tick()). Goals and cards get the big bounce-in
+  // banner (image + text, see the "banner" render branch below); free
+  // kicks/whistles stay a small text pill — they're common enough during a
+  // match that a big banner every time would be more noise than signal.
+  interface Toast {
+    id: string;
+    text: string;
+    expiresAt: number;
+    image?: string;
+  }
+  const [toasts, setToasts] = useState<Toast[]>([]);
   useEffect(() => {
-    const events: { id: string; text: string }[] = [
+    const events: Omit<Toast, "expiresAt">[] = [
       ...state.goalEvents.map((g: SoccerGoalEvent) => ({
         id: g.id,
+        // The excited "GOOOALL!!" graphic for a real goal; the plainer
+        // "GOAL" one for an own goal — still a banner-worthy moment, just
+        // not one to celebrate the same way.
+        image: g.ownGoal ? "/soccer/effect/goal_1.gif" : "/soccer/effect/goal.gif",
         text: g.ownGoal
-          ? `⚽ ${g.scorerName} đá phản lưới nhà! Đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"} được lợi — ${g.scoreA} - ${g.scoreB}`
+          ? `${g.scorerName} đá phản lưới nhà! ${g.scoreA} - ${g.scoreB}`
           : g.scorerName
-            ? `⚽ ${g.scorerName} ghi bàn cho đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"}! ${g.scoreA} - ${g.scoreB}`
-            : `⚽ Đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"} ghi bàn! ${g.scoreA} - ${g.scoreB}`,
+            ? `${g.scorerName} ghi bàn cho đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"}! ${g.scoreA} - ${g.scoreB}`
+            : `Đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"} ghi bàn! ${g.scoreA} - ${g.scoreB}`,
       })),
       ...state.cardEvents.map((c: SoccerCardEvent) => ({
         id: c.id,
-        text: `${c.card === "red" ? "🟥" : "🟨"} ${c.playerName} nhận thẻ ${c.card === "red" ? "đỏ — bị đuổi khỏi sân!" : "vàng"}`,
+        image: c.card === "red" ? "/soccer/effect/red-card.webp" : "/soccer/effect/yellow-card.webp",
+        text: c.foulOnReferee
+          ? `${c.playerName} phạm lỗi với trọng tài!`
+          : `${c.playerName} nhận thẻ ${c.card === "red" ? "đỏ — bị đuổi khỏi sân!" : "vàng"}`,
       })),
       ...state.freeKickEvents.map((f: SoccerFreeKickEvent) => ({
         id: f.id,
@@ -248,12 +265,20 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
         />
 
         {toasts.length > 0 && (
-          <div className="pointer-events-none absolute left-1/2 top-3 flex -translate-x-1/2 flex-col items-center gap-1">
-            {toasts.map((t) => (
-              <div key={t.id} className="animate-bounce-in rounded-lg bg-black/75 px-3 py-1.5 text-sm font-semibold text-white shadow-lg">
-                {t.text}
-              </div>
-            ))}
+          <div className="pointer-events-none absolute left-1/2 top-3 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            {toasts.map((t) =>
+              t.image ? (
+                <div key={t.id} className="animate-bounce-in flex flex-col items-center gap-1 rounded-2xl bg-white px-5 py-3 shadow-2xl ring-2 ring-black/10">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={t.image} alt="" className="h-20 w-20 object-contain" />
+                  <span className="max-w-[240px] text-center text-sm font-bold text-ink">{t.text}</span>
+                </div>
+              ) : (
+                <div key={t.id} className="animate-bounce-in rounded-lg bg-black/75 px-3 py-1.5 text-sm font-semibold text-white shadow-lg">
+                  {t.text}
+                </div>
+              )
+            )}
           </div>
         )}
 
