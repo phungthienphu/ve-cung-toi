@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { playClick } from "@/lib/sound";
 import { useSoccerRoom } from "@/lib/useSoccerRoom";
-import { SOCCER_TEAM_SIZES, type SoccerTeam } from "@shared/soccerTypes";
+import { SOCCER_TEAM_SIZES, type SoccerPlayer, type SoccerTeam } from "@shared/soccerTypes";
 import SoccerCanvas from "./SoccerCanvas";
 
 interface Props {
   roomId: string;
   playerId: string;
   name: string;
+}
+
+/** A simple, made-up-for-this-game "man of the match" score — not a stat a
+ * real broadcast would use, but weights the numbers we actually track
+ * (goals matter most, then winning the ball back, then just getting shots
+ * off; racking up fouls counts against you) into one sortable number. */
+function mvpScore(p: SoccerPlayer): number {
+  return p.goals * 4 + p.tacklesWon * 1.5 + p.shots * 0.3 - p.fouls * 1;
 }
 
 export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
@@ -20,6 +28,21 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
   useEffect(() => {
     if (kicked) router.push("/soccer");
   }, [kicked, router]);
+
+  // The server stops ticking the instant a goal ends the match, and cutting
+  // straight from the live canvas to the results screen the moment status
+  // flips to "ended" read as the game just seizing up — same fix tank's
+  // TankGameRoom got: hold on the (frozen) canvas for a beat with a banner
+  // over it first, then cut to results.
+  const [showEndedScreen, setShowEndedScreen] = useState(false);
+  useEffect(() => {
+    if (state?.status !== "ended") {
+      setShowEndedScreen(false);
+      return;
+    }
+    const t = setTimeout(() => setShowEndedScreen(true), 1800);
+    return () => clearTimeout(t);
+  }, [state?.status]);
 
   if (!state) {
     return (
@@ -133,15 +156,58 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
     );
   }
 
-  if (state.status === "ended") {
+  if (state.status === "ended" && showEndedScreen) {
     const winnerLabel = state.winningTeam === "A" ? "Đội Xanh thắng!" : state.winningTeam === "B" ? "Đội Đỏ thắng!" : "Hòa!";
+    const ranking = [...state.players].sort((a, b) => mvpScore(b) - mvpScore(a));
+    const mvp = ranking.length > 0 && mvpScore(ranking[0]) > 0 ? ranking[0] : null;
     return (
-      <main className="flex min-h-app items-center justify-center bg-soccer-scene px-4">
-        <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 text-center shadow-xl">
+      <main className="flex min-h-app items-center justify-center bg-soccer-scene px-4 py-8">
+        <div className="w-full max-w-2xl rounded-xl border border-cream-200 bg-white p-8 text-center shadow-xl">
           <h1 className="mb-2 text-2xl font-bold text-ink">{winnerLabel}</h1>
-          <p className="mb-6 text-lg font-semibold text-ink/70">
+          <p className="mb-4 text-lg font-semibold text-ink/70">
             <span className="text-blue-600">{state.teamScores.A}</span> — <span className="text-red-600">{state.teamScores.B}</span>
           </p>
+
+          {mvp && (
+            <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm">
+              <span className="font-bold text-amber-700">🏅 Cầu thủ xuất sắc nhất: </span>
+              <span className="font-semibold text-ink">{mvp.name}</span>
+              <span className="text-ink/60"> ({mvp.goals} bàn, {mvp.tacklesWon} tắc bóng thành công)</span>
+            </div>
+          )}
+
+          <div className="mb-6 overflow-x-auto rounded-lg border border-cream-200">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-ink/60">
+                <tr>
+                  <th className="px-3 py-2">Cầu thủ</th>
+                  <th className="px-3 py-2 text-center">Bàn</th>
+                  <th className="px-3 py-2 text-center">Dứt điểm</th>
+                  <th className="px-3 py-2 text-center">Tắc bóng</th>
+                  <th className="px-3 py-2 text-center">Lỗi</th>
+                  <th className="px-3 py-2 text-center">Thẻ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((p) => (
+                  <tr key={p.id} className="border-t border-cream-100">
+                    <td className="max-w-40 truncate px-3 py-2 font-medium">
+                      <span className={`mr-1.5 inline-block h-2.5 w-2.5 rounded-full ${p.team === "A" ? "bg-blue-500" : "bg-red-500"}`} />
+                      {p.name}
+                    </td>
+                    <td className="px-3 py-2 text-center font-semibold">{p.goals}</td>
+                    <td className="px-3 py-2 text-center">{p.shots}</td>
+                    <td className="px-3 py-2 text-center">{p.tacklesWon}</td>
+                    <td className="px-3 py-2 text-center">{p.fouls}</td>
+                    <td className="px-3 py-2 text-center">
+                      {p.cardStatus === "red" ? "🟥" : p.cardStatus === "yellow" ? "🟨" : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           {isHost ? (
             <button
               onClick={() => {
@@ -181,7 +247,14 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
           </button>
         </div>
 
-        <SoccerCanvas state={state} selfId={playerId} send={send} />
+        <div className="relative">
+          <SoccerCanvas state={state} selfId={playerId} send={send} />
+          {state.status === "ended" && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="animate-bounce-in rounded-xl bg-white px-6 py-3 text-lg font-bold text-ink shadow-xl">🏁 Trận đấu kết thúc!</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

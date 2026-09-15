@@ -1,19 +1,6 @@
 import type * as Party from "partykit/server";
 import {
-  SOCCER_BALL_CONTROL_MAX_SPEED,
-  SOCCER_BALL_FRICTION,
-  SOCCER_BALL_RADIUS,
-  SOCCER_BALL_STOP_SPEED,
-  SOCCER_BALL_WALL_BOUNCE,
-  SOCCER_BOOST_DRAIN_PER_TICK,
   SOCCER_BOOST_MAX_ENERGY,
-  SOCCER_BOOST_REGEN_PER_TICK,
-  SOCCER_BOOST_SPEED_MULTIPLIER,
-  SOCCER_DEFLECT_DAMPING,
-  SOCCER_DEFLECT_SPREAD_RAD,
-  SOCCER_DRIBBLE_EASE,
-  SOCCER_DRIBBLE_LEAD_PX,
-  SOCCER_DRIBBLE_RADIUS,
   SOCCER_FIELD_H,
   SOCCER_FIELD_W,
   SOCCER_GOAL_BOTTOM,
@@ -23,49 +10,47 @@ import {
   SOCCER_KICK_MAX_SPEED,
   SOCCER_KICK_MIN_SPEED,
   SOCCER_MATCH_DURATION_MS,
-  SOCCER_PLAYER_RADIUS,
-  SOCCER_PLAYER_SPEED,
+  SOCCER_DRIBBLE_RADIUS,
+  SOCCER_BALL_RADIUS,
   SOCCER_TACKLE_COOLDOWN_MS,
-  SOCCER_TACKLE_KNOCKBACK_DIST,
-  SOCCER_TACKLE_KNOCK_SPEED,
   SOCCER_TACKLE_LUNGE_MS,
-  SOCCER_TACKLE_LUNGE_SPEED,
-  SOCCER_TACKLE_MISS_SLOW_MS,
-  SOCCER_TACKLE_MISS_SLOW_MULTIPLIER,
-  SOCCER_TACKLE_RANGE,
   SOCCER_TICK_MS,
   SOCCER_TOUCH_COOLDOWN_MS,
   type SoccerBall,
   type SoccerCardEvent,
-  type SoccerTackleEvent,
   type SoccerClientMessage,
+  type SoccerFreeKickEvent,
   type SoccerGoalEvent,
+  type SoccerKickEvent,
   type SoccerPlayer,
   type SoccerPublicState,
   type SoccerRoomListing,
   type SoccerRoomStatus,
   type SoccerServerMessage,
+  type SoccerTackleEvent,
   type SoccerTeam,
   type SoccerTeamSize,
 } from "../shared/soccerTypes";
+import { resolveTackle } from "./soccer/fouls";
+import { makeId } from "./soccer/geometry";
+import { resolvePlayerCollisions, stepBall, stepPlayers } from "./soccer/physics";
+import type { InputState } from "./soccer/types";
 
-interface InputState {
-  up: boolean;
-  down: boolean;
-  left: boolean;
-  right: boolean;
-  boost: boolean;
-  aimAngle: number | null;
-}
-
-function makeId(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
+const EMPTY_BALL = (): SoccerBall => ({
+  x: SOCCER_FIELD_W / 2,
+  y: SOCCER_FIELD_H / 2,
+  vx: 0,
+  vy: 0,
+  controllerId: null,
+  touchImmuneIds: [],
+  touchCooldownUntil: 0,
+  lastToucherId: null,
+});
 
 export default class SoccerRoom implements Party.Server {
   players = new Map<string, SoccerPlayer>();
   inputs = new Map<string, InputState>();
-  ball: SoccerBall = { x: SOCCER_FIELD_W / 2, y: SOCCER_FIELD_H / 2, vx: 0, vy: 0, controllerId: null, touchImmuneIds: [], touchCooldownUntil: 0 };
+  ball: SoccerBall = EMPTY_BALL();
   hostId: string | null = null;
   status: SoccerRoomStatus = "lobby";
   teamSize: SoccerTeamSize = 2;
@@ -76,6 +61,8 @@ export default class SoccerRoom implements Party.Server {
   goalEvents: SoccerGoalEvent[] = [];
   cardEvents: SoccerCardEvent[] = [];
   tackleEvents: SoccerTackleEvent[] = [];
+  freeKickEvents: SoccerFreeKickEvent[] = [];
+  kickEvents: SoccerKickEvent[] = [];
 
   tickHandle: ReturnType<typeof setInterval> | null = null;
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -189,6 +176,9 @@ export default class SoccerRoom implements Party.Server {
         fouls: 0,
         cardStatus: "none",
         sentOff: false,
+        goals: 0,
+        shots: 0,
+        tacklesWon: 0,
       };
       this.players.set(playerId, player);
       if (this.players.size === 1) this.hostId = playerId;
@@ -244,7 +234,7 @@ export default class SoccerRoom implements Party.Server {
     };
     place(teamA, SOCCER_FIELD_W * 0.25, 0);
     place(teamB, SOCCER_FIELD_W * 0.75, Math.PI);
-    this.ball = { x: SOCCER_FIELD_W / 2, y: SOCCER_FIELD_H / 2, vx: 0, vy: 0, controllerId: null, touchImmuneIds: [], touchCooldownUntil: 0 };
+    this.ball = EMPTY_BALL();
     this.kickoffUntil = Date.now() + SOCCER_KICKOFF_FREEZE_MS;
   }
 
@@ -267,12 +257,17 @@ export default class SoccerRoom implements Party.Server {
       p.fouls = 0;
       p.cardStatus = "none";
       p.sentOff = false;
+      p.goals = 0;
+      p.shots = 0;
+      p.tacklesWon = 0;
     }
     this.teamScores = { A: 0, B: 0 };
     this.winningTeam = null;
     this.goalEvents = [];
     this.cardEvents = [];
     this.tackleEvents = [];
+    this.kickEvents = [];
+    this.freeKickEvents = [];
     this.matchEndsAt = Date.now() + SOCCER_MATCH_DURATION_MS;
     this.kickoffFormation();
     this.status = "playing";
@@ -355,8 +350,11 @@ export default class SoccerRoom implements Party.Server {
     this.ball.controllerId = null;
     this.ball.touchImmuneIds = [player.id];
     this.ball.touchCooldownUntil = Date.now() + SOCCER_TOUCH_COOLDOWN_MS;
+    this.ball.lastToucherId = player.id;
     this.ball.vx = Math.cos(player.angle) * power;
     this.ball.vy = Math.sin(player.angle) * power;
+    player.shots += 1;
+    this.kickEvents.push({ id: makeId(), x: player.x, y: player.y, angle: player.angle, power: t });
   }
 
   private handleTackle(sender: Party.Connection) {
@@ -370,56 +368,7 @@ export default class SoccerRoom implements Party.Server {
     // aimed at the moment of the press.
     tackler.tackleDashUntil = now + SOCCER_TACKLE_LUNGE_MS;
     tackler.tackleDashAngle = tackler.angle;
-
-    // Any opposing player in range is a valid tackle target — whether it's a
-    // clean steal or a foul depends on whether that target actually has the
-    // ball (see SoccerCardEvent's doc).
-    let victim: SoccerPlayer | null = null;
-    let victimDist = SOCCER_TACKLE_RANGE;
-    for (const p of this.players.values()) {
-      if (p.team === tackler.team || p.sentOff) continue;
-      const dist = Math.hypot(p.x - tackler.x, p.y - tackler.y);
-      if (dist <= victimDist) {
-        victim = p;
-        victimDist = dist;
-      }
-    }
-
-    if (!victim) {
-      // Whiffed — a real lunge that finds nobody leaves you briefly slower,
-      // so mashing tackle isn't a free way to harass the ball carrier.
-      tackler.tackleSlowUntil = now + SOCCER_TACKLE_MISS_SLOW_MS;
-      this.tackleEvents.push({ id: makeId(), x: tackler.x, y: tackler.y, angle: tackler.angle, hit: false });
-      return;
-    }
-
-    // Contact — shove the victim away from the tackler (this doubles as the
-    // fix for them otherwise standing right where the ball still is and
-    // instantly re-collecting it; see SoccerBall.touchImmuneIds's doc).
-    const kbDx = victim.x - tackler.x;
-    const kbDy = victim.y - tackler.y;
-    const kbLen = Math.hypot(kbDx, kbDy) || 1;
-    victim.x = clamp(victim.x + (kbDx / kbLen) * SOCCER_TACKLE_KNOCKBACK_DIST, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_W - SOCCER_PLAYER_RADIUS);
-    victim.y = clamp(victim.y + (kbDy / kbLen) * SOCCER_TACKLE_KNOCKBACK_DIST, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_H - SOCCER_PLAYER_RADIUS);
-
-    const wasHoldingBall = victim.id === this.ball.controllerId;
-    if (wasHoldingBall) {
-      this.ball.controllerId = null;
-      this.ball.touchImmuneIds = [tackler.id, victim.id];
-      this.ball.touchCooldownUntil = now + SOCCER_TOUCH_COOLDOWN_MS;
-      this.ball.vx = Math.cos(tackler.angle) * SOCCER_TACKLE_KNOCK_SPEED;
-      this.ball.vy = Math.sin(tackler.angle) * SOCCER_TACKLE_KNOCK_SPEED;
-    } else {
-      // Connected with a player who wasn't holding the ball — a foul.
-      tackler.fouls += 1;
-      tackler.cardStatus = tackler.fouls >= 2 ? "red" : "yellow";
-      if (tackler.cardStatus === "red") {
-        tackler.sentOff = true;
-        this.checkForfeit(tackler.team);
-      }
-      this.cardEvents.push({ id: makeId(), playerName: tackler.name, card: tackler.cardStatus });
-    }
-    this.tackleEvents.push({ id: makeId(), x: tackler.x, y: tackler.y, angle: tackler.angle, hit: true });
+    resolveTackle(this, tackler, now, (team) => this.checkForfeit(team));
   }
 
   /** A team that's had every player sent off can't keep playing — rule it
@@ -470,8 +419,9 @@ export default class SoccerRoom implements Party.Server {
 
     if (this.kickoffUntil !== null && now >= this.kickoffUntil) this.kickoffUntil = null;
     if (!this.isFrozen()) {
-      this.stepPlayers(now);
-      this.stepBall();
+      stepPlayers(this, now);
+      resolvePlayerCollisions(this);
+      stepBall(this);
       this.checkGoal();
     }
 
@@ -483,179 +433,38 @@ export default class SoccerRoom implements Party.Server {
     this.goalEvents = [];
     this.cardEvents = [];
     this.tackleEvents = [];
+    this.kickEvents = [];
+    this.freeKickEvents = [];
   }
 
-  private stepPlayers(now: number) {
-    for (const player of this.players.values()) {
-      if (!player.connected || player.sentOff) continue;
-
-      if (player.tackleDashUntil !== null) {
-        if (now >= player.tackleDashUntil) {
-          player.tackleDashUntil = null;
-        } else {
-          // Forced slide along the locked-in lunge direction — normal
-          // input is ignored entirely for its short duration, same idea as
-          // tank's dash. See SOCCER_TACKLE_LUNGE_MS's doc.
-          player.angle = player.tackleDashAngle;
-          player.moving = true;
-          player.x = clamp(
-            player.x + Math.cos(player.tackleDashAngle) * SOCCER_TACKLE_LUNGE_SPEED,
-            SOCCER_PLAYER_RADIUS,
-            SOCCER_FIELD_W - SOCCER_PLAYER_RADIUS
-          );
-          player.y = clamp(
-            player.y + Math.sin(player.tackleDashAngle) * SOCCER_TACKLE_LUNGE_SPEED,
-            SOCCER_PLAYER_RADIUS,
-            SOCCER_FIELD_H - SOCCER_PLAYER_RADIUS
-          );
-          continue;
-        }
-      }
-
-      const input = this.inputs.get(player.id);
-      let dx = 0;
-      let dy = 0;
-      if (input?.up) dy -= 1;
-      if (input?.down) dy += 1;
-      if (input?.left) dx -= 1;
-      if (input?.right) dx += 1;
-
-      player.moving = dx !== 0 || dy !== 0;
-      // Facing follows the mouse (aimAngle) whenever it's available — see
-      // SoccerPlayer.angle's doc — falling back to the movement direction
-      // for touch controls, which have no cursor to report one.
-      if (input?.aimAngle !== null && input?.aimAngle !== undefined) {
-        player.angle = input.aimAngle;
-      } else if (player.moving) {
-        const len = Math.hypot(dx, dy);
-        player.angle = Math.atan2(dy, len === 0 ? 0 : dx);
-      }
-
-      const wantsBoost = !!input?.boost && player.boostEnergy > 0 && player.moving;
-      player.isBoosting = wantsBoost;
-      player.boostEnergy = wantsBoost
-        ? Math.max(0, player.boostEnergy - SOCCER_BOOST_DRAIN_PER_TICK)
-        : Math.min(SOCCER_BOOST_MAX_ENERGY, player.boostEnergy + SOCCER_BOOST_REGEN_PER_TICK);
-
-      if (player.moving) {
-        const len = Math.hypot(dx, dy);
-        const slowed = now < player.tackleSlowUntil;
-        const boostMult = wantsBoost ? SOCCER_BOOST_SPEED_MULTIPLIER : 1;
-        const speed = (SOCCER_PLAYER_SPEED * boostMult * (slowed ? SOCCER_TACKLE_MISS_SLOW_MULTIPLIER : 1)) / len;
-        player.x = clamp(player.x + dx * speed, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_W - SOCCER_PLAYER_RADIUS);
-        player.y = clamp(player.y + dy * speed, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_H - SOCCER_PLAYER_RADIUS);
-      }
-    }
-  }
-
-  private stepBall() {
-    const ball = this.ball;
-    if (ball.controllerId) {
-      const controller = this.players.get(ball.controllerId);
-      if (!controller || !controller.connected) {
-        ball.controllerId = null;
-      } else {
-        // Eases toward the ideal dribble spot instead of snapping straight
-        // to it — see SOCCER_DRIBBLE_EASE's doc for why a hard set looked
-        // like the ball teleporting onto the player.
-        const targetX = controller.x + Math.cos(controller.angle) * SOCCER_DRIBBLE_LEAD_PX;
-        const targetY = controller.y + Math.sin(controller.angle) * SOCCER_DRIBBLE_LEAD_PX;
-        ball.x += (targetX - ball.x) * SOCCER_DRIBBLE_EASE;
-        ball.y += (targetY - ball.y) * SOCCER_DRIBBLE_EASE;
-        ball.vx = 0;
-        ball.vy = 0;
-        return;
-      }
-    }
-
-    // Loose ball: whoever's closest within dribble range takes control —
-    // no proximity-steal from an existing controller (see stepBall's early
-    // return above), only an active tackle can contest a held ball. Whoever
-    // just kicked/tackled it loose is excluded until touchCooldownUntil
-    // passes — see SoccerBall.touchImmuneIds's doc for why (otherwise
-    // they'd just instantly re-pick-up their own kick/steal, every single
-    // time, before it ever traveled anywhere).
-    const now = Date.now();
-    const touchImmune = now < ball.touchCooldownUntil ? ball.touchImmuneIds : [];
-    let closest: SoccerPlayer | null = null;
-    let closestDist = SOCCER_DRIBBLE_RADIUS;
-    for (const p of this.players.values()) {
-      if (!p.connected || p.sentOff || touchImmune.includes(p.id)) continue;
-      const dist = Math.hypot(p.x - ball.x, p.y - ball.y);
-      if (dist <= closestDist) {
-        closest = p;
-        closestDist = dist;
-      }
-    }
-    if (closest) {
-      const speed = Math.hypot(ball.vx, ball.vy);
-      if (speed <= SOCCER_BALL_CONTROL_MAX_SPEED) {
-        ball.controllerId = closest.id;
-        return;
-      }
-      // Too hot to trap cleanly — deflects off them instead of gluing on,
-      // same physical idea as a real first touch on a hard shot. See
-      // SOCCER_BALL_CONTROL_MAX_SPEED's doc. Falls through to the normal
-      // position/friction/wall-bounce integration below using the ball's
-      // new (deflected) velocity, rather than returning early.
-      const nx = ball.x - closest.x;
-      const ny = ball.y - closest.y;
-      const nLen = Math.hypot(nx, ny) || 1;
-      const normX = nx / nLen;
-      const normY = ny / nLen;
-      const dot = ball.vx * normX + ball.vy * normY;
-      const reflectedVx = ball.vx - 2 * dot * normX;
-      const reflectedVy = ball.vy - 2 * dot * normY;
-      const jitter = (Math.random() - 0.5) * 2 * SOCCER_DEFLECT_SPREAD_RAD;
-      const cosJ = Math.cos(jitter);
-      const sinJ = Math.sin(jitter);
-      ball.vx = (reflectedVx * cosJ - reflectedVy * sinJ) * SOCCER_DEFLECT_DAMPING;
-      ball.vy = (reflectedVx * sinJ + reflectedVy * cosJ) * SOCCER_DEFLECT_DAMPING;
-      ball.touchImmuneIds = [closest.id];
-      ball.touchCooldownUntil = now + SOCCER_TOUCH_COOLDOWN_MS;
-    }
-
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-    ball.vx *= SOCCER_BALL_FRICTION;
-    ball.vy *= SOCCER_BALL_FRICTION;
-    if (Math.hypot(ball.vx, ball.vy) < SOCCER_BALL_STOP_SPEED) {
-      ball.vx = 0;
-      ball.vy = 0;
-    }
-
-    const inGoalMouth = ball.y >= SOCCER_GOAL_TOP && ball.y <= SOCCER_GOAL_BOTTOM;
-    if (!inGoalMouth || (ball.x > SOCCER_BALL_RADIUS && ball.x < SOCCER_FIELD_W - SOCCER_BALL_RADIUS)) {
-      if (ball.x < SOCCER_BALL_RADIUS && !inGoalMouth) {
-        ball.x = SOCCER_BALL_RADIUS;
-        ball.vx = Math.abs(ball.vx) * SOCCER_BALL_WALL_BOUNCE;
-      } else if (ball.x > SOCCER_FIELD_W - SOCCER_BALL_RADIUS && !inGoalMouth) {
-        ball.x = SOCCER_FIELD_W - SOCCER_BALL_RADIUS;
-        ball.vx = -Math.abs(ball.vx) * SOCCER_BALL_WALL_BOUNCE;
-      }
-    }
-    if (ball.y < SOCCER_BALL_RADIUS) {
-      ball.y = SOCCER_BALL_RADIUS;
-      ball.vy = Math.abs(ball.vy) * SOCCER_BALL_WALL_BOUNCE;
-    } else if (ball.y > SOCCER_FIELD_H - SOCCER_BALL_RADIUS) {
-      ball.y = SOCCER_FIELD_H - SOCCER_BALL_RADIUS;
-      ball.vy = -Math.abs(ball.vy) * SOCCER_BALL_WALL_BOUNCE;
-    }
+  /** Attributes a goal to whoever last touched the ball (see
+   * SoccerBall.lastToucherId's doc) and pushes the scoreboard toast event —
+   * shared between both goal directions below. An own goal still counts for
+   * the scoring team but isn't credited to the scorer as a "goal" stat,
+   * same convention as a real match. */
+  private recordGoal(scoringTeam: SoccerTeam) {
+    this.teamScores[scoringTeam] += 1;
+    const scorer = this.ball.lastToucherId ? this.players.get(this.ball.lastToucherId) : null;
+    const ownGoal = !!scorer && scorer.team !== scoringTeam;
+    if (scorer && !ownGoal) scorer.goals += 1;
+    this.goalEvents.push({
+      id: makeId(),
+      scoringTeam,
+      scoreA: this.teamScores.A,
+      scoreB: this.teamScores.B,
+      scorerId: scorer?.id ?? null,
+      scorerName: scorer?.name ?? null,
+      ownGoal,
+    });
+    this.kickoffFormation();
   }
 
   private checkGoal() {
     const ball = this.ball;
     const inGoalMouth = ball.y >= SOCCER_GOAL_TOP && ball.y <= SOCCER_GOAL_BOTTOM;
     if (!inGoalMouth) return;
-    if (ball.x - SOCCER_BALL_RADIUS <= 0) {
-      this.teamScores.B += 1;
-      this.goalEvents.push({ id: makeId(), scoringTeam: "B", scoreA: this.teamScores.A, scoreB: this.teamScores.B });
-      this.kickoffFormation();
-    } else if (ball.x + SOCCER_BALL_RADIUS >= SOCCER_FIELD_W) {
-      this.teamScores.A += 1;
-      this.goalEvents.push({ id: makeId(), scoringTeam: "A", scoreA: this.teamScores.A, scoreB: this.teamScores.B });
-      this.kickoffFormation();
-    }
+    if (ball.x - SOCCER_BALL_RADIUS <= 0) this.recordGoal("B");
+    else if (ball.x + SOCCER_BALL_RADIUS >= SOCCER_FIELD_W) this.recordGoal("A");
   }
 
   // ---------- state ----------
@@ -675,6 +484,8 @@ export default class SoccerRoom implements Party.Server {
       goalEvents: this.goalEvents,
       cardEvents: this.cardEvents,
       tackleEvents: this.tackleEvents,
+      freeKickEvents: this.freeKickEvents,
+      kickEvents: this.kickEvents,
       serverNow: Date.now(),
     };
   }
@@ -701,8 +512,4 @@ export default class SoccerRoom implements Party.Server {
       .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
       .catch(() => {});
   }
-}
-
-function clamp(v: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, v));
 }

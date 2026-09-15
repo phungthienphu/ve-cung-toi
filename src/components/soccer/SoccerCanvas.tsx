@@ -15,7 +15,9 @@ import {
   SOCCER_TICK_MS,
   type SoccerCardEvent,
   type SoccerClientMessage,
+  type SoccerFreeKickEvent,
   type SoccerGoalEvent,
+  type SoccerKickEvent,
   type SoccerPlayer,
   type SoccerPublicState,
   type SoccerTackleEvent,
@@ -59,6 +61,37 @@ function spawnTackleFx(e: SoccerTackleEvent): TackleFx {
   return { id: e.id, x: e.x, y: e.y, angle: e.angle, hit: e.hit, start: performance.now(), particles };
 }
 
+const KICK_FX_DURATION_MS = 350;
+
+interface KickParticle {
+  angle: number;
+  dist: number;
+  size: number;
+}
+interface KickFx {
+  id: string;
+  x: number;
+  y: number;
+  angle: number;
+  power: number;
+  start: number;
+  particles: KickParticle[];
+}
+
+function spawnKickFx(e: SoccerKickEvent): KickFx {
+  // Harder kicks fling more grass, further — a tap barely disturbs the
+  // ground, a full-power strike visibly rips it up.
+  const count = 3 + Math.round(e.power * 4);
+  const particles: KickParticle[] = Array.from({ length: count }, () => ({
+    // Narrow forward cone — grass flicked up by the boot, not scattered
+    // sideways like the tackle's wider dirt spray.
+    angle: (Math.random() - 0.5) * ((Math.PI * 50) / 180),
+    dist: (9 + Math.random() * 12) * (0.6 + e.power * 0.7),
+    size: 1.3 + Math.random() * 1.5,
+  }));
+  return { id: e.id, x: e.x, y: e.y, angle: e.angle, power: e.power, start: performance.now(), particles };
+}
+
 export default function SoccerCanvas({ state, selfId, send }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef(state);
@@ -76,6 +109,11 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
     if (state.tackleEvents.length === 0) return;
     tackleFxRef.current.push(...state.tackleEvents.map(spawnTackleFx));
   }, [state.tackleEvents]);
+  const kickFxRef = useRef<KickFx[]>([]);
+  useEffect(() => {
+    if (state.kickEvents.length === 0) return;
+    kickFxRef.current.push(...state.kickEvents.map(spawnKickFx));
+  }, [state.kickEvents]);
 
   // Transient event toasts (goals, cards) — detected the same way tank's
   // useTankEffects.ts spots one-shot events: whenever a fresh `state` prop
@@ -86,22 +124,45 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
     const events: { id: string; text: string }[] = [
       ...state.goalEvents.map((g: SoccerGoalEvent) => ({
         id: g.id,
-        text: `⚽ Đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"} ghi bàn! ${g.scoreA} - ${g.scoreB}`,
+        text: g.ownGoal
+          ? `⚽ ${g.scorerName} đá phản lưới nhà! Đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"} được lợi — ${g.scoreA} - ${g.scoreB}`
+          : g.scorerName
+            ? `⚽ ${g.scorerName} ghi bàn cho đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"}! ${g.scoreA} - ${g.scoreB}`
+            : `⚽ Đội ${g.scoringTeam === "A" ? "Xanh" : "Đỏ"} ghi bàn! ${g.scoreA} - ${g.scoreB}`,
       })),
       ...state.cardEvents.map((c: SoccerCardEvent) => ({
         id: c.id,
         text: `${c.card === "red" ? "🟥" : "🟨"} ${c.playerName} nhận thẻ ${c.card === "red" ? "đỏ — bị đuổi khỏi sân!" : "vàng"}`,
       })),
+      ...state.freeKickEvents.map((f: SoccerFreeKickEvent) => ({
+        id: f.id,
+        text: f.advantage
+          ? `⚡ Lợi thế cho đội ${f.team === "A" ? "Xanh" : "Đỏ"} — chơi tiếp!`
+          : `📯 Đá phạt cho đội ${f.team === "A" ? "Xanh" : "Đỏ"}!`,
+      })),
     ];
     if (events.length === 0) return;
     const now = Date.now();
     setToasts((prev) => [...prev, ...events.map((e) => ({ ...e, expiresAt: now + 3500 }))]);
-  }, [state.goalEvents, state.cardEvents]);
+  }, [state.goalEvents, state.cardEvents, state.freeKickEvents]);
   useEffect(() => {
     if (toasts.length === 0) return;
     const t = setTimeout(() => setToasts((prev) => prev.filter((x) => x.expiresAt > Date.now())), 500);
     return () => clearTimeout(t);
   }, [toasts]);
+
+  // A short "whistle" toast the instant a freeze (kickoff after a goal, or
+  // a free-kick setup) lifts and play actually resumes — covers "khi có
+  // thông báo thổi còi đá thì bắt đầu tiếp tục" without the server needing
+  // to predict exactly when its own freeze timer will elapse client-side.
+  const wasFrozenRef = useRef(false);
+  useEffect(() => {
+    const isFrozen = state.kickoffUntil !== null && state.kickoffUntil > state.serverNow;
+    if (wasFrozenRef.current && !isFrozen && state.status === "playing") {
+      setToasts((prev) => [...prev, { id: `whistle-${Date.now()}`, text: "🔔 Bắt đầu!", expiresAt: Date.now() + 1200 }]);
+    }
+    wasFrozenRef.current = isFrozen;
+  }, [state.kickoffUntil, state.serverNow, state.status]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,6 +212,9 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
       drawBall(ctx, ballPos.x, ballPos.y);
 
       for (const fx of tackleFxRef.current) drawTackleParticles(ctx, fx, (now - fx.start) / TACKLE_FX_DURATION_MS);
+
+      kickFxRef.current = kickFxRef.current.filter((fx) => now - fx.start < KICK_FX_DURATION_MS);
+      for (const fx of kickFxRef.current) drawKickFx(ctx, fx, (now - fx.start) / KICK_FX_DURATION_MS);
 
       raf = requestAnimationFrame(draw);
     }
@@ -286,10 +350,61 @@ function drawField(ctx: CanvasRenderingContext2D) {
   }
 }
 
+// Limb stance while running — see drawPlayer's doc for the coordinate
+// convention. leg.png (and hand.png, pixel-identical — Kenney's Sports Pack
+// reuses one limb shape for both) is drawn shoe/tip-first along its own
+// local +x, so at rest it always points the same way regardless of which
+// side it's playing. drawLimb below reuses the same sprite for both the
+// forward and trailing copy each stride by mirroring it horizontally
+// (ctx.scale(-1, 1)) for whichever half is currently trailing, so the
+// tip visibly flips to point backward-and-out instead of forever pointing
+// the same direction it does at rest — no separate mirrored asset needed.
+const LEG_SIDE_OFFSET = 3;
+const LEG_BASE_X = -1;
+const LEG_STRIDE_AMPLITUDE = 3.5;
+const LEG_FLARE_RAD = (16 * Math.PI) / 180;
+// Arms sit toward the front half (positive base X, same side the body
+// faces) and swing wider than the legs — visibly "vung tay ra phía trước".
+const ARM_SIDE_OFFSET = 8;
+const ARM_BASE_X = 3;
+const ARM_STRIDE_AMPLITUDE = 5;
+const ARM_FLARE_RAD = (30 * Math.PI) / 180;
+
+/** One limb (a leg or an arm) at one instant of the running cycle. `phase`
+ * is the shared running clock; `phaseOffset` staggers left vs right (and,
+ * for arms, staggers against the same-side leg for a contralateral gait).
+ * `sideSign` is -1/+1 for which side of centerline this copy sits on. */
+function drawLimb(
+  ctx: CanvasRenderingContext2D,
+  sprite: HTMLImageElement | undefined,
+  moving: boolean,
+  phase: number,
+  phaseOffset: number,
+  sideSign: 1 | -1,
+  baseX: number,
+  sideOffset: number,
+  strideAmp: number,
+  flareRad: number
+) {
+  if (!sprite) return;
+  // `phase` free-runs off wall-clock time regardless of `moving`, so a
+  // standing player needs a fixed pose rather than still evaluating
+  // sin(phase) — otherwise the mirror flip below would toggle on and off
+  // while stationary, a flicker with no motion to justify it.
+  const swing = moving ? Math.sin(phase + phaseOffset) : 1; // -1 (fully trailing) .. +1 (fully forward)
+  ctx.save();
+  ctx.translate(baseX + swing * strideAmp, sideOffset * sideSign);
+  ctx.rotate(swing * flareRad * sideSign);
+  if (swing < 0) ctx.scale(-1, 1); // trailing half of the cycle — flip so the tip points backward, not still forward
+  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+  ctx.restore();
+}
+
 function drawPlayer(ctx: CanvasRenderingContext2D, p: SoccerPlayer, x: number, y: number, isSelf: boolean, now: number) {
   const color = SOCCER_TEAM_COLOR[p.team];
   const body = getSprite(`/soccer/${color}/body.png`);
   const leg = getSprite(`/soccer/${color}/leg.png`);
+  const hand = getSprite(`/soccer/${color}/hand.png`);
 
   ctx.save();
   if (p.sentOff) ctx.globalAlpha = 0.35; // grayed out on the sideline — see SoccerPlayer.sentOff's doc
@@ -309,11 +424,20 @@ function drawPlayer(ctx: CanvasRenderingContext2D, p: SoccerPlayer, x: number, y
 
   ctx.translate(x, y);
   ctx.rotate(p.angle);
-  // A little running wobble: legs shift back and forth perpendicular to the
-  // facing direction while moving, sold purely by drawing them slightly
-  // offset each frame — no separate leg animation frames exist to swap.
-  const wobble = p.moving ? Math.sin(now / 90) * 3 : 0;
-  if (leg) ctx.drawImage(leg, -leg.width / 2, -leg.height / 2 + wobble, leg.width, leg.height);
+  // Local +x after the rotate above points along the facing direction,
+  // local +y is perpendicular to it. Legs draw before the body (mostly
+  // tucked under the torso, peeking out at each stride extreme); arms draw
+  // after (visibly swinging beside it) — see drawLimb's doc for how a
+  // single limb sprite serves as both the forward and trailing copy.
+  const phase = now / 90;
+  drawLimb(ctx, leg, p.moving, phase, 0, -1, LEG_BASE_X, LEG_SIDE_OFFSET, LEG_STRIDE_AMPLITUDE, LEG_FLARE_RAD);
+  drawLimb(ctx, leg, p.moving, phase, Math.PI, 1, LEG_BASE_X, LEG_SIDE_OFFSET, LEG_STRIDE_AMPLITUDE, LEG_FLARE_RAD);
+  // Contralateral gait — each arm shares its phase with the opposite leg.
+  // Drawn before the body too (same as the legs above), so the body sits on
+  // top and only the swinging tips peek out from behind/beside it, instead
+  // of the hands visibly lying over the torso.
+  drawLimb(ctx, hand, p.moving, phase, Math.PI, -1, ARM_BASE_X, ARM_SIDE_OFFSET, ARM_STRIDE_AMPLITUDE, ARM_FLARE_RAD);
+  drawLimb(ctx, hand, p.moving, phase, 0, 1, ARM_BASE_X, ARM_SIDE_OFFSET, ARM_STRIDE_AMPLITUDE, ARM_FLARE_RAD);
   if (body) ctx.drawImage(body, -body.width / 2, -body.height / 2, body.width, body.height);
   ctx.restore();
 
@@ -389,6 +513,38 @@ function drawTackleParticles(ctx: CanvasRenderingContext2D, fx: TackleFx, progre
     ctx.beginPath();
     ctx.arc(px, py, p.size * fade, 0, Math.PI * 2);
     ctx.fillStyle = "#6b4a2c";
+    ctx.globalAlpha = fade;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** The "hiệu ứng phát ra từ cầu thủ" on every kick — a quick white contact
+ * flash plus a few blades of grass flicked forward, distinct from the
+ * tackle's brown dirt spray (grass-green here, and a much shorter-lived,
+ * tighter cone since a kick is a clean strike, not a slide through mud). */
+function drawKickFx(ctx: CanvasRenderingContext2D, fx: KickFx, progress: number) {
+  const flashT = Math.min(1, progress / 0.45);
+  if (flashT < 1) {
+    const fx0 = fx.x + Math.cos(fx.angle) * 6;
+    const fy0 = fx.y + Math.sin(fx.angle) * 6;
+    ctx.beginPath();
+    ctx.arc(fx0, fy0, SOCCER_PLAYER_RADIUS * (0.3 + flashT * 1.1) * (0.6 + fx.power * 0.5), 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${(1 - flashT) * 0.85})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  const fade = Math.max(0, 1 - progress);
+  if (fade <= 0) return;
+  const ease = 1 - Math.pow(1 - progress, 2);
+  for (const p of fx.particles) {
+    const worldAngle = fx.angle + p.angle;
+    const px = fx.x + Math.cos(worldAngle) * p.dist * ease;
+    const py = fx.y + Math.sin(worldAngle) * p.dist * ease;
+    ctx.beginPath();
+    ctx.arc(px, py, p.size * fade, 0, Math.PI * 2);
+    ctx.fillStyle = "#8fce5a";
     ctx.globalAlpha = fade;
     ctx.fill();
   }

@@ -123,6 +123,18 @@ export const SOCCER_TACKLE_LUNGE_MS = 220;
 // bug SoccerBall.touchImmuneIds fixes for the tackler's own side of it).
 export const SOCCER_TACKLE_KNOCKBACK_DIST = 30;
 
+// ---------- free kicks ----------
+
+// How far the fouling team's nearby players get pushed back from the foul
+// spot before play resumes — a "wall", same idea as the real 9.15m rule,
+// scaled down to this pitch's size.
+export const SOCCER_FREE_KICK_WALL_DIST = 70;
+// Setup pause before the fouled team can act — the referee's whistle beat.
+// Extends matchEndsAt by the same amount (see startFreeKick's doc), which
+// is the "bù giờ hoặc tạm ngưng" the stoppage needed — pausing the clock
+// outright was the simpler of the two to get right.
+export const SOCCER_FREE_KICK_FREEZE_MS = 1800;
+
 // ---------- fouls / cards ----------
 
 // A tackle (Space) that connects with an opposing player who is NOT the
@@ -139,11 +151,31 @@ export interface SoccerCardEvent {
   card: SoccerCardStatus;
 }
 
+// `scorerId`/`scorerName` come from SoccerBall.lastToucherId at the moment
+// it crossed the line — null if nobody had touched it since the last
+// kickoff (e.g. it trickled in off a wall bounce with no clear toucher).
+// `ownGoal` is true when that last toucher was on the team being scored
+// against — real match convention: an own goal counts for the scoring team
+// but isn't credited to the player as a "goal" (see checkGoal's doc).
 export interface SoccerGoalEvent {
   id: string;
   scoringTeam: SoccerTeam;
   scoreA: number;
   scoreB: number;
+  scorerId: string | null;
+  scorerName: string | null;
+  ownGoal: boolean;
+}
+
+// Announces how a foul got resolved — either a real stoppage (the fouled
+// team gets a free kick from the spot, the fouling team's nearby players
+// pushed back — see startFreeKick) or advantage (the fouled team's already
+// got the ball elsewhere via a teammate mid-attack, so play never stops;
+// the card above still applies, just without interrupting the run).
+export interface SoccerFreeKickEvent {
+  id: string;
+  team: SoccerTeam;
+  advantage: boolean;
 }
 
 // A lunge attempt — every press of Space, whether it connects or not. The
@@ -156,6 +188,17 @@ export interface SoccerTackleEvent {
   y: number;
   angle: number;
   hit: boolean;
+}
+
+// Every kick/pass/shot/volley release that actually strikes the ball — the
+// client uses this to spawn a quick impact puff at the strike point,
+// scaled by `power` (0..1, the charge fraction — see handleKickRelease).
+export interface SoccerKickEvent {
+  id: string;
+  x: number;
+  y: number;
+  angle: number;
+  power: number;
 }
 
 // ---------- entities ----------
@@ -195,6 +238,11 @@ export interface SoccerPlayer {
   // True once a 2nd foul earns a red card — ignored by movement/kick/tackle
   // handlers and by the loose-ball pickup search for the rest of the match.
   sentOff: boolean;
+  // Match stats — shown on the post-match scoreboard and fed into the MVP
+  // pick (see computeMvp), same spirit as tank's score/damageDealt/deaths.
+  goals: number;
+  shots: number;
+  tacklesWon: number;
 }
 
 export interface SoccerBall {
@@ -217,6 +265,12 @@ export interface SoccerBall {
   // (e.g. a pass to a teammate works immediately).
   touchImmuneIds: string[];
   touchCooldownUntil: number;
+  // Whoever most recently kicked, volleyed, deflected off, or dribbled this
+  // ball — unlike touchImmuneIds this never expires on its own (only reset
+  // at kickoff), since it's purely for goal-scorer attribution: the ball
+  // can bounce around for a while after a touch before it actually crosses
+  // the line, well past touchCooldownUntil.
+  lastToucherId: string | null;
 }
 
 // How long touched players stay excluded from re-picking-up the ball after
@@ -260,6 +314,8 @@ export interface SoccerPublicState {
   goalEvents: SoccerGoalEvent[];
   cardEvents: SoccerCardEvent[];
   tackleEvents: SoccerTackleEvent[];
+  freeKickEvents: SoccerFreeKickEvent[];
+  kickEvents: SoccerKickEvent[];
   serverNow: number;
 }
 
