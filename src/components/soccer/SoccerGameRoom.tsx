@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fireworks } from "@/lib/confetti";
-import { playClick, startSoccerBgMusic, stopSoccerBgMusic } from "@/lib/sound";
+import {
+  isCommentaryMuted,
+  playClick,
+  playClockTick,
+  setCommentaryMuted,
+  startCrowdMurmur,
+  startSoccerBgMusic,
+  stopCrowdMurmur,
+  stopSoccerBgMusic,
+} from "@/lib/sound";
 import { useSoccerRoom } from "@/lib/useSoccerRoom";
 import { SOCCER_TEAM_SIZES, type SoccerPlayer, type SoccerTeam } from "@shared/soccerTypes";
 import SoccerCanvas from "./SoccerCanvas";
@@ -36,6 +45,12 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
   // TankGameRoom got: hold on the (frozen) canvas for a beat with a banner
   // over it first, then cut to results.
   const [showEndedScreen, setShowEndedScreen] = useState(false);
+  // Starts unmuted; the real value only exists in localStorage, which isn't
+  // readable during server rendering, so it's fetched once after mount.
+  const [blvMuted, setBlvMuted] = useState(false);
+  useEffect(() => {
+    setBlvMuted(isCommentaryMuted());
+  }, []);
   useEffect(() => {
     if (state?.status !== "ended") {
       setShowEndedScreen(false);
@@ -53,6 +68,35 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
     else stopSoccerBgMusic();
     return () => stopSoccerBgMusic();
   }, [state?.status]);
+
+  // Ambient crowd murmur — runs the whole match regardless of whether a
+  // real bg-music file exists yet (see startSoccerBgMusic's doc), since a
+  // real match has crowd noise independent of any music playing over it.
+  useEffect(() => {
+    if (state?.status === "playing") startCrowdMurmur();
+    else stopCrowdMurmur();
+    return () => stopCrowdMurmur();
+  }, [state?.status]);
+
+  // Urgent countdown tick once per whole second while under 30s remain —
+  // tracks the last second it already played so this doesn't refire every
+  // ~65ms tick broadcast, just once as each second boundary is crossed.
+  const tickPlayedSecondRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!state || state.status !== "playing" || typeof state.matchEndsAt !== "number") {
+      tickPlayedSecondRef.current = null;
+      return;
+    }
+    const remainingMs = Math.max(0, state.matchEndsAt - state.serverNow);
+    if (remainingMs <= 0 || remainingMs > 30000) {
+      tickPlayedSecondRef.current = null;
+      return;
+    }
+    const wholeSecond = Math.ceil(remainingMs / 1000);
+    if (tickPlayedSecondRef.current === wholeSecond) return;
+    tickPlayedSecondRef.current = wholeSecond;
+    playClockTick();
+  }, [state?.status, state?.matchEndsAt, state?.serverNow]);
 
   // Celebratory burst on the match-end screen — the same big fireworks()
   // tank/draw-guess use, guarded so it only fires once per match end.
@@ -254,20 +298,40 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
 
   const remainingMs = typeof state.matchEndsAt === "number" ? Math.max(0, state.matchEndsAt - state.serverNow) : null;
   const remainingLabel = remainingMs !== null ? `${Math.floor(remainingMs / 60000)}:${String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}` : null;
+  const urgent = remainingMs !== null && remainingMs > 0 && remainingMs <= 30000;
 
   return (
     <div className="min-h-app bg-soccer-scene">
       <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-3 px-3 py-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-xl">
           <div className="flex items-center gap-3 text-sm font-semibold">
-            {remainingLabel && <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700">⏱ {remainingLabel}</span>}
+            {remainingLabel && (
+              <span
+                className={`rounded px-2 py-0.5 font-mono ${urgent ? "animate-pulse bg-red-100 text-red-700" : "bg-slate-100 text-slate-700"}`}
+              >
+                ⏱ {remainingLabel}
+              </span>
+            )}
             <span className="text-blue-600">Xanh {state.teamScores.A}</span>
             <span className="text-slate-300">—</span>
             <span className="text-red-600">{state.teamScores.B} Đỏ</span>
           </div>
-          <button onClick={handleLeave} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50">
-            Rời phòng
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => {
+                const next = !blvMuted;
+                setCommentaryMuted(next);
+                setBlvMuted(next);
+              }}
+              title={blvMuted ? "Bật giọng bình luận viên" : "Tắt giọng bình luận viên"}
+              className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-500"
+            >
+              {blvMuted ? "🔇 BLV" : "🗣️ BLV"}
+            </button>
+            <button onClick={handleLeave} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50">
+              Rời phòng
+            </button>
+          </div>
         </div>
 
         <div className="relative">

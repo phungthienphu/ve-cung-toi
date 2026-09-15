@@ -5,6 +5,7 @@
 // the same in dev and on Vercel with zero asset pipeline.
 
 const MUTE_KEY = "vct_muted";
+const COMMENTARY_MUTE_KEY = "vct_blv_muted";
 
 let ctx: AudioContext | null = null;
 let musicNodes: { stop: () => void } | null = null;
@@ -30,6 +31,21 @@ export function setMuted(muted: boolean) {
     stopMusic();
     stopTankBgMusic();
   }
+}
+
+/** Separate from the main mute toggle — a browser's built-in Vietnamese
+ * voice (if it even has one) is hit-or-miss quality, so a player might want
+ * to keep sound effects/music but silence just the spoken commentary
+ * (see speakCommentary) without losing everything else. */
+export function isCommentaryMuted(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(COMMENTARY_MUTE_KEY) === "1";
+}
+
+export function setCommentaryMuted(muted: boolean) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(COMMENTARY_MUTE_KEY, muted ? "1" : "0");
+  if (muted && "speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
 function tone(freq: number, startOffset: number, duration: number, gainPeak = 0.15, type: OscillatorType = "sine") {
@@ -564,7 +580,7 @@ function findVietnameseVoice(): SpeechSynthesisVoice | null {
  * voice-over audio files.
  */
 export function speakCommentary(text: string) {
-  if (typeof window === "undefined" || isMuted()) return;
+  if (typeof window === "undefined" || isMuted() || isCommentaryMuted()) return;
   if (!("speechSynthesis" in window)) return;
 
   const utterance = new SpeechSynthesisUtterance(text);
@@ -593,4 +609,71 @@ export function speakCommentary(text: string) {
   }
 
   window.speechSynthesis.speak(utterance);
+}
+
+/** Urgent countdown tick — meant to be called at most once per remaining
+ * second while the clock's under the "hurry up" threshold, not once per
+ * render/tick broadcast (the caller is responsible for that debouncing,
+ * since only it knows which second it's already played). Higher-pitched and
+ * shorter than playClick so it reads as a ticking clock, not a UI blip. */
+export function playClockTick() {
+  tone(1400, 0, 0.06, 0.08, "square");
+}
+
+// A continuous, gentle stadium-crowd murmur — filtered looping noise with a
+// slow gain wobble (via an LFO) so it reads as a living crowd rather than a
+// flat hiss. Meant to run for the whole length of a match, cheaply filling
+// the silence while there's no licensed background music track yet (see
+// startSoccerBgMusic's doc) — this is closer to sound.ts's other synthesized
+// noiseBurst effects, just sustained and much quieter.
+let crowdMurmurNodes: { stop: () => void } | null = null;
+
+export function startCrowdMurmur() {
+  const audio = getCtx();
+  if (!audio || isMuted() || crowdMurmurNodes) return;
+
+  const bufferSize = audio.sampleRate * 2; // 2s of noise, looped
+  const buffer = audio.createBuffer(1, bufferSize, audio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+  const noise = audio.createBufferSource();
+  noise.buffer = buffer;
+  noise.loop = true;
+
+  const filter = audio.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 450; // a low murmur, not a hiss
+  filter.Q.value = 0.6;
+
+  const gain = audio.createGain();
+  gain.gain.value = 0.03;
+
+  // Slow, quiet wobble on top of the base volume — an actual crowd swells
+  // and dips, a static gain level doesn't read as "alive".
+  const lfo = audio.createOscillator();
+  lfo.frequency.value = 0.15;
+  const lfoGain = audio.createGain();
+  lfoGain.gain.value = 0.012;
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audio.destination);
+
+  noise.start();
+  lfo.start();
+
+  crowdMurmurNodes = {
+    stop: () => {
+      noise.stop();
+      lfo.stop();
+    },
+  };
+}
+
+export function stopCrowdMurmur() {
+  crowdMurmurNodes?.stop();
+  crowdMurmurNodes = null;
 }
