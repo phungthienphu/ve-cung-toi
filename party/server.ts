@@ -28,7 +28,13 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function normalizeGuess(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
+  // NFC normalization matters here: some keyboards/IMEs (and mobile
+  // autocorrect) can produce Vietnamese diacritics as separate combining
+  // characters (NFD) instead of precomposed characters (NFC). Two strings
+  // that render identically then fail a strict `===` compare because their
+  // underlying code points differ — this is the "answer looks right but
+  // isn't accepted" bug.
+  return text.trim().toLowerCase().normalize("NFC").replace(/\s+/g, " ");
 }
 
 function wordHint(word: string): string {

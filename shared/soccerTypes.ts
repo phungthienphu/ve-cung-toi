@@ -11,6 +11,25 @@ export type SoccerTeamSize = 1 | 2 | 3 | 4;
 
 export const SOCCER_TEAM_SIZES: SoccerTeamSize[] = [1, 2, 3, 4];
 
+// ---------- AI bots ----------
+
+// Fills empty team slots so a match can start without waiting on a full
+// roster of real players — unlike tank, where an uneven team just plays a
+// player down for the whole match (see SoccerPlayer.sentOff's doc for the
+// same "no bot substitutes" rule applying to a red card specifically, which
+// still holds: a sent-off bot is NOT replaced either, same as a sent-off
+// human). Three tuning presets rather than a single "AI" toggle, since a
+// silly/weak bot and a sharp one are both useful for different groups (a
+// couple of kids filling out a 4v4 vs. one skilled friend wanting a real
+// match with 3 empty slots).
+export type SoccerBotDifficulty = "dumb" | "basic" | "star";
+export const SOCCER_BOT_DIFFICULTIES: SoccerBotDifficulty[] = ["dumb", "basic", "star"];
+export const SOCCER_BOT_DIFFICULTY_LABELS: Record<SoccerBotDifficulty, string> = {
+  dumb: "Ngu ngơ",
+  basic: "Cơ bản",
+  star: "Siêu sao",
+};
+
 // Fixed jersey color per team (from the 4 colors in public/soccer/) rather
 // than a free per-player pick — with only 2 teams, letting players choose
 // freely risks two teammates (or worse, opponents) ending up in the same
@@ -267,6 +286,13 @@ export interface SoccerPlayer {
   goals: number;
   shots: number;
   tacklesWon: number;
+  // Bots are ordinary entries in the same players map/array — same physics,
+  // same fouls/cards, same stats — just driven by stepBotAI's decisions
+  // instead of a WebSocket connection's input messages. isBot is purely for
+  // display (a 🤖 badge) and for handleStartGame/handlePlayAgain to know
+  // which entries to spawn/clear.
+  isBot: boolean;
+  botDifficulty?: SoccerBotDifficulty;
 }
 
 export interface SoccerBall {
@@ -323,6 +349,8 @@ export interface SoccerPublicState {
   status: SoccerRoomStatus;
   hostId: string | null;
   teamSize: SoccerTeamSize;
+  botFillEnabled: boolean;
+  botDifficulty: SoccerBotDifficulty;
   players: SoccerPlayer[];
   referee: SoccerReferee;
   ball: SoccerBall;
@@ -350,6 +378,7 @@ export type SoccerClientMessage =
   | { type: "join"; playerId: string; name: string }
   | { type: "choose_team"; team: SoccerTeam }
   | { type: "set_team_size"; teamSize: SoccerTeamSize }
+  | { type: "set_bot_fill"; enabled: boolean; difficulty: SoccerBotDifficulty }
   | { type: "start_game" }
   | { type: "play_again" }
   | { type: "input"; up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number }

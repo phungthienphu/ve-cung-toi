@@ -15,8 +15,8 @@ import {
   SOCCER_TACKLE_COOLDOWN_MS,
   SOCCER_TACKLE_LUNGE_MS,
   SOCCER_TICK_MS,
-  SOCCER_TOUCH_COOLDOWN_MS,
   type SoccerBall,
+  type SoccerBotDifficulty,
   type SoccerCardEvent,
   type SoccerClientMessage,
   type SoccerFreeKickEvent,
@@ -32,8 +32,10 @@ import {
   type SoccerTeam,
   type SoccerTeamSize,
 } from "../shared/soccerTypes";
+import { type BotMemory, createBot, stepBotAI } from "./soccer/bots";
 import { resolveTackle } from "./soccer/fouls";
 import { makeId } from "./soccer/geometry";
+import { applyKick } from "./soccer/kicking";
 import { resolvePlayerCollisions, stepBall, stepPlayers } from "./soccer/physics";
 import { stepReferee } from "./soccer/referee";
 import type { InputState } from "./soccer/types";
@@ -61,6 +63,9 @@ export default class SoccerRoom implements Party.Server {
   hostId: string | null = null;
   status: SoccerRoomStatus = "lobby";
   teamSize: SoccerTeamSize = 2;
+  botFillEnabled = false;
+  botDifficulty: SoccerBotDifficulty = "basic";
+  botMemory = new Map<string, BotMemory>();
   teamScores: Record<SoccerTeam, number> = { A: 0, B: 0 };
   winningTeam: SoccerTeam | null = null;
   matchEndsAt: number | null = null;
@@ -121,6 +126,8 @@ export default class SoccerRoom implements Party.Server {
         return this.handleChooseTeam(msg.team, sender);
       case "set_team_size":
         return this.handleSetTeamSize(msg.teamSize, sender);
+      case "set_bot_fill":
+        return this.handleSetBotFill(msg.enabled, msg.difficulty, sender);
       case "start_game":
         return this.handleStartGame(sender);
       case "play_again":
@@ -186,6 +193,7 @@ export default class SoccerRoom implements Party.Server {
         goals: 0,
         shots: 0,
         tacklesWon: 0,
+        isBot: false,
       };
       this.players.set(playerId, player);
       if (this.players.size === 1) this.hostId = playerId;
@@ -222,6 +230,31 @@ export default class SoccerRoom implements Party.Server {
     this.reportToDirectory();
   }
 
+  private handleSetBotFill(enabled: boolean, difficulty: SoccerBotDifficulty, sender: Party.Connection) {
+    if (this.status !== "lobby" || sender.id !== this.hostId) return;
+    this.botFillEnabled = enabled;
+    this.botDifficulty = difficulty;
+    this.broadcastState();
+  }
+
+  /** Fills whatever's short of `teamSize` on each side with bots — called
+   * right before kickoffFormation in handleStartGame, once real-player
+   * validation has already passed. Spawn positions don't matter much (the
+   * very next kickoffFormation call repositions everyone into the kickoff
+   * line anyway); center-ish is just a harmless placeholder, same reasoning
+   * as a human's spawn point in handleJoin. */
+  private fillWithBots() {
+    for (const team of ["A", "B"] as const) {
+      let i = 0;
+      while (this.teamCount(team) < this.teamSize) {
+        i += 1;
+        const id = `bot-${team}-${i}`;
+        const bot = createBot(id, `🤖 Bot ${i}`, team, this.botDifficulty, SOCCER_FIELD_W / 2, SOCCER_FIELD_H / 2);
+        this.players.set(id, bot);
+      }
+    }
+  }
+
   private kickoffFormation() {
     // Sent-off players stay wherever they were (frozen — stepPlayers skips
     // them) rather than reappearing in the kickoff line, since they're out
@@ -248,15 +281,25 @@ export default class SoccerRoom implements Party.Server {
 
   private handleStartGame(sender: Party.Connection) {
     if (sender.id !== this.hostId || this.status === "playing") return;
-    if (this.teamCount("A") !== this.teamSize || this.teamCount("B") !== this.teamSize) {
+    const aCount = this.teamCount("A");
+    const bCount = this.teamCount("B");
+    if (!this.botFillEnabled) {
+      if (aCount !== this.teamSize || bCount !== this.teamSize) {
+        sender.send(
+          JSON.stringify({
+            type: "error",
+            message: `Mỗi đội cần đúng ${this.teamSize} người để bắt đầu (${this.teamSize} vs ${this.teamSize}).`,
+          } satisfies SoccerServerMessage)
+        );
+        return;
+      }
+    } else if (aCount === 0 && bCount === 0) {
       sender.send(
-        JSON.stringify({
-          type: "error",
-          message: `Mỗi đội cần đúng ${this.teamSize} người để bắt đầu (${this.teamSize} vs ${this.teamSize}).`,
-        } satisfies SoccerServerMessage)
+        JSON.stringify({ type: "error", message: "Cần ít nhất 1 người chơi thật để bắt đầu." } satisfies SoccerServerMessage)
       );
       return;
     }
+    if (this.botFillEnabled) this.fillWithBots();
     for (const p of this.players.values()) {
       p.tackleCooldownUntil = p.tackleSlowUntil = 0;
       p.tackleDashUntil = null;
@@ -290,6 +333,15 @@ export default class SoccerRoom implements Party.Server {
     this.matchEndsAt = null;
     this.kickoffUntil = null;
     this.winningTeam = null;
+    // Bots are spawned fresh per match (see fillWithBots) — clear them back
+    // out so the lobby shows only real players, and the host can freely
+    // re-pick team size/bot difficulty for the next one.
+    for (const [id, p] of this.players) {
+      if (p.isBot) {
+        this.players.delete(id);
+        this.botMemory.delete(id);
+      }
+    }
     this.broadcastState();
     this.reportToDirectory();
   }
@@ -354,15 +406,8 @@ export default class SoccerRoom implements Party.Server {
     if (this.ball.controllerId !== player.id && !this.canVolley(player)) return;
 
     const t = Math.min(1, chargedMs / SOCCER_KICK_CHARGE_MAX_MS);
-    const power = SOCCER_KICK_MIN_SPEED + (SOCCER_KICK_MAX_SPEED - SOCCER_KICK_MIN_SPEED) * t;
-    this.ball.controllerId = null;
-    this.ball.touchImmuneIds = [player.id];
-    this.ball.touchCooldownUntil = Date.now() + SOCCER_TOUCH_COOLDOWN_MS;
-    this.ball.lastToucherId = player.id;
-    this.ball.vx = Math.cos(player.angle) * power;
-    this.ball.vy = Math.sin(player.angle) * power;
-    player.shots += 1;
-    this.kickEvents.push({ id: makeId(), x: player.x, y: player.y, angle: player.angle, power: t });
+    const speed = SOCCER_KICK_MIN_SPEED + (SOCCER_KICK_MAX_SPEED - SOCCER_KICK_MIN_SPEED) * t;
+    applyKick(this, player, speed, Date.now());
   }
 
   private handleTackle(sender: Party.Connection) {
@@ -429,6 +474,10 @@ export default class SoccerRoom implements Party.Server {
 
     if (this.kickoffUntil !== null && now >= this.kickoffUntil) this.kickoffUntil = null;
     if (!this.isFrozen()) {
+      // Bots decide their movement/kicks/tackles first, writing into
+      // `this.inputs` exactly like a real "input" message would — so
+      // stepPlayers right after treats a bot no differently from a human.
+      stepBotAI(this, now, (team) => this.checkForfeit(team));
       stepPlayers(this, now);
       stepReferee(this);
       resolvePlayerCollisions(this);
@@ -486,6 +535,8 @@ export default class SoccerRoom implements Party.Server {
       status: this.status,
       hostId: this.hostId,
       teamSize: this.teamSize,
+      botFillEnabled: this.botFillEnabled,
+      botDifficulty: this.botDifficulty,
       players: [...this.players.values()],
       referee: this.referee,
       ball: this.ball,

@@ -14,7 +14,13 @@ import {
   stopSoccerBgMusic,
 } from "@/lib/sound";
 import { useSoccerRoom } from "@/lib/useSoccerRoom";
-import { SOCCER_TEAM_SIZES, type SoccerPlayer, type SoccerTeam } from "@shared/soccerTypes";
+import {
+  SOCCER_BOT_DIFFICULTIES,
+  SOCCER_BOT_DIFFICULTY_LABELS,
+  SOCCER_TEAM_SIZES,
+  type SoccerPlayer,
+  type SoccerTeam,
+} from "@shared/soccerTypes";
 import SoccerCanvas from "./SoccerCanvas";
 
 interface Props {
@@ -132,7 +138,8 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
   if (state.status === "lobby") {
     const teamA = state.players.filter((p) => p.connected && p.team === "A");
     const teamB = state.players.filter((p) => p.connected && p.team === "B");
-    const canStart = teamA.length === state.teamSize && teamB.length === state.teamSize;
+    const humanCount = state.players.filter((p) => p.connected && !p.isBot).length;
+    const canStart = state.botFillEnabled ? humanCount > 0 : teamA.length === state.teamSize && teamB.length === state.teamSize;
 
     function chooseTeam(team: SoccerTeam) {
       playClick();
@@ -164,6 +171,35 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {isHost && (
+            <div className="mb-6">
+              <label className="mb-1.5 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink/50">
+                <input
+                  type="checkbox"
+                  checked={state.botFillEnabled}
+                  onChange={(e) => send({ type: "set_bot_fill", enabled: e.target.checked, difficulty: state.botDifficulty })}
+                  className="h-3.5 w-3.5"
+                />
+                AI lấp chỗ trống
+              </label>
+              {state.botFillEnabled && (
+                <div className="flex gap-2">
+                  {SOCCER_BOT_DIFFICULTIES.map((diff) => (
+                    <button
+                      key={diff}
+                      onClick={() => send({ type: "set_bot_fill", enabled: true, difficulty: diff })}
+                      className={`rounded-lg border-2 px-3.5 py-2 text-sm font-semibold transition ${
+                        state.botDifficulty === diff ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-cream-200 text-ink/60 hover:border-emerald-300"
+                      }`}
+                    >
+                      {SOCCER_BOT_DIFFICULTY_LABELS[diff]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -209,7 +245,11 @@ export default function SoccerGameRoom({ roomId, playerId, name }: Props) {
               disabled={!canStart}
               className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {canStart ? "Bắt đầu trận đấu" : `Cần đủ ${state.teamSize} vs ${state.teamSize}`}
+              {canStart
+                ? "Bắt đầu trận đấu"
+                : state.botFillEnabled
+                  ? "Cần ít nhất 1 người chơi thật"
+                  : `Cần đủ ${state.teamSize} vs ${state.teamSize}`}
             </button>
           ) : (
             <p className="text-center text-sm text-ink/50">Đang đợi chủ phòng bắt đầu...</p>
