@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getStoredName, makeRoomId, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
 import { MAX_PLAYERS, type DrawRoomListing } from "@shared/types";
@@ -170,6 +171,10 @@ export default function DrawGuessHomePage() {
           <div className="mt-10 flex flex-wrap items-center gap-4 text-xs text-ink/40">
             <span>Tối đa {MAX_PLAYERS} người / phòng</span>
           </div>
+
+          <Link href="/" className="mt-8 block text-center text-xs font-medium text-ink/40 hover:text-ink/70">
+            ← Về trang chủ
+          </Link>
         </div>
       </div>
     </main>
