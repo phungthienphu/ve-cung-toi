@@ -61,6 +61,12 @@ export default function GamePickerPage() {
             </Link>
           ))}
         </div>
+
+        <div className="mt-6 text-center">
+          <Link href="/leaderboard" className="text-sm font-medium text-ink/60 transition hover:text-ink">
+            Bảng xếp hạng →
+          </Link>
+        </div>
       </div>
     </main>
   );

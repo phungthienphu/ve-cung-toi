@@ -7,7 +7,8 @@
     "tanklobby": "party/tank-directory.ts",
     "brawler": "party/brawler-server.ts",
     "soccer": "party/soccer-server.ts",
-    "soccerlobby": "party/soccer-directory.ts"
+    "soccerlobby": "party/soccer-directory.ts",
+    "drawlobby": "party/draw-directory.ts"
   },
   "compatibilityDate": "2024-11-01"
 }

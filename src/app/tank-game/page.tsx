@@ -16,6 +16,7 @@ export default function TankGameHomePage() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [rooms, setRooms] = useState<TankRoomListing[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +37,19 @@ export default function TankGameHomePage() {
       clearInterval(interval);
     };
   }, []);
+
+  async function handleRefresh() {
+    playClick();
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/tank-rooms", { cache: "no-store" });
+      if (res.ok) setRooms((await res.json()) as TankRoomListing[]);
+    } catch {
+      // Ignore — the auto-poll will retry shortly anyway.
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function handleCreate() {
     playClick();
@@ -91,13 +105,20 @@ export default function TankGameHomePage() {
           </button>
         </div>
 
-        {rooms.length > 0 && (
-          <div className="mt-5">
-            <div className="mb-2 flex items-center gap-3 text-xs text-ink/40">
-              <div className="h-px flex-1 bg-cream-200" />
-              phòng đang chờ ({rooms.length})
-              <div className="h-px flex-1 bg-cream-200" />
-            </div>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs text-ink/40">
+            <span className="whitespace-nowrap">phòng đang chờ {rooms.length > 0 && `(${rooms.length})`}</span>
+            <div className="h-px flex-1 bg-cream-200" />
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Tìm phòng đang mở ngay bây giờ"
+              className="flex shrink-0 items-center gap-1 rounded border border-cream-200 px-2 py-1 font-medium text-ink/60 transition hover:border-slate-500 hover:text-slate-700 disabled:opacity-50"
+            >
+              <span className={refreshing ? "animate-spin" : ""}>🔄</span> Làm mới
+            </button>
+          </div>
+          {rooms.length > 0 ? (
             <div className="max-h-48 space-y-1.5 overflow-y-auto">
               {rooms.map((r) => (
                 <button
@@ -115,8 +136,10 @@ export default function TankGameHomePage() {
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-xs text-ink/40">Chưa có phòng nào đang chờ — tạo phòng mới nhé!</p>
+          )}
+        </div>
 
         <Link href="/" className="mt-8 block text-center text-xs font-medium text-ink/40 hover:text-ink/70">
           ← Về trang chủ

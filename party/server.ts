@@ -9,6 +9,7 @@ import {
   WORD_CHOICE_SECONDS,
   type ChatEntry,
   type ClientMessage,
+  type DrawRoomListing,
   type Player,
   type PublicRoomState,
   type RoomConfig,
@@ -37,8 +38,11 @@ function normalizeGuess(text: string): string {
   return text.trim().toLowerCase().normalize("NFC").replace(/\s+/g, " ");
 }
 
-function wordHint(word: string): string {
-  return word.replace(/\S/g, "_");
+function wordHint(word: string, revealed: Set<number>): string {
+  return word
+    .split("")
+    .map((ch, i) => (/\s/.test(ch) || revealed.has(i) ? ch : "_"))
+    .join("");
 }
 
 function makeId(): string {
@@ -61,6 +65,9 @@ export default class GameRoom implements Party.Server {
   drawerId: string | null = null;
   word: string | null = null;
   wordChoices: string[] = [];
+  // Character indices of `word` the drawer has chosen to reveal to
+  // guessers this turn — reset whenever a new word is picked.
+  revealedIndices = new Set<number>();
 
   turnEndsAt: number | null = null; // when the drawing phase ends
   phaseEndsAt: number | null = null; // when choosing/roundEnd/gameEnd auto-advances
@@ -163,6 +170,8 @@ export default class GameRoom implements Party.Server {
         return this.handleKickPlayer(msg.playerId, sender);
       case "leave_room":
         return this.handleLeaveRoom(sender);
+      case "reveal_letter":
+        return this.handleRevealLetter(msg.index, sender);
     }
   }
 
@@ -292,6 +301,13 @@ export default class GameRoom implements Party.Server {
     this.broadcast({ type: "clear_canvas" }, [sender.id]);
   }
 
+  private handleRevealLetter(index: number, sender: Party.Connection) {
+    if (this.status !== "playing" || sender.id !== this.drawerId || !this.word) return;
+    if (index < 0 || index >= this.word.length || /\s/.test(this.word[index])) return;
+    this.revealedIndices.add(index);
+    this.broadcastState();
+  }
+
   private handlePlayAgain(sender: Party.Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status !== "gameEnd") return;
@@ -299,6 +315,7 @@ export default class GameRoom implements Party.Server {
     this.drawerId = null;
     this.word = null;
     this.wordChoices = [];
+    this.revealedIndices.clear();
     this.strokes = [];
     this.turnEndsAt = null;
     this.phaseEndsAt = null;
@@ -425,6 +442,7 @@ export default class GameRoom implements Party.Server {
 
   private beginDrawingPhase(word: string) {
     this.word = word;
+    this.revealedIndices.clear();
     this.usedWords.add(word);
     this.status = "playing";
     this.turnEndsAt = Date.now() + this.config.drawSeconds * 1000;
@@ -584,7 +602,7 @@ export default class GameRoom implements Party.Server {
       config: this.config,
       drawerId: this.drawerId,
       wordLength: this.word ? this.word.length : null,
-      wordHint: this.word ? wordHint(this.word) : null,
+      wordHint: this.word ? wordHint(this.word, this.revealedIndices) : null,
       revealedWord: this.status === "roundEnd" || this.status === "gameEnd" ? this.word : null,
       round: Math.max(0, this.turnIndex) + (this.status === "lobby" ? 0 : 1),
       totalTurns: this.totalTurns,
@@ -596,6 +614,27 @@ export default class GameRoom implements Party.Server {
 
   private broadcastState() {
     this.broadcast(this.stateMessage());
+    this.reportToDirectory();
+  }
+
+  /** Pushes this room's listing-relevant state (player count, status) to the
+   * draw-directory party, so the draw-guess home screen can show it as a
+   * joinable lobby — see draw-directory.ts. Called from the single
+   * broadcastState() choke point (rather than one-by-one at every mutation
+   * site, the way tank/soccer originally did it) so no future state change
+   * can accidentally forget to report — every broadcast is a report.
+   * Fire-and-forget: the listing is a nice-to-have, never something
+   * gameplay should wait on or fail over. */
+  private reportToDirectory() {
+    const listing: DrawRoomListing = {
+      roomId: this.party.id,
+      playerCount: [...this.players.values()].filter((p) => p.connected).length,
+      status: this.status,
+    };
+    this.party.context.parties["drawlobby"]
+      .get("main")
+      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
+      .catch(() => {});
   }
 
   private broadcast(message: ServerMessage, exclude: string[] = []) {

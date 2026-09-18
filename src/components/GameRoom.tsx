@@ -151,6 +151,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         myWord={myWord}
         wordHint={state.wordHint}
         drawerName={drawerName}
+        onRevealLetter={(index) => send({ type: "reveal_letter", index })}
       />
 
       <button
@@ -251,6 +252,7 @@ function RoundHeader({
   myWord,
   wordHint,
   drawerName,
+  onRevealLetter,
 }: {
   round: number;
   totalTurns: number;
@@ -262,6 +264,7 @@ function RoundHeader({
   myWord: string | null;
   wordHint: string | null;
   drawerName?: string;
+  onRevealLetter: (index: number) => void;
 }) {
   const remaining = useCountdown(status === "playing" ? turnEndsAt : phaseEndsAt);
   const total =
@@ -270,6 +273,7 @@ function RoundHeader({
   const seconds = Math.ceil(remaining / 1000);
 
   const display = isDrawer && myWord ? myWord.split("").join(" ") : (wordHint ?? "").split("").join(" ");
+  const showLetterPicker = isDrawer && status === "playing" && !!myWord;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
@@ -287,9 +291,33 @@ function RoundHeader({
       <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
         <div className={`h-full ${seconds <= 10 && status === "playing" ? "bg-red-500" : "bg-brand-500"}`} style={{ width: `${pct}%` }} />
       </div>
-      {(status === "playing" || status === "choosing") && (
-        <div className="mt-2 text-center text-2xl font-black tracking-widest text-slate-700">{display || " "}</div>
-      )}
+      {(status === "playing" || status === "choosing") &&
+        (showLetterPicker && myWord ? (
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
+            {myWord.split("").map((ch, i) => {
+              if (/\s/.test(ch)) return <span key={i} className="w-3" />;
+              const isRevealed = wordHint != null && wordHint[i] !== "_";
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={isRevealed}
+                  onClick={() => onRevealLetter(i)}
+                  title={isRevealed ? "Đã gợi ý" : "Bấm để gợi ý chữ này cho người đoán"}
+                  className={`flex h-9 w-8 items-center justify-center rounded-md border-2 text-xl font-black uppercase transition ${
+                    isRevealed
+                      ? "cursor-default border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-600"
+                  }`}
+                >
+                  {ch}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-2 text-center text-2xl font-black tracking-widest text-slate-700">{display || " "}</div>
+        ))}
     </div>
   );
 }

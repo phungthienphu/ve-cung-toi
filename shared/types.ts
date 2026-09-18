@@ -93,7 +93,19 @@ export type ClientMessage =
   | { type: "chat"; text: string }
   | { type: "play_again" }
   | { type: "kick_player"; playerId: string }
-  | { type: "leave_room" };
+  | { type: "leave_room" }
+  | { type: "reveal_letter"; index: number };
+
+/** One entry in the public room list (draw-directory party) — lets the
+ * draw-guess home screen show open lobbies people can join without already
+ * knowing a room code, same idea as TankRoomListing/SoccerRoomListing.
+ * Deliberately excludes player names since anyone loading the home page can
+ * fetch this, not just people already in the room. */
+export interface DrawRoomListing {
+  roomId: string;
+  playerCount: number;
+  status: RoomStatus;
+}
 
 export type ServerMessage =
   | { type: "state"; state: PublicRoomState }
