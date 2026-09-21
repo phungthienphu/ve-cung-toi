@@ -83,19 +83,18 @@ export default function DrawGuessHomePage() {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <main className={`${drawFontClass} bg-home-scene flex min-h-app justify-center items-center p-6 sm:p-10 lg:p-32`}>
-      <div className="w-full min-w-0 max-w-xl rounded-lg bg-white/95 p-8 shadow-2xl">
-        <div className="w-full">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-clay-500 font-draw-display text-2xl font-bold text-white ring-2 ring-clay-500">
-            {initial}
-          </div>
+    <main className={`${drawFontClass} bg-home-scene flex min-h-app justify-center items-center p-6 sm:p-10 lg:p-16`}>
+      <div className="w-full max-w-3xl">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-clay-500 font-draw-display text-2xl font-bold text-white shadow-lg ring-2 ring-clay-500">
+          {initial}
+        </div>
+        <h1 className="text-center font-draw-display text-4xl font-bold tracking-tight text-ink">Vẽ &amp; đoán chữ cùng bạn bè</h1>
+        <p className="mx-auto mt-2 max-w-md text-center text-sm leading-relaxed text-ink/60">
+          Không cần tài khoản. Tạo phòng, gửi link cho bạn bè, chơi ngay trên trình duyệt.
+        </p>
 
-          <h1 className="text-center font-draw-display text-3xl font-bold tracking-tight text-ink">Vẽ &amp; đoán chữ cùng bạn bè</h1>
-          <p className="mt-2 text-center text-sm leading-relaxed text-ink/60">
-            Không cần tài khoản. Tạo phòng, gửi link cho bạn bè, chơi ngay trên trình duyệt.
-          </p>
-
-          <div className="mt-8">
+        <div className="mt-8 grid gap-5 md:grid-cols-2">
+          <div className="min-w-0 rounded-2xl border border-cream-200 bg-white/95 p-6 shadow-2xl">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Tên hiển thị</label>
             <input
               className="mb-4 w-full rounded-lg border border-cream-200 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
@@ -107,7 +106,7 @@ export default function DrawGuessHomePage() {
 
             <button
               onClick={handleCreate}
-              className="mb-5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-clay-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-clay-500/30 transition hover:bg-clay-600 active:bg-clay-700"
+              className="mb-5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-clay-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-clay-500/30 transition hover:bg-clay-600 active:bg-clay-700"
             >
               Tạo phòng mới
               <span aria-hidden>→</span>
@@ -135,46 +134,52 @@ export default function DrawGuessHomePage() {
                 Vào
               </button>
             </div>
+          </div>
 
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-ink/40">
-                <span className="whitespace-nowrap">phòng đang chờ {rooms.length > 0 && `(${rooms.length})`}</span>
-                <div className="h-px flex-1 bg-cream-200" />
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  title="Tìm phòng đang mở ngay bây giờ"
-                  className="flex shrink-0 items-center gap-1 rounded border border-cream-200 px-2 py-1 font-medium text-ink/60 transition hover:border-clay-500 hover:text-clay-600 disabled:opacity-50"
-                >
-                  <span className={refreshing ? "animate-spin" : ""}>🔄</span> Làm mới
-                </button>
-              </div>
-              {rooms.length > 0 ? (
-                <div className="max-h-48 space-y-1.5 overflow-y-auto">
-                  {rooms.map((r) => (
-                    <button
-                      key={r.roomId}
-                      onClick={() => handleJoin(r.roomId)}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border-2 border-dashed border-cream-200 bg-white px-3.5 py-2 text-left text-sm transition hover:border-clay-500 hover:bg-clay-500/5"
-                    >
-                      <span className="min-w-0 flex-1 truncate font-draw-display font-semibold tracking-wider text-clay-600">{r.roomId}</span>
-                      <span className="shrink-0 text-xs font-medium text-ink/50">
-                        {r.playerCount}/{MAX_PLAYERS} người
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-ink/40">Chưa có phòng nào đang chờ — tạo phòng mới nhé!</p>
-              )}
+          <div className="min-w-0 rounded-2xl border border-cream-200 bg-white/95 p-6 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">
+                Phòng đang chờ {rooms.length > 0 && `(${rooms.length})`}
+              </h3>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title="Tìm phòng đang mở ngay bây giờ"
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-cream-200 px-2.5 py-1 text-xs font-medium text-ink/60 transition hover:border-clay-500 hover:text-clay-600 disabled:opacity-50"
+              >
+                <span className={refreshing ? "animate-spin" : ""}>🔄</span> Làm mới
+              </button>
             </div>
+            {rooms.length > 0 ? (
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {rooms.map((r) => (
+                  <button
+                    key={r.roomId}
+                    onClick={() => handleJoin(r.roomId)}
+                    className="flex w-full items-center justify-between gap-2 rounded-xl border-2 border-dashed border-cream-200 bg-white px-4 py-3 text-left text-sm transition hover:border-clay-500 hover:bg-clay-500/5"
+                  >
+                    <span className="min-w-0 flex-1 truncate font-draw-display text-base font-semibold tracking-wider text-clay-600">
+                      {r.roomId}
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-ink/50">
+                      {r.playerCount}/{MAX_PLAYERS} người
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-32 items-center justify-center text-center text-sm text-ink/40">
+                Chưa có phòng nào đang chờ
+                <br />— tạo phòng mới nhé!
+              </div>
+            )}
           </div>
+        </div>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4 text-xs text-ink/40">
-            <span>Tối đa {MAX_PLAYERS} người / phòng</span>
-          </div>
-
-          <Link href="/" className="mt-8 block text-center text-xs font-medium text-ink/40 hover:text-ink/70">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-ink/40">
+          <span>Tối đa {MAX_PLAYERS} người / phòng</span>
+          <span className="text-ink/20">•</span>
+          <Link href="/" className="font-medium text-clay-600 transition hover:text-clay-700">
             ← Về trang chủ
           </Link>
         </div>

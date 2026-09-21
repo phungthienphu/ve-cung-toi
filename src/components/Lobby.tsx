@@ -22,6 +22,32 @@ function wordlistLabel(id: string): string {
   return DEFAULT_WORDLISTS.find((w) => w.id === id)?.name ?? id;
 }
 
+const ROUND_PRESETS = [2, 3, 5, 8];
+const TIME_PRESETS = [60, 80, 120, 180];
+
+function SegButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg border-2 px-3.5 py-1.5 text-sm font-semibold transition ${
+        active ? "border-clay-500 bg-clay-500/10 text-clay-600" : "border-cream-200 text-ink/60 hover:border-clay-300"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CfgRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cream-100 py-3 last:border-0">
+      <span className="text-sm font-semibold text-ink/70">{label}</span>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
 export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: Props) {
   const router = useRouter();
   const [rounds, setRounds] = useState(DEFAULT_ROOM_CONFIG.rounds);
@@ -110,104 +136,73 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
 
   return (
     <div className={`${drawFontClass} bg-game-scene min-h-app flex items-center`}>
-      <div className="m-auto grid w-full min-w-0 max-w-4xl gap-5 px-4 py-10 md:grid-cols-[1fr_320px]">
-        <div className="min-w-0 rounded-xl border border-cream-200 bg-white p-6 shadow-xl">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="m-auto grid w-full min-w-0 max-w-5xl gap-5 px-4 py-10 md:h-[640px] md:grid-cols-[1fr_320px]">
+        <div className="flex min-w-0 flex-col rounded-xl border border-cream-200 bg-white p-6 shadow-xl md:min-h-0">
+          <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-3">
             <h2 className="font-draw-display text-xl font-bold tracking-tight text-ink">Phòng chờ</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleCopyLink}
-                className="flex items-center gap-2 rounded-lg border-2 border-dashed border-cream-200 bg-white px-3 py-1.5 text-sm font-medium text-ink/70 transition hover:border-clay-500"
-              >
-                {copied ? (
-                  "Đã sao chép!"
-                ) : (
-                  <>
-                    <span className="text-xs uppercase tracking-wide text-ink/40">Mã</span>
-                    <span className="font-draw-display font-semibold tracking-wider text-clay-600">{roomId}</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={handleLeave}
-                className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
-              >
-                Rời phòng
-              </button>
-            </div>
+            <button
+              onClick={handleLeave}
+              className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
+            >
+              Rời phòng
+            </button>
           </div>
 
+          <button
+            onClick={handleCopyLink}
+            className="mb-5 flex w-full shrink-0 items-center justify-between gap-3 rounded-xl border-2 border-dashed border-cream-200 bg-cream-50 px-4 py-3 text-left transition hover:border-clay-500"
+          >
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-ink/40">Mã phòng · bấm để sao chép</div>
+              <div className="font-draw-display text-xl tracking-widest text-clay-600">{roomId}</div>
+            </div>
+            <span className="shrink-0 rounded-lg border border-cream-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink/70">
+              {copied ? "Đã sao chép!" : "📋 Sao chép link"}
+            </span>
+          </button>
+
           {isHost ? (
-            <div className="space-y-5">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-ink/70">Số vòng (mỗi người vẽ N lần)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={rounds}
-                  onChange={(e) => setRounds(Number(e.target.value))}
-                  className="w-24 rounded-lg border border-cream-200 px-3 py-1.5 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
-                />
-              </div>
+            <div className="flex min-h-0 flex-1 flex-col">
+            <div className="-mr-1 min-h-0 flex-1 overflow-y-auto pr-1">
+              <CfgRow label="Số vòng">
+                {ROUND_PRESETS.map((n) => (
+                  <SegButton key={n} active={rounds === n} onClick={() => setRounds(n)}>
+                    {n}
+                  </SegButton>
+                ))}
+              </CfgRow>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-ink/70">Thời gian vẽ mỗi lượt (giây)</label>
-                <input
-                  type="number"
-                  min={30}
-                  max={240}
-                  step={10}
-                  value={drawSeconds}
-                  onChange={(e) => setDrawSeconds(Number(e.target.value))}
-                  className="w-24 rounded-lg border border-cream-200 px-3 py-1.5 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
-                />
-              </div>
+              <CfgRow label="Thời gian vẽ">
+                {TIME_PRESETS.map((s) => (
+                  <SegButton key={s} active={drawSeconds === s} onClick={() => setDrawSeconds(s)}>
+                    {s}s
+                  </SegButton>
+                ))}
+              </CfgRow>
 
-              <div className={customOnly ? "opacity-40" : undefined}>
-                <label className="mb-1 block text-sm font-medium text-ink/70">Bộ từ vựng</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="accent-clay-500" checked={useVi} disabled={customOnly} onChange={(e) => setUseVi(e.target.checked)} />
+              <CfgRow label="Độ khó">
+                <SegButton active={difficulty === "easy"} onClick={() => setDifficulty("easy")}>
+                  Dễ
+                </SegButton>
+                <SegButton active={difficulty === "hard"} onClick={() => setDifficulty("hard")}>
+                  Khó &amp; Hài hước
+                </SegButton>
+              </CfgRow>
+
+              <div className={`flex flex-wrap items-center justify-between gap-2 border-b border-cream-100 py-3 ${customOnly ? "opacity-40" : ""}`}>
+                <span className="text-sm font-semibold text-ink/70">Bộ từ</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <SegButton active={useVi} onClick={() => !customOnly && setUseVi(!useVi)}>
                     Tiếng Việt
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="accent-clay-500" checked={useEn} disabled={customOnly} onChange={(e) => setUseEn(e.target.checked)} />
+                  </SegButton>
+                  <SegButton active={useEn} onClick={() => !customOnly && setUseEn(!useEn)}>
                     English
-                  </label>
+                  </SegButton>
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-ink/70">Độ khó</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDifficulty("easy")}
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${difficulty === "easy"
-                        ? "border-clay-500 bg-clay-500 text-white"
-                        : "border-cream-200 text-ink/70 hover:border-clay-500 hover:text-clay-600"
-                      }`}
-                  >
-                    Dễ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDifficulty("hard")}
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${difficulty === "hard"
-                        ? "border-clay-500 bg-clay-500 text-white"
-                        : "border-cream-200 text-ink/70 hover:border-clay-500 hover:text-clay-600"
-                      }`}
-                  >
-                    Khó &amp; Hài hước
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-ink/70">Số từ mỗi câu đố (giới hạn độ dài)</label>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-ink/50">Từ</span>
+              <CfgRow label="Số từ mỗi câu">
+                <div className="flex items-center gap-1.5 text-sm text-ink/50">
                   <select
                     value={minWords}
                     onChange={(e) => {
@@ -223,7 +218,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                       </option>
                     ))}
                   </select>
-                  <span className="text-ink/50">đến</span>
+                  <span>đến</span>
                   <select
                     value={maxWords}
                     onChange={(e) => {
@@ -239,16 +234,15 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                       </option>
                     ))}
                   </select>
-                  <span className="text-ink/50">từ / câu</span>
                 </div>
-                <p className="mt-1 text-xs text-ink/40">
-                  Số nhỏ (1-2) ra từ ngắn dễ đoán như &ldquo;con mèo&rdquo;. Số lớn hơn sẽ ra cụm dài, khó và hài hước hơn.
-                </p>
-              </div>
+              </CfgRow>
+              <p className="pb-1 pt-2 text-xs text-ink/40">
+                Số nhỏ (1-2) ra từ ngắn dễ đoán như &ldquo;con mèo&rdquo;. Số lớn hơn sẽ ra cụm dài, khó và hài hước hơn.
+              </p>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-ink/70">
-                  Từ tùy chỉnh (mỗi dòng 1 từ, tùy chọn — cần ≥20 từ nếu không dùng bộ mặc định)
+              <div className="mt-4 border-t border-cream-100 pt-4">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-ink/50">
+                  Từ tùy chỉnh <span className="font-normal normal-case text-ink/40">(mỗi dòng 1 từ, cần ≥20 từ nếu không dùng bộ mặc định)</span>
                 </label>
                 <textarea
                   value={customWords}
@@ -257,29 +251,32 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                   placeholder={"con mèo\ncon chó\n..."}
                   className="w-full rounded-lg border border-cream-200 px-3 py-2 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                 />
-                <label className="mt-2 flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="accent-clay-500" checked={customOnly} onChange={(e) => setCustomOnly(e.target.checked)} />
-                  Chỉ dùng từ tùy chỉnh (bỏ qua bộ từ mặc định ở trên)
+                <label className="mt-2.5 flex items-start gap-2 text-sm text-ink/60">
+                  <input type="checkbox" className="mt-0.5 accent-clay-500" checked={customOnly} onChange={(e) => setCustomOnly(e.target.checked)} />
+                  <span>
+                    Chỉ dùng từ tùy chỉnh <b className="font-semibold text-ink">(bỏ qua bộ từ mặc định ở trên)</b>
+                  </span>
                 </label>
               </div>
 
               {willRepeatWords && (
-                <p className="rounded-lg border border-gold-500/40 bg-gold-100 px-3 py-2 text-xs text-gold-600">
+                <p className="mt-4 rounded-lg border border-gold-500/40 bg-gold-100 px-3 py-2 text-xs text-gold-600">
                   ⚠️ Chỉ có {liveWordPool.length} từ phù hợp nhưng ván này cần {turnsNeeded} lượt vẽ ({Math.max(connectedCount, MIN_PLAYERS_TO_START)}{" "}
                   người × {rounds} vòng) — một số từ sẽ bị lặp lại. Nới rộng khoảng số từ/câu, thêm bộ từ vựng, hoặc thêm từ tùy chỉnh để tránh.
                 </p>
               )}
+            </div>
 
               <button
                 onClick={handleStart}
                 disabled={!canStart}
-                className="w-full rounded-lg bg-clay-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-clay-500/30 transition hover:bg-clay-600 disabled:cursor-not-allowed disabled:opacity-40"
+                className="mt-4 w-full shrink-0 rounded-lg bg-clay-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-clay-500/30 transition hover:bg-clay-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {canStart ? "Bắt đầu chơi" : `Cần ít nhất ${MIN_PLAYERS_TO_START} người chơi`}
+                {canStart ? "Bắt đầu chơi →" : `Cần ít nhất ${MIN_PLAYERS_TO_START} người chơi`}
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
               <p className="text-ink/50">Đang chờ chủ phòng bắt đầu ván chơi...</p>
               <div className="rounded-lg border border-cream-200 bg-cream-50 p-4 text-sm text-ink/70">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">Cài đặt phòng (chỉ xem)</p>
