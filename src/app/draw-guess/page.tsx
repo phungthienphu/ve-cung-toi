@@ -84,7 +84,7 @@ export default function DrawGuessHomePage() {
 
   return (
     <main className={`${drawFontClass} bg-home-scene flex min-h-app justify-center items-center p-6 sm:p-10 lg:p-16`}>
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-3xl rounded-2xl border border-cream-200 bg-white/95 p-6 shadow-2xl sm:p-8">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-clay-500 font-draw-display text-2xl font-bold text-white shadow-lg ring-2 ring-clay-500">
           {initial}
         </div>
@@ -94,7 +94,7 @@ export default function DrawGuessHomePage() {
         </p>
 
         <div className="mt-8 grid gap-5 md:grid-cols-2">
-          <div className="min-w-0 rounded-2xl border border-cream-200 bg-white/95 p-6 shadow-2xl">
+          <div className="min-w-0 rounded-2xl border border-cream-200 bg-cream-50 p-6">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Tên hiển thị</label>
             <input
               className="mb-4 w-full rounded-lg border border-cream-200 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
@@ -136,7 +136,7 @@ export default function DrawGuessHomePage() {
             </div>
           </div>
 
-          <div className="min-w-0 rounded-2xl border border-cream-200 bg-white/95 p-6 shadow-2xl">
+          <div className="min-w-0 rounded-2xl border border-cream-200 bg-cream-50 p-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">
                 Phòng đang chờ {rooms.length > 0 && `(${rooms.length})`}
