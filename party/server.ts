@@ -207,6 +207,13 @@ export default class GameRoom implements Party.Server {
     }
 
     if (!this.hostId || !this.players.get(this.hostId)?.connected) {
+      // Whoever held hostId before (if still present, e.g. mid disconnect
+      // grace period) keeps a stale isHost:true forever otherwise — this is
+      // the only host-reassignment path that doesn't already delete or
+      // explicitly clear the outgoing host (unlike finalizeDisconnect/
+      // handleLeaveRoom), so it's the one spot that must do it manually.
+      const prevHost = this.players.get(this.hostId ?? "");
+      if (prevHost) prevHost.isHost = false;
       this.hostId = playerId;
       player.isHost = true;
     }

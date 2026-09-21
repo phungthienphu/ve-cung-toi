@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatEntry } from "@shared/types";
 import { playCorrect, playPop } from "@/lib/sound";
 import { burstConfetti } from "@/lib/confetti";
+import { drawFontClass } from "@/lib/drawFonts";
 
 interface Props {
   entries: ChatEntry[];
@@ -55,33 +56,41 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col rounded-xl border border-slate-200 bg-white shadow-xl">
+    <div className={`${drawFontClass} flex h-full min-h-0 min-w-0 flex-col rounded-xl border border-cream-200 bg-white shadow-xl`}>
       <div ref={listRef} className="no-scrollbar min-w-0 flex-1 space-y-1.5 overflow-y-auto p-3 text-sm">
         {entries.map((entry) => {
           if (entry.type === "system") {
             return (
-              <div key={entry.id} className="break-words text-center text-xs italic text-slate-400">
+              <div key={entry.id} className="break-words text-center text-xs italic text-ink/40">
                 {entry.text}
               </div>
             );
           }
           if (entry.type === "correct") {
             return (
-              <div key={entry.id} className="animate-bounce-in break-words font-medium text-emerald-600">
+              <div
+                key={entry.id}
+                className="animate-bounce-in mx-auto w-fit break-words rounded-full bg-sage-100 px-3 py-1 text-center font-semibold text-sage-600"
+              >
                 🎉 {entry.name} đã đoán đúng!
               </div>
             );
           }
           const isSelf = entry.playerId === selfId;
           return (
-            <div key={entry.id} className={`break-words ${isSelf ? "text-brand-700" : "text-slate-700"}`}>
-              <span className="font-semibold">{entry.name}: </span>
+            <div
+              key={entry.id}
+              className={`w-fit max-w-[90%] break-words rounded-2xl rounded-bl-sm px-3 py-1.5 ${
+                isSelf ? "ml-auto rounded-bl-2xl rounded-br-sm bg-clay-500/10 text-clay-700" : "bg-cream-50 text-ink/80"
+              }`}
+            >
+              <span className="text-xs font-semibold text-ink/50">{entry.name}: </span>
               <span className="break-all">{entry.text}</span>
             </div>
           );
         })}
       </div>
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-slate-100 p-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-cream-100 p-2">
         <textarea
           ref={textareaRef}
           value={text}
@@ -90,11 +99,11 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
           maxLength={200}
           rows={1}
           placeholder={canGuess ? "Nhập câu đoán..." : "Nhắn tin..."}
-          className="max-h-24 min-w-0 flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="max-h-24 min-w-0 flex-1 resize-none rounded-lg border border-cream-200 px-3 py-2 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
         />
         <button
           type="submit"
-          className="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          className="shrink-0 rounded-lg bg-clay-500 px-3 py-2 text-sm font-medium text-white hover:bg-clay-600"
         >
           Gửi
         </button>

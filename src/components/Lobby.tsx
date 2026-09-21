@@ -6,6 +6,7 @@ import type { ClientMessage, PublicRoomState, RoomConfig } from "@shared/types";
 import { DEFAULT_ROOM_CONFIG, MAX_WORD_COUNT, MIN_PLAYERS_TO_START, MIN_WORD_COUNT } from "@shared/types";
 import { DEFAULT_WORDLISTS, buildWordPool } from "@shared/wordlists";
 import { playClick } from "@/lib/sound";
+import { drawFontClass } from "@/lib/drawFonts";
 import PlayerList from "./PlayerList";
 
 interface Props {
@@ -108,21 +109,28 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
   }
 
   return (
-    <div className="bg-game-scene min-h-app flex items-center">
+    <div className={`${drawFontClass} bg-game-scene min-h-app flex items-center`}>
       <div className="m-auto grid w-full min-w-0 max-w-4xl gap-5 px-4 py-10 md:grid-cols-[1fr_320px]">
-        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">Phòng chờ</h2>
-            <div className="flex flex-wrap gap-2">
+        <div className="min-w-0 rounded-xl border border-cream-200 bg-white p-6 shadow-xl">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-draw-display text-xl font-bold tracking-tight text-ink">Phòng chờ</h2>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleCopyLink}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+                className="flex items-center gap-2 rounded-lg border-2 border-dashed border-cream-200 bg-white px-3 py-1.5 text-sm font-medium text-ink/70 transition hover:border-clay-500"
               >
-                {copied ? "Đã sao chép!" : `Mã: ${roomId}`}
+                {copied ? (
+                  "Đã sao chép!"
+                ) : (
+                  <>
+                    <span className="text-xs uppercase tracking-wide text-ink/40">Mã</span>
+                    <span className="font-draw-display font-semibold tracking-wider text-clay-600">{roomId}</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={handleLeave}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
+                className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
               >
                 Rời phòng
               </button>
@@ -132,19 +140,19 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
           {isHost ? (
             <div className="space-y-5">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">Số vòng (mỗi người vẽ N lần)</label>
+                <label className="mb-1 block text-sm font-medium text-ink/70">Số vòng (mỗi người vẽ N lần)</label>
                 <input
                   type="number"
                   min={1}
                   max={10}
                   value={rounds}
                   onChange={(e) => setRounds(Number(e.target.value))}
-                  className="w-24 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  className="w-24 rounded-lg border border-cream-200 px-3 py-1.5 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">Thời gian vẽ mỗi lượt (giây)</label>
+                <label className="mb-1 block text-sm font-medium text-ink/70">Thời gian vẽ mỗi lượt (giây)</label>
                 <input
                   type="number"
                   min={30}
@@ -152,33 +160,33 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                   step={10}
                   value={drawSeconds}
                   onChange={(e) => setDrawSeconds(Number(e.target.value))}
-                  className="w-24 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  className="w-24 rounded-lg border border-cream-200 px-3 py-1.5 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                 />
               </div>
 
               <div className={customOnly ? "opacity-40" : undefined}>
-                <label className="mb-1 block text-sm font-medium text-slate-600">Bộ từ vựng</label>
+                <label className="mb-1 block text-sm font-medium text-ink/70">Bộ từ vựng</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={useVi} disabled={customOnly} onChange={(e) => setUseVi(e.target.checked)} />
+                    <input type="checkbox" className="accent-clay-500" checked={useVi} disabled={customOnly} onChange={(e) => setUseVi(e.target.checked)} />
                     Tiếng Việt
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={useEn} disabled={customOnly} onChange={(e) => setUseEn(e.target.checked)} />
+                    <input type="checkbox" className="accent-clay-500" checked={useEn} disabled={customOnly} onChange={(e) => setUseEn(e.target.checked)} />
                     English
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">Độ khó</label>
+                <label className="mb-1 block text-sm font-medium text-ink/70">Độ khó</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setDifficulty("easy")}
                     className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${difficulty === "easy"
-                        ? "border-brand-500 bg-brand-500 text-white"
-                        : "border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-600"
+                        ? "border-clay-500 bg-clay-500 text-white"
+                        : "border-cream-200 text-ink/70 hover:border-clay-500 hover:text-clay-600"
                       }`}
                   >
                     Dễ
@@ -187,8 +195,8 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                     type="button"
                     onClick={() => setDifficulty("hard")}
                     className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${difficulty === "hard"
-                        ? "border-brand-500 bg-brand-500 text-white"
-                        : "border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-600"
+                        ? "border-clay-500 bg-clay-500 text-white"
+                        : "border-cream-200 text-ink/70 hover:border-clay-500 hover:text-clay-600"
                       }`}
                   >
                     Khó &amp; Hài hước
@@ -197,9 +205,9 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">Số từ mỗi câu đố (giới hạn độ dài)</label>
+                <label className="mb-1 block text-sm font-medium text-ink/70">Số từ mỗi câu đố (giới hạn độ dài)</label>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-500">Từ</span>
+                  <span className="text-ink/50">Từ</span>
                   <select
                     value={minWords}
                     onChange={(e) => {
@@ -207,7 +215,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                       setMinWords(v);
                       if (v > maxWords) setMaxWords(v);
                     }}
-                    className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    className="rounded-lg border border-cream-200 px-2 py-1.5 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                   >
                     {Array.from({ length: MAX_WORD_COUNT - MIN_WORD_COUNT + 1 }, (_, i) => MIN_WORD_COUNT + i).map((n) => (
                       <option key={n} value={n}>
@@ -215,7 +223,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                       </option>
                     ))}
                   </select>
-                  <span className="text-slate-500">đến</span>
+                  <span className="text-ink/50">đến</span>
                   <select
                     value={maxWords}
                     onChange={(e) => {
@@ -223,7 +231,7 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                       setMaxWords(v);
                       if (v < minWords) setMinWords(v);
                     }}
-                    className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    className="rounded-lg border border-cream-200 px-2 py-1.5 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                   >
                     {Array.from({ length: MAX_WORD_COUNT - MIN_WORD_COUNT + 1 }, (_, i) => MIN_WORD_COUNT + i).map((n) => (
                       <option key={n} value={n}>
@@ -231,15 +239,15 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                       </option>
                     ))}
                   </select>
-                  <span className="text-slate-500">từ / câu</span>
+                  <span className="text-ink/50">từ / câu</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-ink/40">
                   Số nhỏ (1-2) ra từ ngắn dễ đoán như &ldquo;con mèo&rdquo;. Số lớn hơn sẽ ra cụm dài, khó và hài hước hơn.
                 </p>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">
+                <label className="mb-1 block text-sm font-medium text-ink/70">
                   Từ tùy chỉnh (mỗi dòng 1 từ, tùy chọn — cần ≥20 từ nếu không dùng bộ mặc định)
                 </label>
                 <textarea
@@ -247,16 +255,16 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
                   onChange={(e) => setCustomWords(e.target.value)}
                   rows={4}
                   placeholder={"con mèo\ncon chó\n..."}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  className="w-full rounded-lg border border-cream-200 px-3 py-2 text-sm outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                 />
                 <label className="mt-2 flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={customOnly} onChange={(e) => setCustomOnly(e.target.checked)} />
+                  <input type="checkbox" className="accent-clay-500" checked={customOnly} onChange={(e) => setCustomOnly(e.target.checked)} />
                   Chỉ dùng từ tùy chỉnh (bỏ qua bộ từ mặc định ở trên)
                 </label>
               </div>
 
               {willRepeatWords && (
-                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <p className="rounded-lg border border-gold-500/40 bg-gold-100 px-3 py-2 text-xs text-gold-600">
                   ⚠️ Chỉ có {liveWordPool.length} từ phù hợp nhưng ván này cần {turnsNeeded} lượt vẽ ({Math.max(connectedCount, MIN_PLAYERS_TO_START)}{" "}
                   người × {rounds} vòng) — một số từ sẽ bị lặp lại. Nới rộng khoảng số từ/câu, thêm bộ từ vựng, hoặc thêm từ tùy chỉnh để tránh.
                 </p>
@@ -265,16 +273,16 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
               <button
                 onClick={handleStart}
                 disabled={!canStart}
-                className="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-200 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+                className="w-full rounded-lg bg-clay-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-clay-500/30 transition hover:bg-clay-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {canStart ? "Bắt đầu chơi" : `Cần ít nhất ${MIN_PLAYERS_TO_START} người chơi`}
               </button>
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-slate-500">Đang chờ chủ phòng bắt đầu ván chơi...</p>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Cài đặt phòng (chỉ xem)</p>
+              <p className="text-ink/50">Đang chờ chủ phòng bắt đầu ván chơi...</p>
+              <div className="rounded-lg border border-cream-200 bg-cream-50 p-4 text-sm text-ink/70">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">Cài đặt phòng (chỉ xem)</p>
                 <dl className="space-y-1.5">
                   <div className="flex justify-between">
                     <dt>Số vòng</dt>

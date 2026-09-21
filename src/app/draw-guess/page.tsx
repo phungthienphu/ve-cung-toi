@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getStoredName, makeRoomId, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
+import { drawFontClass } from "@/lib/drawFonts";
 import { MAX_PLAYERS, type DrawRoomListing } from "@shared/types";
 
 // Room list is a nice-to-have, not core gameplay — poll instead of a
@@ -79,17 +80,18 @@ export default function DrawGuessHomePage() {
     router.push(`/room/${target}`);
   }
 
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+
   return (
-    <main className="bg-home-scene flex min-h-app justify-center items-center p-6 sm:p-10 lg:p-32">
+    <main className={`${drawFontClass} bg-home-scene flex min-h-app justify-center items-center p-6 sm:p-10 lg:p-32`}>
       <div className="w-full min-w-0 max-w-xl rounded-lg bg-white/95 p-8 shadow-2xl">
         <div className="w-full">
-          <div className="mb-10 flex items-center gap-2.5">
-            
-            <span className="text-xl font-bold tracking-tight text-ink">Vẽ Cùng Tôi</span>
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-clay-500 font-draw-display text-2xl font-bold text-white ring-2 ring-clay-500">
+            {initial}
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-ink">Vẽ &amp; đoán chữ cùng bạn bè</h1>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">
+          <h1 className="text-center font-draw-display text-3xl font-bold tracking-tight text-ink">Vẽ &amp; đoán chữ cùng bạn bè</h1>
+          <p className="mt-2 text-center text-sm leading-relaxed text-ink/60">
             Không cần tài khoản. Tạo phòng, gửi link cho bạn bè, chơi ngay trên trình duyệt.
           </p>
 
@@ -119,7 +121,7 @@ export default function DrawGuessHomePage() {
 
             <div className="flex gap-2">
               <input
-                className="min-w-0 flex-1 rounded-lg border border-cream-200 bg-white px-3.5 py-2.5 font-mono text-sm uppercase tracking-wider text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
+                className="min-w-0 flex-1 rounded-lg border border-cream-200 bg-white px-3.5 py-2.5 font-draw-display text-sm uppercase tracking-wider text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
                 placeholder="MÃ PHÒNG"
                 maxLength={8}
                 value={joinCode}
@@ -153,11 +155,11 @@ export default function DrawGuessHomePage() {
                     <button
                       key={r.roomId}
                       onClick={() => handleJoin(r.roomId)}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-cream-200 bg-white px-3.5 py-2 text-left text-sm transition hover:border-clay-500"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg border-2 border-dashed border-cream-200 bg-white px-3.5 py-2 text-left text-sm transition hover:border-clay-500 hover:bg-clay-500/5"
                     >
-                      <span className="min-w-0 flex-1 truncate font-mono font-semibold tracking-wider text-ink">{r.roomId}</span>
+                      <span className="min-w-0 flex-1 truncate font-draw-display font-semibold tracking-wider text-clay-600">{r.roomId}</span>
                       <span className="shrink-0 text-xs font-medium text-ink/50">
-                        {r.playerCount}/{MAX_PLAYERS}
+                        {r.playerCount}/{MAX_PLAYERS} người
                       </span>
                     </button>
                   ))}

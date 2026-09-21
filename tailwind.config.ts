@@ -34,6 +34,24 @@ const config: Config = {
           700: "#8c4028",
         },
         ink: "#3e2f22",
+        // Draw-guess only: "correct guess" / success accent (sage) and
+        // countdown-urgency accent (gold) — the warm home/lobby screens
+        // never needed either until the in-game screen's redesign unified
+        // onto this same clay/cream palette instead of the old cold blue.
+        sage: {
+          100: "#e3ecdc",
+          500: "#5f7a52",
+          600: "#4c6341",
+        },
+        gold: {
+          100: "#f6e6c4",
+          500: "#c98a2c",
+          600: "#a86f1e",
+        },
+      },
+      fontFamily: {
+        "draw-display": ["var(--font-draw-display)", "ui-rounded", "system-ui", "sans-serif"],
+        "draw-body": ["var(--font-draw-body)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },

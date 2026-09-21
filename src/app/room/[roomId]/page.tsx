@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
+import { drawFontClass } from "@/lib/drawFonts";
 import GameRoom from "@/components/GameRoom";
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
@@ -35,17 +36,15 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   }
 
   if (!name) {
+    const initial = nameInput.trim().charAt(0).toUpperCase() || "?";
     return (
-      <main className="bg-game-scene flex min-h-app items-center justify-center px-4">
+      <main className={`${drawFontClass} bg-game-scene flex min-h-app items-center justify-center px-4`}>
         <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
-          <div className="mb-6 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-clay-500 text-base text-white shadow-sm shadow-clay-500/30">
-              ✎
-            </div>
-            <span className="text-base font-semibold tracking-tight text-ink">Vẽ Cùng Tôi</span>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-clay-500 font-draw-display text-2xl font-bold text-white ring-2 ring-clay-500">
+            {initial}
           </div>
-          <h1 className="mb-1 text-xl font-bold text-ink">Vào phòng</h1>
-          <p className="mb-5 font-mono text-sm tracking-wider text-ink/40">{roomId}</p>
+          <h1 className="text-center font-draw-display text-xl font-bold text-ink">Vào phòng</h1>
+          <p className="mb-5 text-center font-draw-display text-sm tracking-wider text-clay-600">{roomId}</p>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Tên hiển thị</label>
           <input
             autoFocus

@@ -180,22 +180,27 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
 
   return (
     <div className="flex h-full min-w-0 flex-col gap-2">
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_W}
-          height={CANVAS_H}
-          className="block h-full w-full touch-none"
-          style={{ cursor: isDrawer ? PENCIL_CURSOR : "default" }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-        />
+      <div
+        className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-white p-1.5 shadow-xl"
+        style={{ background: "linear-gradient(180deg, #a9764c, #8a5c38)" }}
+      >
+        <div className="h-full w-full overflow-hidden rounded-xl bg-white">
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_W}
+            height={CANVAS_H}
+            className="block h-full w-full touch-none"
+            style={{ cursor: isDrawer ? PENCIL_CURSOR : "default" }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          />
+        </div>
       </div>
 
       {isDrawer && (
-        <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-cream-200 bg-white p-3 shadow-xl">
           <div className="flex flex-wrap gap-1.5">
             {PALETTE.map((c) => (
               <button
@@ -205,7 +210,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
                   setTool("pen");
                 }}
                 className={`h-7 w-7 rounded-full border-2 transition ${
-                  color === c && tool === "pen" ? "border-brand-500 scale-110" : "border-slate-200"
+                  color === c && tool === "pen" ? "border-clay-500 scale-110" : "border-cream-200"
                 }`}
                 style={{ backgroundColor: c }}
                 aria-label={`Màu ${c}`}
@@ -219,15 +224,15 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
             max={24}
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
-            className="w-24"
+            className="w-24 accent-clay-500"
           />
 
           <button
             onClick={() => setTool(tool === "eraser" ? "pen" : "eraser")}
             className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
               tool === "eraser"
-                ? "border-brand-500 bg-brand-500 text-white"
-                : "border-slate-300 text-slate-700 hover:border-brand-500 hover:text-brand-600"
+                ? "border-clay-500 bg-clay-500 text-white"
+                : "border-cream-200 text-ink/70 hover:border-clay-500 hover:text-clay-600"
             }`}
           >
             Tẩy
@@ -235,7 +240,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
 
           <button
             onClick={handleClear}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
+            className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
           >
             Xóa hết
           </button>
