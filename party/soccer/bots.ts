@@ -84,8 +84,8 @@ const PROFILES: Record<SoccerBotDifficulty, BotProfile> = {
     holdsPosition: false,
     passChance: 0.05,
     shootSpeedFrac: [0.3, 0.8],
-    tackleChance: 0.5,
-    wildTackleChance: 0.06,
+    tackleChance: 0.35,
+    wildTackleChance: 0.03,
     boostChance: 0.15,
   },
   basic: {
@@ -95,8 +95,8 @@ const PROFILES: Record<SoccerBotDifficulty, BotProfile> = {
     holdsPosition: true,
     passChance: 0.3,
     shootSpeedFrac: [0.6, 0.95],
-    tackleChance: 0.8,
-    wildTackleChance: 0.01,
+    tackleChance: 0.55,
+    wildTackleChance: 0.005,
     boostChance: 0.4,
   },
   star: {
@@ -230,10 +230,23 @@ function decide(ctx: BotCtx, bot: SoccerPlayer, profile: BotProfile, now: number
     targetY = laneY(index, count) + noise();
     aimAngle = Math.atan2(ball.y - bot.y, ball.x - bot.x);
   } else {
-    // Loose ball — chase it (holdsPosition bots still chase a free ball,
-    // just don't abandon position for one an opponent is already holding).
-    targetX = ball.x + noise();
-    targetY = ball.y + noise();
+    // Loose ball. Only the teammate actually closest to it chases — without
+    // this check, every holdsPosition bot converges on every loose ball at
+    // once, which is exactly the "dumb" swarm holdsPosition is supposed to
+    // avoid for these tiers (a loose ball is by far the most common state,
+    // so this was making basic/star look just as chaotic as dumb).
+    const teammates = [...ctx.players.values()].filter((p) => p.team === bot.team && p.connected && !p.sentOff);
+    const myDist = Math.hypot(bot.x - ball.x, bot.y - ball.y);
+    const amClosest = teammates.every((p) => p.id === bot.id || myDist <= Math.hypot(p.x - ball.x, p.y - ball.y) + 1);
+    if (amClosest) {
+      targetX = ball.x + noise();
+      targetY = ball.y + noise();
+    } else {
+      const { index, count } = laneIndex(ctx, bot);
+      const own = ownGoalX(bot.team);
+      targetX = own + (ball.x - own) * 0.5 + noise();
+      targetY = laneY(index, count) + noise();
+    }
     aimAngle = Math.atan2(ball.y - bot.y, ball.x - bot.x);
   }
 
