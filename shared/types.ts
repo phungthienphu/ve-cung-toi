@@ -70,6 +70,7 @@ export interface PublicRoomState {
   status: RoomStatus;
   players: Player[];
   hostId: string | null;
+  topic: string; // free-text theme the host sets so everyone knows what tonight's session is about — purely informational, doesn't filter word selection
   config: RoomConfig;
   drawerId: string | null;
   wordLength: number | null;
@@ -94,7 +95,8 @@ export type ClientMessage =
   | { type: "play_again" }
   | { type: "kick_player"; playerId: string }
   | { type: "leave_room" }
-  | { type: "reveal_letter"; index: number };
+  | { type: "reveal_letter"; index: number }
+  | { type: "set_topic"; topic: string };
 
 /** One entry in the public room list (draw-directory party) — lets the
  * draw-guess home screen show open lobbies people can join without already

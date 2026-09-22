@@ -2,18 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ClientMessage, PublicRoomState, RoomConfig } from "@shared/types";
+import type { ChatEntry, ClientMessage, PublicRoomState, RoomConfig } from "@shared/types";
 import { DEFAULT_ROOM_CONFIG, MAX_WORD_COUNT, MIN_PLAYERS_TO_START, MIN_WORD_COUNT } from "@shared/types";
 import { DEFAULT_WORDLISTS, buildWordPool } from "@shared/wordlists";
 import { playClick } from "@/lib/sound";
 import { drawFontClass } from "@/lib/drawFonts";
 import PlayerList from "./PlayerList";
+import Chat from "./Chat";
 
 interface Props {
   state: PublicRoomState;
   selfId: string;
   isHost: boolean;
   roomId: string;
+  chat: ChatEntry[];
   onStart: (config: RoomConfig) => void;
   send: (msg: ClientMessage) => void;
 }
@@ -48,7 +50,7 @@ function CfgRow({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: Props) {
+export default function Lobby({ state, selfId, isHost, roomId, chat, onStart, send }: Props) {
   const router = useRouter();
   const [rounds, setRounds] = useState(DEFAULT_ROOM_CONFIG.rounds);
   const [drawSeconds, setDrawSeconds] = useState(DEFAULT_ROOM_CONFIG.drawSeconds);
@@ -60,6 +62,13 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
   const [customWords, setCustomWords] = useState("");
   const [customOnly, setCustomOnly] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Only the host's own edits should ever drive this input — re-syncing it
+  // from state.topic on every render would fight the host's keystrokes
+  // whenever their own set_topic echoes back through broadcastState.
+  const [topicDraft, setTopicDraft] = useState(state.topic);
+  function commitTopic() {
+    if (topicDraft.trim() !== state.topic) send({ type: "set_topic", topic: topicDraft });
+  }
 
   const connectedCount = state.players.filter((p) => p.connected).length;
   const canStart = connectedCount >= MIN_PLAYERS_TO_START;
@@ -160,6 +169,30 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
               {copied ? "Đã sao chép!" : "📋 Sao chép link"}
             </span>
           </button>
+
+          {isHost ? (
+            <div className="mb-5 shrink-0">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-ink/50">
+                Chủ đề đêm nay <span className="font-normal normal-case text-ink/40">(tùy chọn — mọi người sẽ thấy ngay)</span>
+              </label>
+              <input
+                value={topicDraft}
+                onChange={(e) => setTopicDraft(e.target.value)}
+                onBlur={commitTopic}
+                onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+                maxLength={80}
+                placeholder="VD: Anime, đồ ăn, con vật..."
+                className="w-full rounded-lg border border-cream-200 px-3.5 py-2 text-sm text-ink outline-none transition focus:border-clay-500 focus:ring-1 focus:ring-clay-500"
+              />
+            </div>
+          ) : (
+            state.topic && (
+              <div className="mb-5 shrink-0 rounded-lg border border-clay-500/30 bg-clay-500/5 px-3.5 py-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink/40">Chủ đề đêm nay: </span>
+                <span className="text-sm font-semibold text-clay-600">{state.topic}</span>
+              </div>
+            )
+          )}
 
           {isHost ? (
             <div className="flex min-h-0 flex-1 flex-col">
@@ -317,12 +350,19 @@ export default function Lobby({ state, selfId, isHost, roomId, onStart, send }: 
           )}
         </div>
 
-        <PlayerList
-          players={state.players}
-          drawerId={null}
-          selfId={selfId}
-          onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined}
-        />
+        <div className="flex min-w-0 flex-col gap-3 md:h-full md:min-h-0">
+          <div className="flex h-[200px] shrink-0 flex-col">
+            <PlayerList
+              players={state.players}
+              drawerId={null}
+              selfId={selfId}
+              onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined}
+            />
+          </div>
+          <div className="h-64 shrink-0 md:h-auto md:min-h-0 md:flex-1">
+            <Chat entries={chat} selfId={selfId} canGuess={false} onSend={(text) => send({ type: "chat", text })} />
+          </div>
+        </div>
       </div>
     </div>
   );

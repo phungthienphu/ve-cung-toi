@@ -85,7 +85,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   const drawerName = state.players.find((p) => p.id === state.drawerId)?.name;
 
   if (state.status === "lobby") {
-    return <Lobby state={state} selfId={playerId} isHost={isHost} roomId={roomId} send={send} onStart={(config) => send({ type: "start_game", config })} />;
+    return <Lobby state={state} selfId={playerId} isHost={isHost} roomId={roomId} chat={chat} send={send} onStart={(config) => send({ type: "start_game", config })} />;
   }
 
   if (state.status === "gameEnd") {
@@ -169,6 +169,12 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
   return (
     <div className={`${drawFontClass} bg-game-scene min-h-app`}>
     <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-4 md:px-6">
+      {state.topic && (
+        <div className="-mb-2 flex items-center justify-center gap-1.5 text-xs text-ink/50">
+          <span className="font-semibold uppercase tracking-wide text-ink/40">Chủ đề đêm nay:</span>
+          <span className="font-semibold text-clay-600">{state.topic}</span>
+        </div>
+      )}
       <RoundHeader
         round={state.round}
         totalTurns={state.totalTurns}
@@ -196,7 +202,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
       </button>
 
       <div className="grid min-w-0 flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-stretch">
-        <div className="order-2 flex min-w-0 flex-col gap-2 md:order-1 md:h-[600px]">
+        <div className="order-2 flex h-56 min-w-0 flex-col gap-2 md:order-1 md:h-[600px]">
           <PlayerList players={state.players} drawerId={state.drawerId} selfId={playerId} onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined} />
           <button
             onClick={() => {

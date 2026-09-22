@@ -53,6 +53,7 @@ export default class GameRoom implements Party.Server {
   players = new Map<string, Player>();
   hostId: string | null = null;
   status: RoomStatus = "lobby";
+  topic = "";
   config: RoomConfig = { ...DEFAULT_ROOM_CONFIG };
 
   wordPool: string[] = [];
@@ -172,6 +173,8 @@ export default class GameRoom implements Party.Server {
         return this.handleLeaveRoom(sender);
       case "reveal_letter":
         return this.handleRevealLetter(msg.index, sender);
+      case "set_topic":
+        return this.handleSetTopic(msg.topic, sender);
     }
   }
 
@@ -312,6 +315,18 @@ export default class GameRoom implements Party.Server {
     if (this.status !== "playing" || sender.id !== this.drawerId || !this.word) return;
     if (index < 0 || index >= this.word.length || /\s/.test(this.word[index])) return;
     this.revealedIndices.add(index);
+    this.broadcastState();
+  }
+
+  /** Purely informational — a free-text theme the host sets ("tối nay chơi
+   * chủ đề: Anime") so everyone in the lobby knows what's coming, unlike
+   * RoomConfig's wordlistIds/customWords it never filters which words
+   * actually get drawn. Broadcast immediately (unlike the rest of
+   * RoomConfig, which is only sent to the server at start_game) since the
+   * whole point is for guests to see it while still waiting in the lobby. */
+  private handleSetTopic(topic: string, sender: Party.Connection) {
+    if (sender.id !== this.hostId) return;
+    this.topic = topic.trim().slice(0, 80);
     this.broadcastState();
   }
 
@@ -606,6 +621,7 @@ export default class GameRoom implements Party.Server {
       status: this.status,
       players: [...this.players.values()],
       hostId: this.hostId,
+      topic: this.topic,
       config: this.config,
       drawerId: this.drawerId,
       wordLength: this.word ? this.word.length : null,
