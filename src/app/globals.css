@@ -38,6 +38,12 @@ body {
   background-position: center;
   background-color: #ecdcb8;
 }
+.bg-home {
+  background-image: url("/background-home.png");
+  background-size: cover;
+  background-position: center;
+  background-color: #ecdcb8;
+}
 
 .bg-tank-scene {
   background-image: url("/tank/tank-bg.png");

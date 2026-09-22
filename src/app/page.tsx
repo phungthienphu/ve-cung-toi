@@ -41,7 +41,7 @@ const GAMES: GameCard[] = [
 
 export default function GamePickerPage() {
   return (
-    <main className="flex min-h-app items-center justify-center bg-home-scene p-6 sm:p-10 lg:p-32">
+    <main className="flex min-h-app items-center justify-center bg-home p-6 sm:p-10 lg:p-32">
       <div className="w-full max-w-3xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-ink">Chơi Cùng Tôi</h1>
