@@ -181,7 +181,7 @@ export default class GameRoom implements Party.Server {
 
     if (!player) {
       if (this.players.size >= MAX_PLAYERS) {
-        sender.send(JSON.stringify({ type: "error", message: "Phòng đã đầy (tối đa 8 người)." } satisfies ServerMessage));
+        sender.send(JSON.stringify({ type: "error", message: `Phòng đã đầy (tối đa ${MAX_PLAYERS} người).` } satisfies ServerMessage));
         return;
       }
       player = {
