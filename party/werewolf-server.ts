@@ -8,9 +8,13 @@ import {
   type PublicWerewolfState,
   type WerewolfClientMessage,
   type WerewolfConfig,
+  type WerewolfChatEntry,
+  type WerewolfGameEvent,
   type WerewolfPhase,
   type WerewolfPlayer,
   type WerewolfServerMessage,
+  type SuspicionStatistic,
+  type NightSuspicionResult,
   type WerewolfTeam,
 } from "../shared/werewolfTypes";
 import {
@@ -30,10 +34,18 @@ export default class WerewolfRoom implements Party.Server {
   phaseEndsAt: number | null = null;
   nightDeaths: string[] = [];
   lastVoteResult: Array<{ playerId: string; votes: number }> = [];
+  chat: WerewolfChatEntry[] = [];
+  events: WerewolfGameEvent[] = [];
+  suspicionStats: SuspicionStatistic[] = [];
+  voteHistory: Array<{ day: number; results: Array<{ playerId: string; votes: number }> }> = [];
+  lastNightSuspicion: NightSuspicionResult | null = null;
+  lastChatAt = new Map<string, number>();
   winner: WerewolfTeam | null = null;
   wolfVictimId: string | null = null;
   timer: ReturnType<typeof setTimeout> | null = null;
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  matchStartedAt: number | null = null;
+  historyReported = false;
 
   constructor(readonly party: Party.Party) {}
 
@@ -69,6 +81,7 @@ export default class WerewolfRoom implements Party.Server {
       case "set_suspicion": return this.setSuspicion(sender.id, msg.targetId);
       case "witch_decision": return this.witchDecision(sender.id, msg.decision, msg.targetId);
       case "cast_vote": return this.castVote(sender.id, msg.targetId);
+      case "chat": return this.sendChat(sender.id, msg.text);
       case "end_discussion": return this.endDiscussion(sender);
       case "play_again": return this.playAgain(sender);
       case "leave_room": return this.leave(sender);
@@ -161,6 +174,13 @@ export default class WerewolfRoom implements Party.Server {
     this.winner = null;
     this.nightDeaths = [];
     this.lastVoteResult = [];
+    this.chat = [];
+    this.events = [];
+    this.suspicionStats = [];
+    this.voteHistory = [];
+    this.lastNightSuspicion = null;
+    this.matchStartedAt = Date.now();
+    this.historyReported = false;
     this.enterPhase("roleReveal", PHASE_DURATION_MS.roleReveal);
   }
 
@@ -188,6 +208,9 @@ export default class WerewolfRoom implements Party.Server {
       secret.suspicionTargetId = targetId;
     } else {
       secret.previewTargetId = targetId;
+      if (secret.role === "villager" || secret.role === "witch") {
+        secret.suspicionTargetId = targetId;
+      }
     }
     this.sendPrivate(id);
     if (secret.role === "wolf" && this.phase !== "nightResolve") this.sendPrivateToLivingWolves();
@@ -237,6 +260,29 @@ export default class WerewolfRoom implements Party.Server {
     this.sendPrivate(id);
   }
 
+  private sendChat(playerId: string, rawText: string) {
+    if (this.phase !== "discussion") return;
+    const player = this.players.get(playerId);
+    if (!player?.alive) return;
+
+    const text = rawText.trim().replace(/\s+/g, " ").slice(0, 300);
+    if (!text) return;
+
+    const now = Date.now();
+    if (now - (this.lastChatAt.get(playerId) ?? 0) < 400) return;
+    this.lastChatAt.set(playerId, now);
+
+    this.chat.push({
+      id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      playerId,
+      playerName: player.name,
+      text,
+      sentAt: now,
+    });
+    if (this.chat.length > 100) this.chat.splice(0, this.chat.length - 100);
+    this.broadcastState();
+  }
+
   private endDiscussion(sender: Party.Connection) {
     if (sender.id === this.hostId && this.phase === "discussion") this.enterPhase("voting", this.config.votingSeconds * 1000);
   }
@@ -251,6 +297,7 @@ export default class WerewolfRoom implements Party.Server {
       secret.witchDecision = null;
       secret.witchPoisonTargetId = null;
       secret.voteTargetId = null;
+      secret.suspicionTargetId = null;
     }
     this.enterPhase("nightExplore", PHASE_DURATION_MS.nightExplore);
   }
@@ -275,6 +322,12 @@ export default class WerewolfRoom implements Party.Server {
     const witchEntry = [...this.secrets.entries()].find(([id, s]) => s.role === "witch" && this.players.get(id)?.alive);
     const witch = witchEntry?.[1];
     const deaths = new Set<string>();
+
+    for (const [id, secret] of this.secrets) {
+      if (!this.players.get(id)?.alive || !secret.suspicionTargetId) continue;
+      secret.suspicionHistory.push({ night: this.day, targetId: secret.suspicionTargetId });
+    }
+    this.lastNightSuspicion = this.calculateNightSuspicion(this.day);
     if (this.wolfVictimId && guardianTarget !== this.wolfVictimId && witch?.witchDecision !== "heal") deaths.add(this.wolfVictimId);
     if (witch?.witchDecision === "heal" && witch.healAvailable) witch.healAvailable = false;
     if (witch?.witchDecision === "poison" && witch.poisonAvailable && witch.witchPoisonTargetId) {
@@ -293,6 +346,12 @@ export default class WerewolfRoom implements Party.Server {
       }
     }
     this.nightDeaths = [...deaths];
+    this.events.push({
+      id: `night-${this.day}`,
+      day: this.day,
+      type: deaths.size ? "night_death" : "peaceful_night",
+      playerIds: [...deaths],
+    });
     for (const id of deaths) {
       const player = this.players.get(id);
       if (!player) continue;
@@ -309,6 +368,10 @@ export default class WerewolfRoom implements Party.Server {
     const counts = new Map<string, number>();
     for (const [id, secret] of this.secrets) if (this.players.get(id)?.alive && secret.voteTargetId) counts.set(secret.voteTargetId, (counts.get(secret.voteTargetId) ?? 0) + 1);
     this.lastVoteResult = [...counts].map(([playerId, votes]) => ({ playerId, votes })).sort((a, b) => b.votes - a.votes);
+    this.voteHistory.push({
+      day: this.day,
+      results: this.lastVoteResult.map((result) => ({ ...result })),
+    });
     if (this.lastVoteResult.length) {
       const max = this.lastVoteResult[0].votes;
       const leaders = this.lastVoteResult.filter(v => v.votes === max);
@@ -319,6 +382,12 @@ export default class WerewolfRoom implements Party.Server {
           eliminated.revealedRole = this.config.revealRoleOnDeath
             ? this.secrets.get(eliminated.id)?.role ?? null
             : null;
+          this.events.push({
+            id: `vote-${this.day}`,
+            day: this.day,
+            type: "vote_elimination",
+            playerIds: [eliminated.id],
+          });
         }
       }
     }
@@ -336,7 +405,9 @@ export default class WerewolfRoom implements Party.Server {
       const player = this.players.get(id);
       if (player) player.revealedRole = secret.role;
     }
+    this.suspicionStats = this.calculateSuspicionStats();
     this.enterPhase("gameEnd", 0);
+    void this.reportHistory();
     return true;
   }
 
@@ -373,6 +444,11 @@ export default class WerewolfRoom implements Party.Server {
     this.phaseEndsAt = null;
     this.nightDeaths = [];
     this.lastVoteResult = [];
+    this.chat = [];
+    this.events = [];
+    this.suspicionStats = [];
+    this.voteHistory = [];
+    this.lastNightSuspicion = null;
     this.secrets.clear();
     for (const player of this.players.values()) {
       player.alive = true;
@@ -430,6 +506,7 @@ export default class WerewolfRoom implements Party.Server {
       poisonAvailable: secret.poisonAvailable,
       witchDecision: secret.witchDecision,
       seerHistory: secret.seerHistory,
+      suspicionHistory: secret.suspicionHistory,
       lastGuardedPlayerId: secret.lastGuardedPlayerId,
       suspicionTargetId: secret.suspicionTargetId,
       voteTargetId: secret.voteTargetId,
@@ -447,6 +524,10 @@ export default class WerewolfRoom implements Party.Server {
       phaseEndsAt: this.phaseEndsAt,
       nightDeaths: this.nightDeaths,
       lastVoteResult: this.lastVoteResult,
+      chat: this.chat,
+      events: this.events,
+      suspicionStats: this.suspicionStats,
+      lastNightSuspicion: this.lastNightSuspicion,
       winner: this.winner,
     };
   }
@@ -477,6 +558,97 @@ export default class WerewolfRoom implements Party.Server {
       if (secret.role === "wolf" && this.players.get(id)?.alive) this.sendPrivate(id);
     }
   }
+
+  private async reportHistory() {
+    if (this.historyReported || !this.winner) return;
+    this.historyReported = true;
+
+    try {
+      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      if (!base) return;
+      const winningRole = this.winner;
+      const detail = [...this.players.values()].map((player) => {
+        const role = this.secrets.get(player.id)?.role ?? "villager";
+        const team = role === "wolf" ? "wolves" : "village";
+        return {
+          playerId: player.id,
+          name: player.name,
+          role,
+          team,
+          survived: player.alive,
+          won: team === winningRole,
+        };
+      });
+
+      await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameType: "werewolf",
+          roomId: this.party.id,
+          players: detail.map((player) => ({ name: player.name, score: player.won ? 1 : 0 })),
+          mode: `${detail.length} người · ${this.day} ngày`,
+          winningTeam: this.winner,
+          detail: {
+            players: detail,
+            events: this.events,
+            suspicionStats: this.suspicionStats,
+            daysPlayed: this.day,
+            startedAt: this.matchStartedAt,
+          },
+          playedAt: new Date().toISOString(),
+        }),
+      });
+    } catch {
+      // History persistence is best-effort and must never stop the room.
+    }
+  }
+
+  private calculateSuspicionStats(): SuspicionStatistic[] {
+    const nightVotes = new Map<string, number>();
+    const dayVotes = new Map<string, number>();
+
+    for (const secret of this.secrets.values()) {
+      for (const entry of secret.suspicionHistory) {
+        nightVotes.set(entry.targetId, (nightVotes.get(entry.targetId) ?? 0) + 1);
+      }
+    }
+    for (const round of this.voteHistory) {
+      for (const result of round.results) {
+        dayVotes.set(result.playerId, (dayVotes.get(result.playerId) ?? 0) + result.votes);
+      }
+    }
+
+    const rows = [...this.players.keys()].map((playerId) => {
+      const night = nightVotes.get(playerId) ?? 0;
+      const day = dayVotes.get(playerId) ?? 0;
+      return { playerId, nightVotes: night, dayVotes: day, weightedScore: night + day * 2 };
+    });
+    const totalScore = rows.reduce((total, row) => total + row.weightedScore, 0);
+    return rows
+      .map((row) => ({
+        ...row,
+        percentage: totalScore > 0 ? Math.round((row.weightedScore / totalScore) * 100) : 0,
+      }))
+      .sort((a, b) => b.weightedScore - a.weightedScore);
+  }
+
+  private calculateNightSuspicion(night: number): NightSuspicionResult {
+    const counts = new Map<string, number>();
+    for (const secret of this.secrets.values()) {
+      const entry = secret.suspicionHistory.find((item) => item.night === night);
+      if (entry) counts.set(entry.targetId, (counts.get(entry.targetId) ?? 0) + 1);
+    }
+    const totalVotes = [...counts.values()].reduce((total, votes) => total + votes, 0);
+    const results = [...counts]
+      .map(([playerId, votes]) => ({
+        playerId,
+        votes,
+        percentage: totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0,
+      }))
+      .sort((a, b) => b.votes - a.votes);
+    return { night, totalVotes, results };
+  }
 }
 
 function emptyPrivateState(): PrivateWerewolfState {
@@ -491,6 +663,7 @@ function emptyPrivateState(): PrivateWerewolfState {
     poisonAvailable: true,
     witchDecision: null,
     seerHistory: [],
+    suspicionHistory: [],
     lastGuardedPlayerId: null,
     suspicionTargetId: null,
     voteTargetId: null,

@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { WerewolfTeam } from "@shared/werewolfTypes";
+import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/components/werewolf/WerewolfHistoryDetail";
 
 // No login means no stable per-account identity to rank against — two
 // different people typing "An" look identical to the old aggregate
 // leaderboard, which quietly merged their scores into one row. A per-match
 // history (what actually happened, when) doesn't have that problem: every
 // entry is its own game, nothing to conflate.
-type GameType = "draw" | "tank" | "soccer";
+type GameType = "draw" | "tank" | "soccer" | "werewolf";
 
 const TABS: { id: GameType; label: string; emptyText: string }[] = [
   { id: "draw", label: "🎨 Vẽ Cùng Tôi", emptyText: "Chưa có ván vẽ nào được lưu lại." },
   { id: "tank", label: "🎯 Tank", emptyText: "Chưa có trận tank nào được lưu lại." },
   { id: "soccer", label: "⚽ Bóng đá", emptyText: "Chưa có trận bóng nào được lưu lại." },
+  { id: "werewolf", label: "🐺 Ma Sói", emptyText: "Chưa có ván Ma Sói nào được lưu lại." },
 ];
 
 interface DrawDetail {
@@ -47,9 +50,9 @@ interface HistoryEntry {
   rounds?: number;
   mode?: string;
   winnerName?: string | null;
-  winningTeam?: "A" | "B" | null;
+  winningTeam?: "A" | "B" | WerewolfTeam | null;
   teamScores?: { A: number; B: number };
-  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[];
+  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[] | WerewolfHistoryDetailData;
   playedAt: string;
 }
 
@@ -66,6 +69,11 @@ function summarize(e: HistoryEntry): string {
     }
     return e.winnerName ? `${e.winnerName} thắng` : `Đấu tự do — hòa điểm (${e.players.length} người)`;
   }
+  if (e.gameType === "werewolf") {
+    const winner = e.winningTeam === "village" ? "Phe Dân" : "Phe Sói";
+    const detail = e.detail as WerewolfHistoryDetailData | undefined;
+    return `${winner} chiến thắng · ${detail?.daysPlayed ?? "?"} ngày · ${e.players.length} người`;
+  }
   // soccer
   const a = e.teamScores?.A ?? 0;
   const b = e.teamScores?.B ?? 0;
@@ -73,6 +81,11 @@ function summarize(e: HistoryEntry): string {
 }
 
 function DetailTable({ entry }: { entry: HistoryEntry }) {
+  if (entry.gameType === "werewolf") {
+    const detail = entry.detail as WerewolfHistoryDetailData | undefined;
+    if (!detail?.players.length) return <SimpleScoreList players={entry.players} />;
+    return <WerewolfHistoryDetail detail={detail} winner={entry.winningTeam as WerewolfTeam | null | undefined} />;
+  }
   if (entry.gameType === "tank") {
     const rows = (entry.detail as TankDetail[] | undefined) ?? [];
     if (rows.length === 0) return <SimpleScoreList players={entry.players} />;
@@ -176,6 +189,11 @@ export default function LeaderboardPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("game") as GameType | null;
+    if (requested && TABS.some((tab) => tab.id === requested)) setActiveTab(requested);
+  }, []);
+
+  useEffect(() => {
     if (cache[activeTab]) return;
     setLoading(true);
     setError(false);
@@ -191,23 +209,26 @@ export default function LeaderboardPage() {
   const tab = TABS.find((t) => t.id === activeTab)!;
 
   return (
-    <main className="bg-game-scene min-h-app">
-      <div className="mx-auto max-w-3xl px-4 py-10">
+    <main className="min-h-app bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950">
+      <div className="mx-auto max-w-5xl px-4 py-10">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Lịch sử trận đấu</h1>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-300">Match archive</p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Lịch sử trận đấu</h1>
+          </div>
           <Link
             href="/"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-500 hover:text-brand-600"
+            className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10"
           >
             Về trang chủ
           </Link>
         </div>
-        <p className="mb-6 text-sm text-slate-400">
+        <p className="mb-7 max-w-3xl text-sm leading-6 text-slate-400">
           Không có tài khoản nên không thể xếp hạng chính xác theo người chơi (trùng tên sẽ lẫn lộn) — thay vào đó, đây là lịch sử các
           trận gần nhất của từng game.
         </p>
 
-        <div className="mb-6 flex gap-2 border-b border-slate-200">
+        <div className="no-scrollbar mb-7 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-2">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -215,8 +236,8 @@ export default function LeaderboardPage() {
                 setActiveTab(t.id);
                 setExpandedId(null);
               }}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition ${
-                activeTab === t.id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
+              className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                activeTab === t.id ? "bg-violet-500 text-white shadow-lg" : "text-slate-400 hover:bg-white/5 hover:text-white"
               }`}
             >
               {t.label}
@@ -224,7 +245,7 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {error && <p className="text-red-500">Không tải được dữ liệu. Kiểm tra kết nối MongoDB.</p>}
+        {error && <p className="rounded-xl bg-red-500/10 p-4 text-red-300">Không tải được dữ liệu. Kiểm tra kết nối MongoDB.</p>}
         {!error && loading && !history && <p className="text-slate-400">Đang tải...</p>}
         {!error && history && history.length === 0 && <p className="text-slate-400">{tab.emptyText}</p>}
 
@@ -233,7 +254,7 @@ export default function LeaderboardPage() {
             {history.map((entry) => {
               const expanded = expandedId === entry._id;
               return (
-                <div key={entry._id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <div key={entry._id} className="overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl shadow-black/20">
                   <button
                     onClick={() => setExpandedId(expanded ? null : entry._id)}
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"

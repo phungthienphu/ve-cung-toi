@@ -1,5 +1,6 @@
-import { ROLE_EMOJI, type WerewolfPlayer, type WerewolfRole } from "@shared/werewolfTypes";
+import type { WerewolfPlayer, WerewolfRole } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "../gameContent";
+import { RoleArtwork } from "../ui";
 
 interface RoleRevealScreenProps {
   role: WerewolfRole | null;
@@ -29,9 +30,9 @@ export function RoleRevealScreen(props: RoleRevealScreenProps) {
       >
         {showingRole && role && content ? (
           <>
-            <div className="text-6xl">{ROLE_EMOJI[role]}</div>
-            <div className="mt-3 text-2xl font-bold">{content.title}</div>
-            <p className="mt-2 text-sm text-slate-300">{content.instruction}</p>
+            <RoleArtwork role={role} className="mx-auto max-h-[56vh] w-auto max-w-full rounded-2xl shadow-2xl" />
+            <div className="mt-4 text-2xl font-bold">{content.title}</div>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-slate-300">{content.instruction}</p>
             {role === "wolf" && teammateNames && (
               <p className="mt-3 text-sm text-rose-300">Đồng đội: {teammateNames}</p>
             )}
@@ -49,4 +50,3 @@ export function RoleRevealScreen(props: RoleRevealScreenProps) {
     </div>
   );
 }
-

@@ -53,10 +53,39 @@ export function NightScreen({ phase, role, selfId, players, privateState, send }
 
       <LockAction phase={phase} role={role} privateState={privateState} send={send} />
 
+      {phase === "nightResolve" && (
+        <SuspicionVote
+          players={players}
+          selfId={selfId}
+          selected={privateState.suspicionTargetId}
+          send={send}
+        />
+      )}
+
       {isWolf && phase !== "nightResolve" && (
         <WolfChoices players={players} wolfChoices={privateState.wolfChoices} />
       )}
     </div>
+  );
+}
+
+function SuspicionVote({ players, selfId, selected, send }: Pick<NightScreenProps, "players" | "selfId" | "send"> & { selected: string | null }) {
+  return (
+    <label className="mt-5 block rounded-xl border border-amber-300/15 bg-amber-950/20 p-4">
+      <span className="text-xs font-bold uppercase tracking-[0.16em] text-amber-300">Note nghi ngờ cá nhân</span>
+      <span className="mt-1 block text-sm text-slate-300">Theo bạn, ai có khả năng là Sói nhất đêm nay?</span>
+      <select
+        value={selected ?? ""}
+        onChange={(event) => event.target.value && send({ type: "set_suspicion", targetId: event.target.value })}
+        className="mt-3 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400"
+      >
+        <option value="">Chưa ghi nhận</option>
+        {players.filter((player) => player.alive && player.id !== selfId).map((player) => (
+          <option key={player.id} value={player.id}>{player.name}</option>
+        ))}
+      </select>
+      <span className="mt-2 block text-[11px] text-slate-500">Note được giữ riêng trong ván và chỉ cộng vào thống kê vui khi game kết thúc.</span>
+    </label>
   );
 }
 

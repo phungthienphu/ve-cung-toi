@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- DiceBear returns generated SVG avatars. */
 import { werewolfAvatarUrl } from "@/lib/werewolfAvatar";
-import { ROLE_EMOJI, ROLE_LABELS, type WerewolfPlayer } from "@shared/werewolfTypes";
+import { ROLE_LABELS, type WerewolfPlayer } from "@shared/werewolfTypes";
+import type { WerewolfRole } from "@shared/werewolfTypes";
+import { ROLE_ARTWORK } from "./roleAssets";
 
 export function PlayerAvatar({ player, size = "md" }: { player: WerewolfPlayer; size?: "sm" | "md" }) {
   const dimensions = size === "sm" ? "h-9 w-9" : "h-14 w-14";
@@ -10,6 +12,16 @@ export function PlayerAvatar({ player, size = "md" }: { player: WerewolfPlayer; 
       src={werewolfAvatarUrl(player.avatarSeed)}
       alt=""
       className={`${dimensions} rounded-full border-2 border-white/15 bg-slate-800 object-cover`}
+    />
+  );
+}
+
+export function RoleArtwork({ role, className = "" }: { role: WerewolfRole; className?: string }) {
+  return (
+    <img
+      src={ROLE_ARTWORK[role]}
+      alt={ROLE_LABELS[role]}
+      className={`object-contain ${className}`}
     />
   );
 }
@@ -69,7 +81,10 @@ export function PlayerSidebar({ players, onLeave }: { players: WerewolfPlayer[];
               <div className="text-[11px] text-slate-500">{playerStatus(player)}</div>
             </div>
             {player.revealedRole && (
-              <span title={ROLE_LABELS[player.revealedRole]}>{ROLE_EMOJI[player.revealedRole]}</span>
+              <RoleArtwork
+                role={player.revealedRole}
+                className="h-11 w-8 rounded object-cover object-top"
+              />
             )}
           </div>
         ))}

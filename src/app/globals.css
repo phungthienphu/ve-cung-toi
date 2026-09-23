@@ -67,6 +67,16 @@ body {
   background-color: #8ec6e8;
 }
 
+.bg-werewolf-scene {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.7), rgba(15, 23, 42, 0.82)),
+    url("/ma-soi/bg-ma-soi.webp");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-color: #020617;
+}
+
 /* Brawler weapon-showcase loops (CharacterPreview.tsx's `animate` prop) — one
    per weapon (WEAPON_ANIM_CLASS there), not per BrawlerAttackType: sword is
    the only one that actually reads as a swung weapon, spear/pencil/rod are

@@ -146,8 +146,12 @@ export const GAME_CONTENT = {
   },
 
   discussion: {
-    title: "Hãy thảo luận trực tiếp",
-    description: "Ai đang nói dối? Ai đang cố bảo vệ người khác?",
+    title: "Cuộc thảo luận của ngôi làng",
+    description: "Chia sẻ suy luận, đặt câu hỏi và tìm ra người đang nói dối.",
+    emptyChat: "Chưa có tin nhắn. Hãy mở đầu cuộc thảo luận.",
+    inputPlaceholder: "Nhập tin nhắn…",
+    deadInputPlaceholder: "Người chết không thể tham gia thảo luận",
+    sendButton: "Gửi",
     seerHistoryTitle: "Kết quả soi riêng của bạn",
     wolfResult: "Thuộc phe Sói",
     safeResult: "Không thuộc phe Sói",
@@ -175,4 +179,3 @@ export const GAME_CONTENT = {
     playAgainButton: "Chơi ván mới",
   },
 } as const;
-

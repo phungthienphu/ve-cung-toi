@@ -25,7 +25,7 @@ const PlayerResultSchema = new Schema(
 // which is what they all were.
 const GameHistorySchema = new Schema(
   {
-    gameType: { type: String, enum: ["draw", "tank", "soccer"], default: "draw" },
+    gameType: { type: String, enum: ["draw", "tank", "soccer", "werewolf"], default: "draw" },
     roomId: { type: String, required: true },
     // The at-a-glance scoreboard for the summary list — draw's real score,
     // tank's kill-based score, soccer's goals. Full per-player breakdowns

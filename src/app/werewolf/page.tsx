@@ -22,9 +22,9 @@ export default function WerewolfHomePage() {
           <button onClick={join} className="rounded-xl border border-white/15 px-5 font-semibold hover:bg-white/10">Vào</button>
         </div>
         <p className="mt-6 text-xs leading-5 text-slate-500">Avatar tạo bởi <a className="underline" href="https://www.dicebear.com/styles/adventurer/" target="_blank" rel="noreferrer">DiceBear Adventurer</a> · artwork của Lisa Wischofsky · CC BY 4.0.</p>
+        <Link href="/werewolf/preview" className="mt-5 block text-center text-xs font-medium text-violet-300 hover:text-violet-200">View as</Link>
         <Link href="/" className="mt-6 block text-center text-sm text-slate-400 hover:text-white">← Về trang chủ</Link>
       </section>
     </main>
   );
 }
-

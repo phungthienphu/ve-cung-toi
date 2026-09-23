@@ -1,4 +1,4 @@
-import type { SeerResult, WerewolfRole } from "../../shared/werewolfTypes";
+import type { SeerResult, SuspicionEntry, WerewolfRole } from "../../shared/werewolfTypes";
 
 export interface SecretPlayerState {
   role: WerewolfRole;
@@ -13,6 +13,7 @@ export interface SecretPlayerState {
   witchPoisonTargetId: string | null;
   lastGuardedPlayerId: string | null;
   seerHistory: SeerResult[];
+  suspicionHistory: SuspicionEntry[];
 }
 
 export const PHASE_DURATION_MS = {
@@ -38,6 +39,7 @@ export function createSecretPlayerState(role: WerewolfRole): SecretPlayerState {
     witchPoisonTargetId: null,
     lastGuardedPlayerId: null,
     seerHistory: [],
+    suspicionHistory: [],
   };
 }
 
@@ -49,4 +51,3 @@ export function shuffled<T>(values: readonly T[]): T[] {
   }
   return result;
 }
-

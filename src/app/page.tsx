@@ -10,18 +10,18 @@ interface GameCard {
 
 const GAMES: GameCard[] = [
   {
-    href: "/werewolf",
-    emoji: "🐺",
-    title: "Ma Sói Cùng Phòng",
-    description: "Suy luận, giấu vai và bỏ phiếu — dành cho nhóm ngồi cùng phòng.",
-    accent: "hover:border-violet-500",
-  },
-  {
     href: "/draw-guess",
     emoji: "🎨",
     title: "Vẽ Cùng Tôi",
     description: "Vẽ & đoán chữ cùng bạn bè — không cần tài khoản.",
     accent: "hover:border-clay-500",
+  },
+  {
+    href: "/werewolf",
+    emoji: "🐺",
+    title: "Ma Sói Cùng Phòng",
+    description: "Suy luận, giấu vai và bỏ phiếu — dành cho nhóm ngồi cùng phòng.",
+    accent: "hover:border-violet-500",
   },
   {
     href: "/tank-game",
@@ -37,13 +37,13 @@ const GAMES: GameCard[] = [
     description: "Đá bóng 2 đội — 1vs1 đến 4vs4, ghi nhiều bàn hơn trước khi hết giờ thì thắng.",
     accent: "hover:border-emerald-500",
   },
-  {
-    href: "/brawler",
-    emoji: "⚔️",
-    title: "Đại Chiến Tí Hon",
-    description: "Đối kháng nhiều người chơi — chọn nhân vật, chọn vũ khí, cùng tranh tài.",
-    accent: "hover:border-amber-500",
-  },
+  // {
+  //   href: "/brawler",
+  //   emoji: "⚔️",
+  //   title: "Đại Chiến Tí Hon",
+  //   description: "Đối kháng nhiều người chơi — chọn nhân vật, chọn vũ khí, cùng tranh tài.",
+  //   accent: "hover:border-amber-500",
+  // },
 ];
 
 export default function GamePickerPage() {

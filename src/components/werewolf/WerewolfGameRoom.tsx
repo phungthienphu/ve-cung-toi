@@ -10,6 +10,7 @@ import { LobbyScreen } from "./screens/LobbyScreen";
 import { RoleRevealScreen } from "./screens/RoleRevealScreen";
 import { NightScreen } from "./screens/NightScreen";
 import { DawnScreen, DiscussionScreen, GameEndScreen, VoteResultScreen, VotingScreen } from "./screens/DayScreens";
+import { RoleQuickView } from "./RoleQuickView";
 
 interface WerewolfGameRoomProps {
   roomId: string;
@@ -21,6 +22,7 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
   const router = useRouter();
   const room = useWerewolfRoom(roomId, playerId, name);
   const [showingRole, setShowingRole] = useState(false);
+  const [quickRoleOpen, setQuickRoleOpen] = useState(false);
   const secondsRemaining = useCountdown(room.state?.phaseEndsAt);
   const self = room.state?.players.find((player) => player.id === playerId);
 
@@ -32,12 +34,14 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
   };
 
   return (
-    <main className="min-h-app bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 px-4 py-5 text-white sm:py-8">
+    <main className="bg-werewolf-scene min-h-app px-4 py-5 text-white sm:py-8">
       <div className="mx-auto max-w-5xl">
         <RoomHeader
           roomId={roomId}
           phaseLabel={GAME_CONTENT.phaseLabels[room.state.phase]}
           secondsRemaining={secondsRemaining}
+          canViewRole={Boolean(room.privateState?.role && room.state.phase !== "lobby" && room.state.phase !== "roleReveal")}
+          onViewRole={() => setQuickRoleOpen(true)}
         />
 
         {!room.connected && <ConnectionWarning />}
@@ -56,6 +60,9 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
           <PlayerSidebar players={room.state.players} onLeave={leaveRoom} />
         </div>
       </div>
+      {quickRoleOpen && room.privateState?.role && (
+        <RoleQuickView role={room.privateState.role} onClose={() => setQuickRoleOpen(false)} />
+      )}
     </main>
   );
 }
@@ -109,6 +116,7 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
           role={room.privateState?.role ?? null}
           privateState={room.privateState}
           isHost={self.isHost}
+          self={self}
           send={room.send}
         />
       );
@@ -128,7 +136,7 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
   }
 }
 
-function RoomHeader({ roomId, phaseLabel, secondsRemaining }: { roomId: string; phaseLabel: string; secondsRemaining: number | null }) {
+function RoomHeader({ roomId, phaseLabel, secondsRemaining, canViewRole, onViewRole }: { roomId: string; phaseLabel: string; secondsRemaining: number | null; canViewRole: boolean; onViewRole: () => void }) {
   const copyInviteLink = () => navigator.clipboard.writeText(window.location.href);
 
   return (
@@ -138,6 +146,11 @@ function RoomHeader({ roomId, phaseLabel, secondsRemaining }: { roomId: string; 
         <div className="font-mono text-sm text-slate-400">Phòng {roomId}</div>
       </div>
       <div className="flex items-center gap-2">
+        {canViewRole && (
+          <button onClick={onViewRole} className="rounded-full border border-violet-300/20 bg-violet-500/20 px-3 py-2 text-sm font-semibold text-violet-100">
+            Vai của tôi
+          </button>
+        )}
         {secondsRemaining !== null && (
           <span className="rounded-full bg-white/10 px-4 py-2 font-mono font-bold">{secondsRemaining}s</span>
         )}

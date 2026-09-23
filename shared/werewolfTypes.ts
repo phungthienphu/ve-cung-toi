@@ -61,6 +61,39 @@ export interface VoteResult {
   votes: number;
 }
 
+export interface WerewolfChatEntry {
+  id: string;
+  playerId: string;
+  playerName: string;
+  text: string;
+  sentAt: number;
+}
+
+export interface WerewolfGameEvent {
+  id: string;
+  day: number;
+  type: "night_death" | "vote_elimination" | "peaceful_night";
+  playerIds: string[];
+}
+
+export interface SuspicionStatistic {
+  playerId: string;
+  nightVotes: number;
+  dayVotes: number;
+  weightedScore: number;
+  percentage: number;
+}
+
+export interface NightSuspicionResult {
+  night: number;
+  totalVotes: number;
+  results: Array<{
+    playerId: string;
+    votes: number;
+    percentage: number;
+  }>;
+}
+
 export interface PublicWerewolfState {
   roomId: string;
   phase: WerewolfPhase;
@@ -71,6 +104,10 @@ export interface PublicWerewolfState {
   phaseEndsAt: number | null;
   nightDeaths: string[];
   lastVoteResult: VoteResult[];
+  chat: WerewolfChatEntry[];
+  events: WerewolfGameEvent[];
+  suspicionStats: SuspicionStatistic[];
+  lastNightSuspicion: NightSuspicionResult | null;
   winner: WerewolfTeam | null;
 }
 
@@ -86,6 +123,11 @@ export interface SeerResult {
   isWolf: boolean;
 }
 
+export interface SuspicionEntry {
+  night: number;
+  targetId: string;
+}
+
 export interface PrivateWerewolfState {
   role: WerewolfRole | null;
   teammates: string[];
@@ -97,6 +139,7 @@ export interface PrivateWerewolfState {
   poisonAvailable: boolean;
   witchDecision: "heal" | "poison" | "skip" | null;
   seerHistory: SeerResult[];
+  suspicionHistory: SuspicionEntry[];
   lastGuardedPlayerId: string | null;
   suspicionTargetId: string | null;
   voteTargetId: string | null;
@@ -113,6 +156,7 @@ export type WerewolfClientMessage =
   | { type: "set_suspicion"; targetId: string }
   | { type: "witch_decision"; decision: "heal" | "poison" | "skip"; targetId?: string }
   | { type: "cast_vote"; targetId: string | null }
+  | { type: "chat"; text: string }
   | { type: "end_discussion" }
   | { type: "play_again" }
   | { type: "leave_room" };
@@ -140,4 +184,3 @@ export function rolesForPlayerCount(count: number): WerewolfRole[] {
   const villagers = Array<WerewolfRole>(Math.max(0, count - fixedRoles.length)).fill("villager");
   return [...fixedRoles, ...villagers];
 }
-
