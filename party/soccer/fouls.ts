@@ -149,21 +149,23 @@ export function resolveTackle(ctx: TackleCtx, tackler: SoccerPlayer, now: number
 /** Tackling into the referee by mistake — always a foul (it never has the
  * ball, so there's no "clean steal" outcome), and neutral (neither team's
  * play, so no free kick/advantage to award). Still shoves the ref out of
- * the way for the same physical consistency a player-victim gets. */
-function foulReferee(ctx: TackleCtx, tackler: SoccerPlayer, onSentOff: (team: SoccerTeam) => void) {
+ * the way for the same physical consistency a player-victim gets.
+ *
+ * Deliberately lighter than a real player foul: the referee actively trails
+ * the ball (see stepReferee), so it can end up in a crowd through no fault
+ * of the tackler — unlike fouling an opposing player, this doesn't count
+ * toward the real fouls counter or ever escalate to red/send-off. It still
+ * shows a yellow the first time as a clear "watch out for the ref" signal,
+ * but never punishes bad luck the way a genuine reckless-tackle strike does. */
+function foulReferee(ctx: TackleCtx, tackler: SoccerPlayer, _onSentOff: (team: SoccerTeam) => void) {
   const kbDx = ctx.referee.x - tackler.x;
   const kbDy = ctx.referee.y - tackler.y;
   const kbLen = Math.hypot(kbDx, kbDy) || 1;
   ctx.referee.x = clampToField(ctx.referee.x + (kbDx / kbLen) * SOCCER_TACKLE_KNOCKBACK_DIST, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_W);
   ctx.referee.y = clampToField(ctx.referee.y + (kbDy / kbLen) * SOCCER_TACKLE_KNOCKBACK_DIST, SOCCER_PLAYER_RADIUS, SOCCER_FIELD_H);
 
-  tackler.fouls += 1;
-  tackler.cardStatus = tackler.fouls >= 2 ? "red" : "yellow";
-  if (tackler.cardStatus === "red") {
-    tackler.sentOff = true;
-    onSentOff(tackler.team);
-  }
-  ctx.cardEvents.push({ id: makeId(), playerName: tackler.name, card: tackler.cardStatus, foulOnReferee: true });
+  if (tackler.cardStatus === "none") tackler.cardStatus = "yellow";
+  ctx.cardEvents.push({ id: makeId(), playerName: tackler.name, card: "yellow", foulOnReferee: true });
   ctx.tackleEvents.push({ id: makeId(), x: tackler.x, y: tackler.y, angle: tackler.angle, hit: true });
 }
 

@@ -299,6 +299,79 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
 
   const self = state.players.find((p) => p.id === selfId);
 
+  // `md:hidden` alone gates on viewport *width*, so a phone rotated to
+  // landscape (often ≥768px wide) silently lost every touch control even
+  // though it's still a touch device with no keyboard — that was the "quay
+  // ngang thì mất joystick" bug. Detecting real pointer capability instead
+  // means controls survive rotation; orientation only changes *how* they're
+  // laid out (see touchPortrait below), never *whether* they show at all.
+  const [touchUI, setTouchUI] = useState({ show: false, portrait: true });
+  useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)");
+    const portraitQuery = window.matchMedia("(orientation: portrait)");
+    const update = () => setTouchUI({ show: coarse.matches, portrait: portraitQuery.matches });
+    update();
+    coarse.addEventListener("change", update);
+    portraitQuery.addEventListener("change", update);
+    return () => {
+      coarse.removeEventListener("change", update);
+      portraitQuery.removeEventListener("change", update);
+    };
+  }, []);
+
+  const joystick = (
+    <div
+      ref={input.joyBaseRef}
+      onPointerDown={input.handleJoyPointerDown}
+      onPointerMove={input.handleJoyPointerMove}
+      onPointerUp={input.resetJoystick}
+      onPointerCancel={input.resetJoystick}
+      className="relative h-20 w-20 shrink-0 touch-none rounded-full border border-white/40 bg-black/25"
+    >
+      <div ref={input.joyKnobRef} className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow" />
+    </div>
+  );
+  const sprintButton = (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        input.setBoost(true);
+      }}
+      onPointerUp={() => input.setBoost(false)}
+      onPointerCancel={() => input.setBoost(false)}
+      className="flex h-12 w-12 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-sky-500/80 text-[10px] font-bold leading-tight text-white shadow-lg"
+    >
+      ⚡ NHANH
+    </button>
+  );
+  const tackleButton = (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        input.tackle();
+      }}
+      className="flex h-12 w-12 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xs font-bold text-white shadow-lg"
+    >
+      TẮC
+    </button>
+  );
+  const shootButton = (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        input.startKick();
+      }}
+      onPointerUp={input.releaseKick}
+      onPointerCancel={input.releaseKick}
+      className="flex h-16 w-16 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg"
+    >
+      SÚT
+    </button>
+  );
+
   return (
     <div className="flex flex-col gap-1.5">
       <div className="relative">
@@ -333,48 +406,48 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
           </div>
         )}
 
-        <div
-          ref={input.joyBaseRef}
-          onPointerDown={input.handleJoyPointerDown}
-          onPointerMove={input.handleJoyPointerMove}
-          onPointerUp={input.resetJoystick}
-          onPointerCancel={input.resetJoystick}
-          className="absolute bottom-3 left-3 h-24 w-24 touch-none rounded-full border border-white/40 bg-black/25 md:hidden"
-        >
-          <div
-            ref={input.joyKnobRef}
-            className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow"
-          />
-        </div>
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId);
-            input.startKick();
-          }}
-          onPointerUp={input.releaseKick}
-          onPointerCancel={input.releaseKick}
-          className="absolute bottom-3 right-3 flex h-16 w-16 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg md:hidden"
-        >
-          SÚT
-        </button>
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId);
-            input.tackle();
-          }}
-          className="absolute bottom-24 right-3 flex h-14 w-14 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xs font-bold text-white shadow-lg md:hidden"
-        >
-          TẮC
-        </button>
+        {/* Landscape: phones are wide but short here, so there's no room to
+            spare for a dedicated control bar below the canvas — controls stay
+            overlaid at the corners like before, just now gated on real touch
+            capability instead of viewport width (see touchUI above), so they
+            no longer vanish on rotation. */}
+        {touchUI.show && !touchUI.portrait && (
+          <>
+            <div className="absolute bottom-3 left-3">{joystick}</div>
+            <div className="absolute bottom-3 right-3 flex items-end gap-2">
+              {sprintButton}
+              {tackleButton}
+              {shootButton}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Portrait: the field is already squeezed into a short letterboxed
+          strip by its wide aspect ratio, so overlaying a 96px joystick and
+          two buttons directly on it (the old layout) covered a big chunk of
+          the only visible play area — exactly what was reported as
+          unplayable. A reserved row below the canvas costs some vertical
+          space but keeps the whole field visible and unobstructed. */}
+      {touchUI.show && touchUI.portrait && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-800/90 px-3 py-2.5 shadow-xl">
+          {joystick}
+          <div className="flex items-end gap-2">
+            {sprintButton}
+            {tackleButton}
+            {shootButton}
+          </div>
+        </div>
+      )}
+
       <p className="text-center text-[11px] text-ink/40">
-        Di chuyển: WASD/mũi tên · Chuột: ngắm hướng, giữ chuột trái để sạc lực rồi thả ra chuyền/sút · Space: tắc bóng · Shift: chạy nước rút
+        {touchUI.show
+          ? "Joystick: di chuyển · Chạm giữ SÚT để sạc lực rồi thả ra chuyền/sút · TẮC: tắc bóng · NHANH: chạy nước rút"
+          : "Di chuyển: WASD/mũi tên · Chuột: ngắm hướng, giữ chuột trái để sạc lực rồi thả ra chuyền/sút · Space: tắc bóng · Shift: chạy nước rút"}
       </p>
       {self && (
         <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 shadow-xl">
-          <span className="shrink-0 text-xs font-medium text-slate-500">⚡ Nước rút (Shift)</span>
+          <span className="shrink-0 text-xs font-medium text-slate-500">{touchUI.show ? "⚡ Nước rút" : "⚡ Nước rút (Shift)"}</span>
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full bg-amber-400 transition-[width]"

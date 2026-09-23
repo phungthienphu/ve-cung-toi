@@ -78,8 +78,19 @@ export const SOCCER_PLAYER_SPEED = 2.6; // px/tick, plain 8-directional
 // into by mistake for a foul (see resolveTackle).
 export const SOCCER_REFEREE_SPEED = 1.8; // px/tick — a jog, slower than a player's run
 // Stays roughly this far from the ball rather than standing right on top of
-// it — a real referee trails play, doesn't chase the ball itself.
-export const SOCCER_REFEREE_FOLLOW_DIST = 75;
+// it — a real referee trails play, doesn't chase the ball itself. Kept well
+// outside SOCCER_TACKLE_RANGE (32px) even though several players contesting
+// the ball can each be within ~30-40px of it themselves — 75px used to put
+// the referee right at the edge of that crowd, where a lunging tackle could
+// clip it by pure bad luck (see SOCCER_REFEREE_AVOID_DIST below for the
+// other half of that fix).
+export const SOCCER_REFEREE_FOLLOW_DIST = 130;
+// Personal-space buffer: any player closer than this gets a gentle push in
+// stepReferee, so the referee visibly steps out of a crowd around the ball
+// instead of standing still right in the middle of it while players fight
+// for a tackle. Comfortably wider than SOCCER_TACKLE_RANGE so it de-risks
+// contact before a lunge could ever connect, not just after.
+export const SOCCER_REFEREE_AVOID_DIST = 55;
 
 // ---------- sprint ----------
 
