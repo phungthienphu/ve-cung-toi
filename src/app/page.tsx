@@ -10,6 +10,13 @@ interface GameCard {
 
 const GAMES: GameCard[] = [
   {
+    href: "/werewolf",
+    emoji: "🐺",
+    title: "Ma Sói Cùng Phòng",
+    description: "Suy luận, giấu vai và bỏ phiếu — dành cho nhóm ngồi cùng phòng.",
+    accent: "hover:border-violet-500",
+  },
+  {
     href: "/draw-guess",
     emoji: "🎨",
     title: "Vẽ Cùng Tôi",

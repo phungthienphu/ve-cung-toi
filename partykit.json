@@ -8,7 +8,8 @@
     "brawler": "party/brawler-server.ts",
     "soccer": "party/soccer-server.ts",
     "soccerlobby": "party/soccer-directory.ts",
-    "drawlobby": "party/draw-directory.ts"
+    "drawlobby": "party/draw-directory.ts",
+    "werewolf": "party/werewolf-server.ts"
   },
   "compatibilityDate": "2024-11-01"
 }
