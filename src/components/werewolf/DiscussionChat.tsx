@@ -29,16 +29,16 @@ export function DiscussionChat({ entries, selfId, canSend, onSend }: DiscussionC
   };
 
   return (
-    <div className="flex min-h-[360px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/55">
-      <div ref={listRef} className="no-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-strong)]">
+      <div ref={listRef} className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {entries.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-500">{content.emptyChat}</p>
+          <p className="py-12 text-center text-sm text-[var(--ww-text-faint)]">{content.emptyChat}</p>
         ) : entries.map((entry) => (
           <ChatBubble key={entry.id} entry={entry} isSelf={entry.playerId === selfId} />
         ))}
       </div>
 
-      <form onSubmit={submit} className="flex items-end gap-2 border-t border-white/10 bg-slate-900/80 p-3">
+      <form onSubmit={submit} className="flex shrink-0 items-end gap-2 border-t border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-3">
         <textarea
           value={text}
           disabled={!canSend}
@@ -49,12 +49,12 @@ export function DiscussionChat({ entries, selfId, canSend, onSend }: DiscussionC
           rows={1}
           maxLength={300}
           placeholder={canSend ? content.inputPlaceholder : content.deadInputPlaceholder}
-          className="max-h-24 min-h-10 min-w-0 flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+          className="max-h-24 min-h-10 min-w-0 flex-1 resize-none rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)] disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!canSend || !text.trim()}
-          className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold disabled:opacity-30"
+          className="rounded-xl bg-[var(--ww-accent-strong)] px-4 py-2.5 text-sm font-semibold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-30"
         >
           {content.sendButton}
         </button>
@@ -66,11 +66,11 @@ export function DiscussionChat({ entries, selfId, canSend, onSend }: DiscussionC
 function ChatBubble({ entry, isSelf }: { entry: WerewolfChatEntry; isSelf: boolean }) {
   return (
     <div className={`flex ${isSelf ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-left ${isSelf ? "rounded-br-sm bg-violet-500/25" : "rounded-bl-sm bg-white/10"}`}>
-        <div className={`mb-0.5 text-[11px] font-semibold ${isSelf ? "text-violet-200" : "text-slate-400"}`}>
+      <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-left ${isSelf ? "rounded-br-sm bg-[var(--ww-accent-soft)]" : "rounded-bl-sm bg-[var(--ww-surface-soft)]"}`}>
+        <div className={`mb-0.5 text-[11px] font-semibold ${isSelf ? "text-[var(--ww-accent)]" : "text-[var(--ww-text-muted)]"}`}>
           {entry.playerName}
         </div>
-        <p className="break-words text-sm leading-5 text-slate-100">{entry.text}</p>
+        <p className="break-words text-sm leading-5 text-[var(--ww-text)]">{entry.text}</p>
       </div>
     </div>
   );

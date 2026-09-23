@@ -52,6 +52,8 @@ const config: Config = {
       fontFamily: {
         "draw-display": ["var(--font-draw-display)", "ui-rounded", "system-ui", "sans-serif"],
         "draw-body": ["var(--font-draw-body)", "ui-sans-serif", "system-ui", "sans-serif"],
+        "ww-display": ["var(--font-ww-display)", "Georgia", "serif"],
+        "ww-body": ["var(--font-ww-body)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },

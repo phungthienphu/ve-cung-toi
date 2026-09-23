@@ -75,6 +75,67 @@ body {
   background-position: center;
   background-attachment: fixed;
   background-color: #020617;
+  transition: background-color 0.6s ease;
+}
+
+/* Daytime phases (lobby, dawn, discussion, voting, results, game end) get a
+   warm village-daylight backdrop instead of the moonlit night image — the
+   same art wouldn't read as "day" with a lighter overlay, it'd just look
+   like dusk, so this is a deliberately separate scene rather than a filter
+   on the night one. */
+.bg-werewolf-scene-day {
+  background-image: linear-gradient(180deg, #f3e6c8 0%, #fbf6ec 55%, #fdf9ef 100%);
+  background-color: #fbf6ec;
+}
+
+/* ---------- Ma Sói day/night design tokens ----------
+   Every werewolf component reads colors from these custom properties
+   instead of hardcoding slate/violet-on-dark classes, so toggling
+   data-time on .werewolf-root (driven by the current game phase, not the
+   viewer's OS theme — see WerewolfGameRoom.tsx) re-themes the whole game
+   at once. Night is the default (bare selector) since that's the game's
+   "home" identity; [data-time="day"] overrides for daytime phases. */
+.werewolf-root {
+  --ww-surface: rgba(15, 23, 42, 0.78);
+  --ww-surface-strong: rgba(2, 6, 23, 0.88);
+  --ww-surface-soft: rgba(255, 255, 255, 0.05);
+  --ww-surface-soft-hover: rgba(255, 255, 255, 0.1);
+  --ww-border: rgba(255, 255, 255, 0.1);
+  --ww-border-strong: rgba(167, 139, 250, 0.35);
+  --ww-text: #f8fafc;
+  --ww-text-muted: #a1acc4;
+  --ww-text-faint: #6b7488;
+  --ww-accent: #a78bfa;
+  --ww-accent-strong: #8b5cf6;
+  --ww-accent-soft: rgba(139, 92, 246, 0.18);
+  --ww-accent-ink: #f5f3ff;
+  --ww-danger: #fb7185;
+  --ww-danger-soft: rgba(244, 63, 94, 0.16);
+  --ww-warn: #fbbf24;
+  --ww-warn-soft: rgba(251, 191, 36, 0.14);
+  --ww-safe: #34d399;
+  color-scheme: dark;
+}
+.werewolf-root[data-time="day"] {
+  --ww-surface: rgba(255, 255, 255, 0.88);
+  --ww-surface-strong: #fffaf3;
+  --ww-surface-soft: rgba(124, 58, 237, 0.05);
+  --ww-surface-soft-hover: rgba(124, 58, 237, 0.1);
+  --ww-border: rgba(124, 58, 237, 0.16);
+  --ww-border-strong: rgba(124, 58, 237, 0.4);
+  --ww-text: #2b2013;
+  --ww-text-muted: #7d6c50;
+  --ww-text-faint: #a39275;
+  --ww-accent: #7c3aed;
+  --ww-accent-strong: #6d28d9;
+  --ww-accent-soft: rgba(124, 58, 237, 0.1);
+  --ww-accent-ink: #ffffff;
+  --ww-danger: #dc2626;
+  --ww-danger-soft: rgba(220, 38, 38, 0.1);
+  --ww-warn: #b45309;
+  --ww-warn-soft: rgba(180, 83, 9, 0.12);
+  --ww-safe: #059669;
+  color-scheme: light;
 }
 
 /* Brawler weapon-showcase loops (CharacterPreview.tsx's `animate` prop) — one
@@ -188,6 +249,23 @@ body {
 }
 .animate-bounce-in {
   animation: bounce-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes death-banner-reveal {
+  0% { transform: translateY(28px) scale(0.88); opacity: 0; filter: blur(5px); }
+  55% { transform: translateY(-5px) scale(1.025); opacity: 1; filter: blur(0); }
+  78% { transform: translateY(2px) scale(0.995); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.animate-death-banner {
+  animation: death-banner-reveal 0.75s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-death-banner {
+    animation: none;
+  }
 }
 
 @keyframes wiggle {

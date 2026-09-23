@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWerewolfRoom } from "@/lib/useWerewolfRoom";
+import { werewolfFontClass } from "@/lib/werewolfFonts";
 import type { WerewolfClientMessage, WerewolfPhase, WerewolfPlayer } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "./gameContent";
 import { PlayerSidebar } from "./ui";
@@ -11,6 +12,13 @@ import { RoleRevealScreen } from "./screens/RoleRevealScreen";
 import { NightScreen } from "./screens/NightScreen";
 import { DawnScreen, DiscussionScreen, GameEndScreen, VoteResultScreen, VotingScreen } from "./screens/DayScreens";
 import { RoleQuickView } from "./RoleQuickView";
+
+// Night phases get the dark "ma mị" (eerie) treatment; everything else
+// reads as daylight. This is keyed on the *game's* phase, deliberately not
+// the viewer's OS light/dark preference (see the data-time attribute
+// below). roleReveal is grouped with night too — it's the game's most
+// suspenseful beat (discovering your secret role), not narratively "day".
+const NIGHT_PHASES: WerewolfPhase[] = ["roleReveal", "nightExplore", "wolfLock", "nightResolve"];
 
 interface WerewolfGameRoomProps {
   roomId: string;
@@ -33,12 +41,19 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
     router.push("/werewolf");
   };
 
+  const isNight = NIGHT_PHASES.includes(room.state.phase);
+  const sceneClass = isNight ? "bg-werewolf-scene" : "bg-werewolf-scene-day";
+
   return (
-    <main className="bg-werewolf-scene min-h-app px-4 py-5 text-white sm:py-8">
-      <div className="mx-auto max-w-5xl">
+    <main
+      data-time={isNight ? "night" : "day"}
+      className={`${werewolfFontClass} werewolf-root ${sceneClass} flex min-h-app flex-col px-4 py-5 text-[var(--ww-text)] transition-colors duration-500 sm:py-8 md:h-dvh md:overflow-hidden`}
+    >
+      <div className="mx-auto flex w-full min-h-0 max-w-5xl flex-1 flex-col gap-3">
         <RoomHeader
           roomId={roomId}
           phaseLabel={GAME_CONTENT.phaseLabels[room.state.phase]}
+          isNight={isNight}
           secondsRemaining={secondsRemaining}
           canViewRole={Boolean(room.privateState?.role && room.state.phase !== "lobby" && room.state.phase !== "roleReveal")}
           onViewRole={() => setQuickRoleOpen(true)}
@@ -47,8 +62,8 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
         {!room.connected && <ConnectionWarning />}
         {room.error && <ErrorBanner message={room.error} onClose={room.clearError} />}
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
-          <section className="rounded-2xl border border-white/10 bg-slate-900/75 p-5 shadow-2xl backdrop-blur sm:p-7">
+        <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[1fr_260px]">
+          <section className="min-h-0 rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
             <PhaseScreen
               playerId={playerId}
               self={self}
@@ -57,7 +72,9 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
               setShowingRole={setShowingRole}
             />
           </section>
-          <PlayerSidebar players={room.state.players} onLeave={leaveRoom} />
+          <div className="min-h-0 md:overflow-y-auto">
+            <PlayerSidebar players={room.state.players} onLeave={leaveRoom} />
+          </div>
         </div>
       </div>
       {quickRoleOpen && room.privateState?.role && (
@@ -126,6 +143,7 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
           players={state.players}
           self={self}
           selected={room.privateState?.voteTargetId ?? null}
+          teammateIds={room.privateState?.role === "wolf" ? room.privateState.teammates : undefined}
           send={room.send}
         />
       );
@@ -136,25 +154,27 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
   }
 }
 
-function RoomHeader({ roomId, phaseLabel, secondsRemaining, canViewRole, onViewRole }: { roomId: string; phaseLabel: string; secondsRemaining: number | null; canViewRole: boolean; onViewRole: () => void }) {
+function RoomHeader({ roomId, phaseLabel, isNight, secondsRemaining, canViewRole, onViewRole }: { roomId: string; phaseLabel: string; isNight: boolean; secondsRemaining: number | null; canViewRole: boolean; onViewRole: () => void }) {
   const copyInviteLink = () => navigator.clipboard.writeText(window.location.href);
 
   return (
-    <header className="mb-4 flex items-center justify-between gap-3">
+    <header className="flex shrink-0 items-center justify-between gap-3">
       <div>
-        <div className="text-xs uppercase tracking-widest text-violet-300">{phaseLabel}</div>
-        <div className="font-mono text-sm text-slate-400">Phòng {roomId}</div>
+        <div className="flex items-center gap-1.5 font-ww-display text-sm font-bold uppercase tracking-widest text-[var(--ww-accent)]">
+          <span aria-hidden>{isNight ? "🌙" : "☀️"}</span> {phaseLabel}
+        </div>
+        <div className="font-mono text-xs text-[var(--ww-text-muted)]">Phòng {roomId}</div>
       </div>
       <div className="flex items-center gap-2">
         {canViewRole && (
-          <button onClick={onViewRole} className="rounded-full border border-violet-300/20 bg-violet-500/20 px-3 py-2 text-sm font-semibold text-violet-100">
+          <button onClick={onViewRole} className="rounded-full border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--ww-accent)]">
             Vai của tôi
           </button>
         )}
         {secondsRemaining !== null && (
-          <span className="rounded-full bg-white/10 px-4 py-2 font-mono font-bold">{secondsRemaining}s</span>
+          <span className="rounded-full bg-[var(--ww-surface-soft)] px-4 py-2 font-mono font-bold tabular-nums text-[var(--ww-text)]">{secondsRemaining}s</span>
         )}
-        <button onClick={copyInviteLink} className="rounded-full bg-white/10 px-3 py-2 text-sm">
+        <button onClick={copyInviteLink} className="rounded-full bg-[var(--ww-surface-soft)] px-3 py-2 text-sm text-[var(--ww-text)] transition hover:bg-[var(--ww-surface-soft-hover)]">
           Mời bạn
         </button>
       </div>
@@ -163,19 +183,27 @@ function RoomHeader({ roomId, phaseLabel, secondsRemaining, canViewRole, onViewR
 }
 
 function ConnectionWarning() {
-  return <div className="mb-4 rounded-xl bg-amber-500/20 p-3 text-sm text-amber-200">Mất kết nối — đang thử kết nối lại…</div>;
+  return (
+    <div className="shrink-0 rounded-xl bg-[var(--ww-warn-soft)] p-3 text-sm text-[var(--ww-warn)]">
+      Mất kết nối — đang thử kết nối lại…
+    </div>
+  );
 }
 
 function ErrorBanner({ message, onClose }: { message: string; onClose: () => void }) {
   return (
-    <button onClick={onClose} className="mb-4 w-full rounded-xl bg-rose-500/20 p-3 text-left text-sm text-rose-200">
+    <button onClick={onClose} className="w-full shrink-0 rounded-xl bg-[var(--ww-danger-soft)] p-3 text-left text-sm text-[var(--ww-danger)]">
       {message} · bấm để đóng
     </button>
   );
 }
 
 function LoadingRoom() {
-  return <main className="flex min-h-app items-center justify-center bg-slate-950 text-slate-300">Đang kết nối tới ngôi làng…</main>;
+  return (
+    <main className={`${werewolfFontClass} bg-werewolf-scene flex min-h-app items-center justify-center text-slate-300`}>
+      Đang kết nối tới ngôi làng…
+    </main>
+  );
 }
 
 function useCountdown(endsAt: number | null | undefined): number | null {

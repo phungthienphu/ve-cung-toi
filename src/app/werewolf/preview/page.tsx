@@ -13,6 +13,7 @@ import {
   type WerewolfTeam,
 } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "@/components/werewolf/gameContent";
+import { werewolfFontClass } from "@/lib/werewolfFonts";
 import { LobbyScreen } from "@/components/werewolf/screens/LobbyScreen";
 import { RoleRevealScreen } from "@/components/werewolf/screens/RoleRevealScreen";
 import { NightScreen } from "@/components/werewolf/screens/NightScreen";
@@ -44,6 +45,10 @@ const SCENES: Array<{ id: PreviewScene; label: string }> = [
   { id: "gameEnd", label: GAME_CONTENT.phaseLabels.gameEnd },
   { id: "history", label: "Lịch sử trận đã lưu" },
 ];
+
+// Mirrors WerewolfGameRoom.tsx's day/night split so the design tool matches
+// what players actually see instead of the pre-redesign flat dark shell.
+const NIGHT_PHASES: WerewolfPhase[] = ["roleReveal", "nightExplore", "wolfLock", "nightResolve"];
 
 const VIEWPORTS = {
   mobile: { label: "Mobile · 390px", width: 390 },
@@ -126,26 +131,33 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
   const state = useMemo(() => createPublicState(phase, winner), [phase, winner]);
   const privateState = useMemo(() => createPrivateState(role), [role]);
   const send = (message: WerewolfClientMessage) => setLastAction(message);
+  const isNight = NIGHT_PHASES.includes(phase);
+  const sceneClass = isNight ? "bg-werewolf-scene" : "bg-werewolf-scene-day";
 
   return (
-    <main className="bg-werewolf-scene min-h-app px-4 py-5 text-white sm:py-8">
+    <main
+      data-time={isNight ? "night" : "day"}
+      className={`${werewolfFontClass} werewolf-root ${sceneClass} min-h-app px-4 py-5 text-[var(--ww-text)] transition-colors duration-500 sm:py-8`}
+    >
       <div className="mx-auto max-w-5xl">
         <header className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <div className="text-xs uppercase tracking-widest text-violet-300">{GAME_CONTENT.phaseLabels[phase]}</div>
-            <div className="font-mono text-sm text-slate-400">VIEW AS · {role}</div>
+            <div className="flex items-center gap-1.5 font-ww-display text-xs uppercase tracking-widest text-[var(--ww-accent)]">
+              <span aria-hidden>{isNight ? "🌙" : "☀️"}</span> {GAME_CONTENT.phaseLabels[phase]}
+            </div>
+            <div className="font-mono text-sm text-[var(--ww-text-muted)]">VIEW AS · {role}</div>
           </div>
-          <span className="rounded-full bg-white/10 px-4 py-2 font-mono font-bold">18s</span>
+          <span className="rounded-full bg-[var(--ww-surface-soft)] px-4 py-2 font-mono font-bold text-[var(--ww-text)]">18s</span>
         </header>
 
         {lastAction && (
-          <button onClick={() => setLastAction(null)} className="mb-3 w-full rounded-lg bg-emerald-500/15 p-2 text-left text-xs text-emerald-200">
+          <button onClick={() => setLastAction(null)} className="mb-3 w-full rounded-lg bg-[var(--ww-safe)]/15 p-2 text-left text-xs text-[var(--ww-safe)]">
             Action preview: {JSON.stringify(lastAction)}
           </button>
         )}
 
         <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
-          <section className="rounded-2xl border border-white/10 bg-slate-900/75 p-5 shadow-2xl backdrop-blur sm:p-7">
+          <section className="rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7">
             <PreviewPhase
               state={state}
               scene={scene}
@@ -200,7 +212,7 @@ function PreviewPhase(props: PreviewPhaseProps) {
     case "discussion":
       return <DiscussionScreen state={state} role={role} privateState={privateState} isHost self={self} send={send} />;
     case "voting":
-      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} send={send} />;
+      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
     case "voteResult":
       return <VoteResultScreen state={state} />;
     case "gameEnd":

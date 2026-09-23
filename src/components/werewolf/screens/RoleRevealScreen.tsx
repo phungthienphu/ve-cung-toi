@@ -21,30 +21,30 @@ export function RoleRevealScreen(props: RoleRevealScreenProps) {
 
   return (
     <div className="text-center">
-      <p className="text-slate-400">{GAME_CONTENT.roleReveal.privacyHint}</p>
+      <p className="text-[var(--ww-text-muted)]">{GAME_CONTENT.roleReveal.privacyHint}</p>
       <button
         onPointerDown={() => setShowingRole(true)}
         onPointerUp={() => setShowingRole(false)}
         onPointerLeave={() => setShowingRole(false)}
-        className={`mt-6 w-full rounded-2xl border p-8 transition ${showingRole ? "border-violet-400 bg-violet-500/15" : "border-white/10 bg-white/5"}`}
+        className={`mt-6 w-full rounded-3xl border p-8 transition ${showingRole ? "border-[var(--ww-accent)] bg-[var(--ww-accent-soft)]" : "border-[var(--ww-border)] bg-[var(--ww-surface-soft)]"}`}
       >
         {showingRole && role && content ? (
           <>
             <RoleArtwork role={role} className="mx-auto max-h-[56vh] w-auto max-w-full rounded-2xl shadow-2xl" />
-            <div className="mt-4 text-2xl font-bold">{content.title}</div>
-            <p className="mx-auto mt-2 max-w-lg text-sm text-slate-300">{content.instruction}</p>
+            <div className="mt-4 font-ww-display text-2xl font-bold text-[var(--ww-text)]">{content.title}</div>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-[var(--ww-text-muted)]">{content.instruction}</p>
             {role === "wolf" && teammateNames && (
-              <p className="mt-3 text-sm text-rose-300">Đồng đội: {teammateNames}</p>
+              <p className="mt-3 text-sm text-[var(--ww-danger)]">Đồng đội: {teammateNames}</p>
             )}
           </>
         ) : (
           <>
             <div className="text-5xl">🌑</div>
-            <div className="mt-3 font-semibold">{GAME_CONTENT.roleReveal.hiddenTitle}</div>
+            <div className="mt-3 font-semibold text-[var(--ww-text)]">{GAME_CONTENT.roleReveal.hiddenTitle}</div>
           </>
         )}
       </button>
-      <button onClick={onConfirm} className="mt-5 rounded-xl bg-violet-500 px-8 py-3 font-bold">
+      <button onClick={onConfirm} className="mt-5 rounded-xl bg-[var(--ww-accent-strong)] px-8 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90">
         {GAME_CONTENT.roleReveal.confirmButton}
       </button>
     </div>

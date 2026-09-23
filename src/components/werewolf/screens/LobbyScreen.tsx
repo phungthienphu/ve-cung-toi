@@ -12,22 +12,22 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold">Đang chờ dân làng</h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <h2 className="font-ww-display text-xl font-bold text-[var(--ww-text)]">Đang chờ dân làng</h2>
+      <p className="mt-1 text-sm text-[var(--ww-text-muted)]">
         Cần {MIN_WEREWOLF_PLAYERS}–{MAX_WEREWOLF_PLAYERS} người. Chia sẻ mã hoặc link phòng.
       </p>
 
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         {state.players.map((player) => (
-          <div key={player.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+          <div key={player.id} className="flex items-center gap-3 rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-3">
             <PlayerAvatar player={player} size="sm" />
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">
+              <div className="truncate font-medium text-[var(--ww-text)]">
                 {player.name}{player.id === self.id ? " (Bạn)" : ""}
               </div>
-              <div className="text-xs text-slate-500">{lobbyStatus(player)}</div>
+              <div className="text-xs text-[var(--ww-text-faint)]">{lobbyStatus(player)}</div>
             </div>
-            <span>{player.ready || player.isHost ? "✓" : "○"}</span>
+            <span className="text-[var(--ww-text-muted)]">{player.ready || player.isHost ? "✓" : "○"}</span>
           </div>
         ))}
       </div>
@@ -37,7 +37,7 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
       ) : (
         <button
           onClick={() => send({ type: "set_ready", ready: !self.ready })}
-          className={`mt-6 w-full rounded-xl py-3 font-bold ${self.ready ? "bg-emerald-600" : "bg-violet-500"}`}
+          className={`mt-6 w-full rounded-xl py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 ${self.ready ? "bg-[var(--ww-safe)]" : "bg-[var(--ww-accent-strong)]"}`}
         >
           {self.ready ? "✓ Đã sẵn sàng" : "Tôi đã sẵn sàng"}
         </button>
@@ -52,7 +52,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
   };
 
   return (
-    <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="mt-6 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <TimeSelect
           label="Thảo luận"
@@ -70,7 +70,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
       <button
         disabled={connectedCount < MIN_WEREWOLF_PLAYERS}
         onClick={() => send({ type: "start_game" })}
-        className="mt-4 w-full rounded-xl bg-violet-500 py-3 font-bold disabled:opacity-40"
+        className="mt-4 w-full rounded-xl bg-[var(--ww-accent-strong)] py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-40"
       >
         Bắt đầu ván
       </button>
@@ -80,12 +80,12 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
 
 function TimeSelect({ label, value, options, onChange }: { label: string; value: number; options: number[]; onChange: (value: number) => void }) {
   return (
-    <label className="text-sm">
+    <label className="text-sm text-[var(--ww-text-muted)]">
       {label}
       <select
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-1 block w-full rounded-lg bg-slate-800 p-2"
+        className="mt-1 block w-full rounded-lg border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] p-2 text-[var(--ww-text)]"
       >
         {options.map((seconds) => <option key={seconds} value={seconds}>{seconds} giây</option>)}
       </select>
