@@ -543,6 +543,11 @@ export default class WerewolfRoom implements Party.Server {
       suspicionTargetId: secret.suspicionTargetId,
       voteTargetId: secret.voteTargetId,
       voteReason: secret.voteReason,
+      // Ghosts watch the rest of the game knowing who's who — living players
+      // never receive this.
+      allRoles: !this.players.get(playerId)?.alive && this.phase !== "lobby"
+        ? Object.fromEntries([...this.secrets].map(([id, candidate]) => [id, candidate.role]))
+        : null,
     };
   }
 
@@ -706,5 +711,6 @@ function emptyPrivateState(): PrivateWerewolfState {
     suspicionTargetId: null,
     voteTargetId: null,
     voteReason: "",
+    allRoles: null,
   };
 }

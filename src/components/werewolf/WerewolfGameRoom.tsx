@@ -83,7 +83,13 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
         {!room.connected && <ConnectionWarning />}
         {room.error && <ErrorBanner message={room.error} onClose={room.clearError} />}
 
-        <PlayerStrip players={room.state.players} onLeave={leaveRoom} />
+        <PlayerStrip players={room.state.players} onLeave={leaveRoom} roles={room.privateState?.allRoles} />
+
+        {!self.alive && room.state.phase !== "lobby" && room.state.phase !== "gameEnd" && (
+          <div className="shrink-0 rounded-xl bg-[var(--ww-accent-soft)] px-3 py-2 text-center text-xs text-[var(--ww-accent)]">
+            👻 Bạn đã chết — chỉ được theo dõi. Bạn biết vai của mọi người (xem trên thanh ngôi làng), đừng tiết lộ nhé.
+          </div>
+        )}
 
         <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
           <PhaseScreen

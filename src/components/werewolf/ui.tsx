@@ -75,7 +75,7 @@ export function TargetGrid({ players, selfId, selected, disabledIds = [], teamma
   );
 }
 
-export function PlayerStrip({ players, onLeave }: { players: WerewolfPlayer[]; onLeave: () => void }) {
+export function PlayerStrip({ players, onLeave, roles }: { players: WerewolfPlayer[]; onLeave: () => void; roles?: Record<string, WerewolfRole> | null }) {
   const livingCount = players.filter((player) => player.alive).length;
 
   return (
@@ -103,7 +103,11 @@ export function PlayerStrip({ players, onLeave }: { players: WerewolfPlayer[]; o
             <span className="max-w-[88px] truncate text-xs font-medium text-[var(--ww-text)]">
               {player.name}{player.isHost ? " 👑" : ""}
             </span>
-            {!player.alive && <span className="text-xs">{player.revealedRole ? ROLE_EMOJI[player.revealedRole] : "💀"}</span>}
+            {roles?.[player.id] ? (
+              <span className="text-xs" title={ROLE_LABELS[roles[player.id]]}>{ROLE_EMOJI[roles[player.id]]}</span>
+            ) : (
+              !player.alive && <span className="text-xs">{player.revealedRole ? ROLE_EMOJI[player.revealedRole] : "💀"}</span>
+            )}
           </div>
         ))}
       </div>

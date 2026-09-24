@@ -32,6 +32,10 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
         ))}
       </div>
 
+      <p className="mt-3 text-xs text-[var(--ww-text-faint)]">
+        Khi chết: {state.config.revealRoleOnDeath ? "vai bị lộ cho cả làng" : "vai được giữ kín"} · hồn ma chỉ được theo dõi, không chat được
+      </p>
+
       {self.isHost ? (
         <HostControls state={state} connectedCount={connectedCount} send={send} />
       ) : (
@@ -67,6 +71,18 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
           onChange={(value) => updateNumber("votingSeconds", value)}
         />
       </div>
+      <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+        <span>
+          Lộ vai khi chết
+          <span className="block text-xs text-[var(--ww-text-faint)]">Tắt: người chết không bị lộ vai cho cả làng (hồn ma vẫn biết hết)</span>
+        </span>
+        <input
+          type="checkbox"
+          checked={state.config.revealRoleOnDeath}
+          onChange={(event) => send({ type: "update_config", config: { ...state.config, revealRoleOnDeath: event.target.checked } })}
+          className="h-5 w-5 shrink-0 accent-[var(--ww-accent-strong)]"
+        />
+      </label>
       <button
         disabled={connectedCount < MIN_WEREWOLF_PLAYERS}
         onClick={() => send({ type: "start_game" })}

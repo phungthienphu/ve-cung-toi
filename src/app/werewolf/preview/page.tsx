@@ -14,6 +14,7 @@ import {
 } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "@/components/werewolf/gameContent";
 import { werewolfFontClass } from "@/lib/werewolfFonts";
+import { describeWerewolfSound, useWerewolfSound } from "@/lib/werewolfSound";
 import { LobbyScreen } from "@/components/werewolf/screens/LobbyScreen";
 import { RoleRevealScreen } from "@/components/werewolf/screens/RoleRevealScreen";
 import { NightScreen } from "@/components/werewolf/screens/NightScreen";
@@ -114,6 +115,7 @@ export default function WerewolfPreviewPage() {
           <iframe
             key={iframeUrl}
             title={`Preview ${role} ${scene}`}
+            allow="autoplay"
             src={iframeUrl}
             style={{ width: VIEWPORTS[viewport].width, height: 820 }}
             className="mx-auto block max-w-none rounded-xl border border-white/10 bg-slate-950 shadow-2xl"
@@ -131,6 +133,7 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
   const state = useMemo(() => createPublicState(phase, winner), [phase, winner]);
   const privateState = useMemo(() => createPrivateState(role), [role]);
   const send = (message: WerewolfClientMessage) => setLastAction(message);
+  const sound = useWerewolfSound(state);
   const isNight = NIGHT_PHASES.includes(phase);
   const sceneClass = isNight ? "bg-werewolf-scene" : "bg-werewolf-scene-day";
 
@@ -147,8 +150,18 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
             </div>
             <div className="font-mono text-sm text-[var(--ww-text-muted)]">VIEW AS · {role}</div>
           </div>
-          <span className="rounded-full bg-[var(--ww-surface-soft)] px-4 py-2 font-mono font-bold text-[var(--ww-text)]">18s</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={sound.replay}
+              title={describeWerewolfSound(state)}
+              className="rounded-full border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ww-accent)]"
+            >
+              🔊 Nghe cảnh này
+            </button>
+            <span className="rounded-full bg-[var(--ww-surface-soft)] px-4 py-2 font-mono font-bold text-[var(--ww-text)]">18s</span>
+          </div>
         </header>
+        <p className="-mt-2 mb-3 text-right font-mono text-[11px] text-[var(--ww-text-faint)]">{describeWerewolfSound(state)}</p>
 
         {lastAction && (
           <button onClick={() => setLastAction(null)} className="mb-3 w-full rounded-lg bg-[var(--ww-safe)]/15 p-2 text-left text-xs text-[var(--ww-safe)]">
@@ -342,6 +355,7 @@ function createPrivateState(role: WerewolfRole): PrivateWerewolfState {
     suspicionTargetId: "p6",
     voteTargetId: "p5",
     voteReason: "Đổi lời khai từ đầu ngày, nghe không ổn.",
+    allRoles: null,
   };
 }
 

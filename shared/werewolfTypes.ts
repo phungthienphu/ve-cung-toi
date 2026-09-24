@@ -160,6 +160,8 @@ export interface PrivateWerewolfState {
   suspicionTargetId: string | null;
   voteTargetId: string | null;
   voteReason: string;
+  /** Only sent to dead players (spectators): every player's true role. */
+  allRoles: Record<string, WerewolfRole> | null;
 }
 
 export type WerewolfClientMessage =

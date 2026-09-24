@@ -255,7 +255,7 @@ export function VoteResultScreen({ state, self, send }: { state: PublicWerewolfS
       <div>
         <DeathAnnouncement players={state.players} playerIds={[top.playerId]} cause="vote" />
         <p className="mt-4 text-center text-sm text-[var(--ww-text-muted)]">{result}</p>
-        <VoteReveal ballots={state.lastVotes} results={state.lastVoteResult} players={state.players} />
+        <VoteReveal ballots={state.lastVotes} results={state.lastVoteResult} players={state.players} selfId={self.id} eliminatedId={top.playerId} />
         <ContinueBar state={state} self={self} send={send} />
       </div>
     );
@@ -267,7 +267,7 @@ export function VoteResultScreen({ state, self, send }: { state: PublicWerewolfS
       <h2 className="mt-4 font-ww-display text-2xl font-bold text-[var(--ww-text)]">{GAME_CONTENT.voteResult.title}</h2>
       <p className="mt-3 text-[var(--ww-text-muted)]">{result}</p>
       <div className="text-left">
-        <VoteReveal ballots={state.lastVotes} results={state.lastVoteResult} players={state.players} />
+        <VoteReveal ballots={state.lastVotes} results={state.lastVoteResult} players={state.players} selfId={self.id} eliminatedId={null} />
       </div>
       <ContinueBar state={state} self={self} send={send} />
     </div>

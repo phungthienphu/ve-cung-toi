@@ -57,6 +57,22 @@ function sceneFor(state: PublicWerewolfState): TrackName | null {
   }
 }
 
+function stingerFor(state: PublicWerewolfState): StingerName | null {
+  if (state.phase === "dawn" && state.nightDeaths.length > 0) return "wolfHowl";
+  if (state.phase === "voteResult" && eliminatedByVote(state)) return "execution";
+  if (state.phase === "gameEnd") return "endGame";
+  return null;
+}
+
+/** Human-readable "what plays in this scene" — used by the design preview. */
+export function describeWerewolfSound(state: PublicWerewolfState): string {
+  const scene = sceneFor(state);
+  const stinger = stingerFor(state);
+  const parts = [scene ? `🎵 ${TRACKS[scene].src.split("/").pop()}` : "🔇 không nhạc nền"];
+  if (stinger) parts.push(`✨ ${STINGERS[stinger].src.split("/").pop()}`);
+  return parts.join("  +  ");
+}
+
 function eliminatedByVote(state: PublicWerewolfState): boolean {
   const top = state.lastVoteResult[0];
   return Boolean(top) && state.lastVoteResult.filter((r) => r.votes === top.votes).length === 1;
@@ -72,8 +88,6 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
 
   const phase = state?.phase ?? null;
   const day = state?.day ?? 0;
-  const deaths = state?.nightDeaths.length ?? 0;
-  const voteKilled = state ? eliminatedByVote(state) : false;
 
   function stopCurrent() {
     const prev = current.current;
@@ -138,9 +152,8 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
     const key = `${phase}:${day}`;
     if (lastStingerKey.current === key) return;
     lastStingerKey.current = key;
-    if (phase === "dawn" && deaths > 0) playStinger("wolfHowl");
-    else if (phase === "voteResult" && voteKilled) playStinger("execution");
-    else if (phase === "gameEnd") playStinger("endGame");
+    const stinger = state ? stingerFor(state) : null;
+    if (stinger) playStinger(stinger);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, day]);
 
@@ -175,4 +188,14 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
       for (const el of stingers) el.pause();
     };
   }, []);
+
+  // Restart this scene's ambience and stinger on demand (design preview).
+  return {
+    replay: () => {
+      if (!state) return;
+      startTrack(sceneFor(state));
+      const stinger = stingerFor(state);
+      if (stinger) playStinger(stinger);
+    },
+  };
 }
