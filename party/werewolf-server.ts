@@ -270,7 +270,7 @@ export default class WerewolfRoom implements Party.Server {
   }
 
   private sendChat(playerId: string, rawText: string) {
-    if (this.phase !== "discussion") return;
+    if (this.phase !== "discussion" && this.phase !== "lobby") return;
     const player = this.players.get(playerId);
     if (!player?.alive) return;
 
