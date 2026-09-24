@@ -82,13 +82,13 @@ export default function GamePickerPage() {
                 key={game.href}
                 href={game.href}
                 style={{ animationDelay: `${index * 70}ms` }}
-                className={`group animate-bounce-in relative flex flex-col overflow-hidden rounded-3xl border-2 border-b-[6px] bg-white shadow-lg transition duration-200 hover:-translate-y-1.5 hover:shadow-2xl active:translate-y-0 ${game.border}`}
+                className={`group animate-bounce-in relative isolate flex flex-col overflow-hidden rounded-3xl border-2 border-b-[6px] bg-white shadow-lg transition duration-200 hover:-translate-y-1.5 hover:shadow-2xl active:translate-y-0 ${game.border}`}
               >
-                <div className={`relative flex h-28 items-center gap-3 bg-gradient-to-br px-4 ${game.gradient}`}>
+                <div className={`relative flex h-28 items-center gap-3 rounded-t-[1.2rem] bg-gradient-to-br px-4 ${game.gradient}`}>
                   <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/90 text-4xl shadow-lg ring-4 ring-white/40 transition duration-200 group-hover:rotate-6 group-hover:scale-110">
                     {game.emoji}
                   </span>
-                  <span className="rounded-full bg-black/25 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                  <span className="rounded-full bg-black/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
                     {game.tag}
                   </span>
                   <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-2 rotate-12 text-8xl opacity-20 transition duration-300 group-hover:scale-110 group-hover:opacity-30">

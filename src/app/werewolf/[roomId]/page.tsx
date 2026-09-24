@@ -1,7 +1,11 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- DiceBear returns generated SVG avatars. */
 import { use, useEffect, useState } from "react";
+import Link from "next/link";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
+import { werewolfAvatarUrl } from "@/lib/werewolfAvatar";
+import { werewolfFontClass } from "@/lib/werewolfFonts";
 import WerewolfGameRoom from "@/components/werewolf/WerewolfGameRoom";
 
 export default function WerewolfRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
@@ -9,19 +13,62 @@ export default function WerewolfRoomPage({ params }: { params: Promise<{ roomId:
   const [playerId, setPlayerId] = useState("");
   const [name, setName] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  useEffect(() => { setPlayerId(getOrCreatePlayerId()); setName(getStoredName()); setConfirmed(sessionStorage.getItem(`vct_werewolf:${roomId}`) === "1"); }, [roomId]);
+  useEffect(() => {
+    setPlayerId(getOrCreatePlayerId());
+    setName(getStoredName());
+    setConfirmed(sessionStorage.getItem(`vct_werewolf:${roomId}`) === "1");
+  }, [roomId]);
   if (!playerId) return null;
-  const enter = () => { const clean = name.trim(); if (!clean) return; setStoredName(clean); sessionStorage.setItem(`vct_werewolf:${roomId}`, "1"); setName(clean); setConfirmed(true); };
-  if (!confirmed) return (
-    <main className="flex min-h-app items-center justify-center bg-slate-950 px-4 text-white">
-      <section className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900 p-7 shadow-xl">
-        <div className="text-4xl">🌕</div><h1 className="mt-4 text-2xl font-bold">Gia nhập ngôi làng</h1><p className="mt-1 font-mono text-sm text-violet-300">{roomId}</p>
-        <label className="mt-6 block text-xs uppercase tracking-wider text-slate-400">Tên hiển thị</label>
-        <input autoFocus value={name} maxLength={20} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && enter()} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 outline-none focus:border-violet-400" placeholder="Ví dụ: Phú" />
-        <button onClick={enter} className="mt-4 w-full rounded-xl bg-violet-500 py-3 font-semibold hover:bg-violet-400">Vào phòng</button>
-      </section>
-    </main>
-  );
+
+  const enter = () => {
+    const clean = name.trim();
+    if (!clean) return;
+    setStoredName(clean);
+    sessionStorage.setItem(`vct_werewolf:${roomId}`, "1");
+    setName(clean);
+    setConfirmed(true);
+  };
+
+  if (!confirmed) {
+    return (
+      <main data-time="night" className={`${werewolfFontClass} werewolf-root bg-werewolf-scene flex min-h-app items-center justify-center px-4 text-[var(--ww-text)]`}>
+        <section className="w-full max-w-sm rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-7 text-center shadow-2xl backdrop-blur-md">
+          <div className="text-5xl drop-shadow-[0_0_20px_rgba(167,139,250,0.7)]">🌕</div>
+          <h1 className="mt-3 font-ww-display text-2xl font-bold">Gia nhập ngôi làng</h1>
+
+          <div className="mx-auto mt-4 w-fit rounded-xl border border-dashed border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-5 py-2">
+            <div className="text-[10px] uppercase tracking-[0.25em] text-[var(--ww-text-faint)]">Mã phòng</div>
+            <div className="font-mono text-xl font-bold tracking-[0.3em] text-[var(--ww-accent)]">{roomId}</div>
+          </div>
+
+          <img
+            src={werewolfAvatarUrl(playerId)}
+            alt=""
+            className="mx-auto mt-5 h-20 w-20 rounded-full border-2 border-[var(--ww-border-strong)] bg-[var(--ww-surface-soft)] shadow-lg"
+          />
+          <p className="mt-1 text-[11px] text-[var(--ww-text-faint)]">Đây là gương mặt của bạn trong làng</p>
+
+          <label className="mt-5 block text-left text-xs font-semibold uppercase tracking-wider text-[var(--ww-text-faint)]">Tên hiển thị</label>
+          <input
+            autoFocus
+            value={name}
+            maxLength={20}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && enter()}
+            placeholder="Ví dụ: Phú"
+            className="mt-1.5 w-full rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
+          />
+          <button
+            onClick={enter}
+            disabled={!name.trim()}
+            className="mt-4 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-ww-display font-bold shadow-lg transition hover:brightness-110 disabled:opacity-50"
+          >
+            Vào làng 🐺
+          </button>
+          <Link href="/werewolf" className="mt-4 block text-xs text-[var(--ww-text-muted)] hover:text-[var(--ww-text)]">← Về sảnh Ma Sói</Link>
+        </section>
+      </main>
+    );
+  }
   return <WerewolfGameRoom roomId={roomId} playerId={playerId} name={name} />;
 }
-
