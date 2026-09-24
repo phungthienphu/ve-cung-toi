@@ -187,6 +187,43 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "one"; id: string } | { kind: "all" } | null>(null);
+  const [password, setPassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  function closeDelete() {
+    setPendingDelete(null);
+    setPassword("");
+    setDeleteError("");
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/game-history", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(pendingDelete.kind === "one" ? { password, id: pendingDelete.id } : { password, gameType: activeTab }),
+      });
+      if (!res.ok) {
+        setDeleteError(res.status === 403 ? "Sai mật khẩu." : "Xóa thất bại, thử lại sau.");
+        return;
+      }
+      setCache((prev) => ({
+        ...prev,
+        [activeTab]: pendingDelete.kind === "all" ? [] : (prev[activeTab] ?? []).filter((entry) => entry._id !== pendingDelete.id),
+      }));
+      setExpandedId(null);
+      closeDelete();
+    } catch {
+      setDeleteError("Không kết nối được máy chủ.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("game") as GameType | null;
@@ -250,6 +287,17 @@ export default function LeaderboardPage() {
         {!error && history && history.length === 0 && <p className="text-slate-400">{tab.emptyText}</p>}
 
         {history && history.length > 0 && (
+          <div className="mb-3 flex justify-end">
+            <button
+              onClick={() => setPendingDelete({ kind: "all" })}
+              className="rounded-lg border border-red-400/30 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+            >
+              🗑️ Xóa toàn bộ lịch sử {tab.label}
+            </button>
+          </div>
+        )}
+
+        {history && history.length > 0 && (
           <div className="space-y-2">
             {history.map((entry) => {
               const expanded = expandedId === entry._id;
@@ -278,6 +326,14 @@ export default function LeaderboardPage() {
                   {expanded && (
                     <div className="border-t border-slate-100 px-4 py-3">
                       <DetailTable entry={entry} />
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => setPendingDelete({ kind: "one", id: entry._id })}
+                          className="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          🗑️ Xóa trận này
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -286,6 +342,45 @@ export default function LeaderboardPage() {
           </div>
         )}
       </div>
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              confirmDelete();
+            }}
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+          >
+            <h2 className="text-lg font-bold text-slate-900">
+              {pendingDelete.kind === "all" ? `Xóa toàn bộ lịch sử ${tab.label}?` : "Xóa trận này?"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">Không thể hoàn tác. Nhập mật khẩu để xác nhận.</p>
+            <input
+              type="password"
+              autoFocus
+              inputMode="numeric"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mật khẩu"
+              className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-slate-900 outline-none focus:border-red-400"
+            />
+            {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={closeDelete} className="flex-1 rounded-xl border border-slate-300 py-2.5 font-semibold text-slate-600 hover:bg-slate-50">
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={!password || deleting}
+                className="flex-1 rounded-xl bg-red-600 py-2.5 font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? "Đang xóa…" : "Xóa"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   );
 }
