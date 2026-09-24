@@ -57,7 +57,7 @@ export function resolveTackle(ctx: TackleCtx, tackler: SoccerPlayer, now: number
   let victim: SoccerPlayer | null = null;
   let victimDist = SOCCER_TACKLE_RANGE;
   for (const p of ctx.players.values()) {
-    if (p.team === tackler.team || p.sentOff) continue;
+    if (p.team === tackler.team || p.sentOff || !p.connected) continue;
     const dist = Math.hypot(p.x - tackler.x, p.y - tackler.y);
     if (dist <= victimDist) {
       victim = p;

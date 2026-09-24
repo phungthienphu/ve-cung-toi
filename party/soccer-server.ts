@@ -105,11 +105,24 @@ export default class SoccerRoom implements Party.Server {
     this.disconnectTimers.delete(playerId);
     const player = this.players.get(playerId);
     if (!player || player.connected) return;
+    // A human who stayed gone past the grace window is removed outright. Left
+    // in the roster, their record kept being drawn (and could even be
+    // tackled for a foul) as a phantom standing at the kickoff spot — most
+    // often seen when one person opens the invite link in two browsers and so
+    // ends up with two player ids under the same name.
+    this.removePlayer(playerId);
+    this.broadcastState();
+    this.reportToDirectory();
+  }
+
+  private removePlayer(playerId: string) {
+    this.players.delete(playerId);
+    this.inputs.delete(playerId);
+    if (this.ball.controllerId === playerId) this.ball.controllerId = null;
     if (this.hostId === playerId) {
-      const next = [...this.players.values()].find((p) => p.connected && p.id !== playerId);
+      const next = [...this.players.values()].find((p) => p.connected && !p.isBot);
       this.hostId = next ? next.id : null;
     }
-    this.broadcastState();
   }
 
   onMessage(message: string, sender: Party.Connection) {
@@ -299,6 +312,9 @@ export default class SoccerRoom implements Party.Server {
       );
       return;
     }
+    // Drop anyone still marked disconnected before the roster is frozen for
+    // the match (their grace timer may simply not have fired yet).
+    for (const [id, p] of [...this.players]) if (!p.connected && !p.isBot) this.removePlayer(id);
     if (this.botFillEnabled) this.fillWithBots();
     for (const p of this.players.values()) {
       p.tackleCooldownUntil = p.tackleSlowUntil = 0;
