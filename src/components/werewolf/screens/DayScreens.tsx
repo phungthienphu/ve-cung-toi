@@ -165,6 +165,20 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
   const [reason, setReason] = useState(initialReason);
   const reasonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const aliveCount = players.filter((player) => player.alive).length;
+  // What the player last explicitly confirmed. Picking a name already records
+  // the vote server-side (so a forgotten button never costs a ballot), and the
+  // reason autosaves — this button is the visible "chốt phiếu" moment.
+  const [confirmedKey, setConfirmedKey] = useState<string | null>(null);
+  const currentKey = `${selected}|${reason}`;
+  const confirmed = selected !== null && confirmedKey === currentKey;
+  const selectedName = players.find((player) => player.id === selected)?.name;
+
+  const confirm = () => {
+    if (!selected) return;
+    if (reasonTimer.current) clearTimeout(reasonTimer.current);
+    send({ type: "cast_vote", targetId: selected, reason });
+    setConfirmedKey(currentKey);
+  };
 
   useEffect(() => () => {
     if (reasonTimer.current) clearTimeout(reasonTimer.current);
@@ -205,13 +219,25 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
               onChange={(event) => editReason(event.target.value)}
               maxLength={MAX_VOTE_REASON_LENGTH}
               placeholder={selected ? "Vì sao bạn bầu người này? Cả làng sẽ thấy…" : "Chọn một người trước, rồi ghi lý do nếu muốn"}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") confirm();
+              }}
               className="mt-1 w-full rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
             />
             <span className="mt-1 block text-right text-[11px] text-[var(--ww-text-faint)]">{reason.length}/{MAX_VOTE_REASON_LENGTH}</span>
           </label>
-          {!selected && (
-            <p className="mt-1 text-center text-xs text-[var(--ww-text-faint)]">Không chọn ai = bỏ phiếu trắng. Bấm lại tên đã chọn để rút phiếu.</p>
-          )}
+          <button
+            onClick={confirm}
+            disabled={!selected || confirmed}
+            className="mt-3 w-full rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50"
+          >
+            {!selected ? "Chọn một người để bỏ phiếu" : confirmed ? `✓ Đã gửi phiếu bầu ${selectedName ?? ""}` : `Xác nhận bầu ${selectedName ?? ""}`}
+          </button>
+          <p className="mt-2 text-center text-xs text-[var(--ww-text-faint)]">
+            {selected
+              ? "Phiếu đã được ghi nhận — bạn vẫn đổi được đến hết giờ. Bấm lại tên đã chọn để rút phiếu."
+              : "Không chọn ai = bỏ phiếu trắng."}
+          </p>
         </>
       ) : (
         <p className="text-center text-[var(--ww-text-muted)]">{content.deadMessage}</p>
