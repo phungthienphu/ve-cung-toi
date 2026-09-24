@@ -28,14 +28,7 @@ const KEY_MAP: Record<string, "up" | "down" | "left" | "right"> = {
 };
 
 const JOY_DEAD_ZONE = 12;
-
-function angleToDir(dx: number, dy: number): "up" | "down" | "left" | "right" {
-  const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
-  if (deg >= -45 && deg < 45) return "right";
-  if (deg >= 45 && deg < 135) return "down";
-  if (deg >= -135 && deg < -45) return "up";
-  return "left";
-}
+const JOY_AXIS_THRESHOLD = Math.sin(Math.PI / 8); // 22.5°
 
 interface Params {
   send: (msg: SoccerClientMessage) => void;
@@ -161,12 +154,24 @@ export function useSoccerInput({ send, selfId, stateRef, canvasRef }: Params) {
     if (joyKnobRef.current) {
       joyKnobRef.current.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     }
-    const dir = dist < JOY_DEAD_ZONE ? null : angleToDir(dx, dy);
     const held = heldRef.current;
-    held.up = dir === "up";
-    held.down = dir === "down";
-    held.left = dir === "left";
-    held.right = dir === "right";
+    if (dist < JOY_DEAD_ZONE) {
+      held.up = held.down = held.left = held.right = false;
+      aimAngleRef.current = null;
+    } else {
+      // 8-way: each axis engages once the stick leans past 22.5° off the
+      // opposite axis, so a diagonal pull holds two keys at once (the old
+      // single-cardinal version made diagonal movement impossible).
+      const nx = dx / dist;
+      const ny = dy / dist;
+      held.right = nx > JOY_AXIS_THRESHOLD;
+      held.left = nx < -JOY_AXIS_THRESHOLD;
+      held.down = ny > JOY_AXIS_THRESHOLD;
+      held.up = ny < -JOY_AXIS_THRESHOLD;
+      // Full-precision aim from the stick, like the mouse on desktop, so
+      // kicks go exactly where the stick points (not snapped to 8 dirs).
+      aimAngleRef.current = Math.atan2(dy, dx);
+    }
     sendInput();
   }
 
@@ -174,6 +179,7 @@ export function useSoccerInput({ send, selfId, stateRef, canvasRef }: Params) {
     joyActiveRef.current = false;
     const held = heldRef.current;
     held.up = held.down = held.left = held.right = false;
+    aimAngleRef.current = null;
     if (joyKnobRef.current) joyKnobRef.current.style.transform = "translate(-50%, -50%)";
     sendInput();
   }

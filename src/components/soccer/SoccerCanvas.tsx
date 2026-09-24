@@ -319,14 +319,22 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
     };
   }, []);
 
+  // Long-press on a touch button otherwise triggers the browser's text
+  // selection / copy callout (and the context menu) — select-none stops the
+  // highlight, the callout property stops iOS's popup, and swallowing
+  // contextmenu stops Android's long-press menu.
+  const noSelect = "select-none [-webkit-touch-callout:none] [-webkit-tap-highlight-color:transparent]";
+  const blockMenu = (e: React.SyntheticEvent) => e.preventDefault();
+
   const joystick = (
     <div
       ref={input.joyBaseRef}
+      onContextMenu={blockMenu}
       onPointerDown={input.handleJoyPointerDown}
       onPointerMove={input.handleJoyPointerMove}
       onPointerUp={input.resetJoystick}
       onPointerCancel={input.resetJoystick}
-      className="relative h-20 w-20 shrink-0 touch-none rounded-full border border-white/40 bg-black/25"
+      className={`relative h-20 w-20 shrink-0 touch-none ${noSelect} rounded-full border border-white/40 bg-black/25`}
     >
       <div ref={input.joyKnobRef} className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow" />
     </div>
@@ -340,7 +348,8 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
       }}
       onPointerUp={() => input.setBoost(false)}
       onPointerCancel={() => input.setBoost(false)}
-      className="flex h-12 w-12 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-sky-500/80 text-[10px] font-bold leading-tight text-white shadow-lg"
+      className={`flex h-12 w-12 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-sky-500/80 text-[10px] font-bold leading-tight text-white shadow-lg ${noSelect}`}
+      onContextMenu={blockMenu}
     >
       ⚡ NHANH
     </button>
@@ -352,7 +361,8 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
         e.currentTarget.setPointerCapture(e.pointerId);
         input.tackle();
       }}
-      className="flex h-12 w-12 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xs font-bold text-white shadow-lg"
+      className={`flex h-12 w-12 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xs font-bold text-white shadow-lg ${noSelect}`}
+      onContextMenu={blockMenu}
     >
       TẮC
     </button>
@@ -366,7 +376,8 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
       }}
       onPointerUp={input.releaseKick}
       onPointerCancel={input.releaseKick}
-      className="flex h-16 w-16 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg"
+      className={`flex h-16 w-16 shrink-0 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg ${noSelect}`}
+      onContextMenu={blockMenu}
     >
       SÚT
     </button>
@@ -383,7 +394,8 @@ export default function SoccerCanvas({ state, selfId, send }: Props) {
           onMouseLeave={input.handleAimLeave}
           onMouseDown={input.handleMouseDown}
           onMouseUp={input.handleMouseUp}
-          className="block w-full touch-none rounded-xl border border-slate-200 bg-green-600 shadow-xl"
+          onContextMenu={blockMenu}
+          className="block w-full touch-none select-none rounded-xl border border-slate-200 bg-green-600 shadow-xl"
           style={{ aspectRatio: `${SOCCER_FIELD_W} / ${SOCCER_FIELD_H}` }}
         />
 
