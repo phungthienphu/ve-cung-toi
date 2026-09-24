@@ -181,11 +181,13 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
   }, []);
 
   useEffect(() => {
-    const stingers = stingerEls.current;
     return () => {
       current.current?.el.pause();
       current.current = null;
-      for (const el of stingers) el.pause();
+      // Read the ref at cleanup time: the array is reassigned whenever a
+      // stinger ends, so a copy taken at mount would miss later ones.
+      for (const el of stingerEls.current) el.pause();
+      stingerEls.current = [];
     };
   }, []);
 
