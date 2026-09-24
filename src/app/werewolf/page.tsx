@@ -38,8 +38,8 @@ export default function WerewolfHomePage() {
     <main className="flex min-h-app items-center justify-center bg-gradient-to-b from-slate-950 via-violet-950 to-slate-900 px-4 text-white">
       <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/70 p-7 shadow-2xl backdrop-blur sm:p-10">
         <div className="mb-6 text-5xl">🐺</div>
-        <h1 className="text-3xl font-bold">Ma Sói Cùng Phòng</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-300">Mọi vai đều hành động trong đêm. Không còn bị lộ chỉ vì tiếng chuột hay bàn phím.</p>
+        <h1 className="text-3xl font-bold">Ngôi làng Ma Sói</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-300">Thử sức với trò chơi Ma Sói cùng bạn bè!</p>
         <button onClick={() => router.push(`/werewolf/${makeRoomId()}`)} className="mt-7 w-full rounded-xl bg-violet-500 px-5 py-3 font-semibold transition hover:bg-violet-400">Tạo phòng mới</button>
         <div className="my-5 flex items-center gap-3 text-xs text-slate-500"><span className="h-px flex-1 bg-white/10" />hoặc nhập mã phòng<span className="h-px flex-1 bg-white/10" /></div>
         <div className="flex gap-2">
