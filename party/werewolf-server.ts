@@ -2,6 +2,8 @@ import type * as Party from "partykit/server";
 import {
   DEFAULT_WEREWOLF_CONFIG,
   MAX_VOTE_REASON_LENGTH,
+  MID_GAME_JOIN_MESSAGE,
+  RECONNECT_GRACE_MS,
   MAX_WEREWOLF_PLAYERS,
   MIN_WEREWOLF_PLAYERS,
   rolesForPlayerCount,
@@ -60,11 +62,40 @@ export default class WerewolfRoom implements Party.Server {
   onClose(connection: Party.Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
+    // A refresh opens the new socket before the old one's close arrives —
+    // that's not a disconnect, so don't start a countdown for it.
+    if ([...this.party.getConnections()].some((other) => other.id === connection.id)) return;
     player.connected = false;
-    this.broadcastState();
+    player.disconnectedUntil = Date.now() + RECONNECT_GRACE_MS;
     const old = this.disconnectTimers.get(player.id);
     if (old) clearTimeout(old);
-    this.disconnectTimers.set(player.id, setTimeout(() => this.finalizeDisconnect(player!.id), 30_000));
+    this.disconnectTimers.set(player.id, setTimeout(() => this.finalizeDisconnect(player.id), RECONNECT_GRACE_MS));
+    // The host role moves on right away so the table isn't stuck waiting.
+    if (this.hostId === player.id) this.transferHost(player.id);
+    this.broadcastState();
+    this.recheckEarlyAdvance();
+  }
+
+  private transferHost(fromId: string) {
+    const from = this.players.get(fromId);
+    if (from) from.isHost = false;
+    const next = [...this.players.values()].find((candidate) => candidate.connected && candidate.id !== fromId);
+    this.hostId = next?.id ?? null;
+    if (next) next.isHost = true;
+  }
+
+  // Phases that skip ahead once everyone (connected) has acknowledged — must
+  // be re-evaluated when someone drops, or the last holdout leaving would
+  // leave the table waiting for nobody.
+  private recheckEarlyAdvance() {
+    const connected = [...this.players.values()].filter((player) => player.connected);
+    if (connected.length === 0) return;
+    if (this.phase === "roleReveal" && connected.every((player) => this.secrets.get(player.id)?.roleAcknowledged)) {
+      this.startNight();
+    } else if (this.phase === "voteResult") {
+      const voters = connected.filter((player) => player.alive);
+      if (voters.length > 0 && voters.every((player) => this.resultAcks.has(player.id))) this.startNight();
+    }
   }
 
   onMessage(raw: string, sender: Party.Connection) {
@@ -101,12 +132,14 @@ export default class WerewolfRoom implements Party.Server {
     if (sender.id !== playerId) return this.sendError(sender, "Phiên người chơi không hợp lệ.");
     let player = this.players.get(playerId);
     if (!player) {
+      if (this.phase !== "lobby") return this.sendError(sender, MID_GAME_JOIN_MESSAGE);
       if (this.players.size >= MAX_WEREWOLF_PLAYERS) return this.sendError(sender, "Phòng đã đầy.");
       player = {
         id: playerId,
         name: name.trim().slice(0, 20) || "Người chơi",
         avatarSeed: playerId,
         connected: true,
+        disconnectedUntil: null,
         alive: true,
         ready: false,
         isHost: this.players.size === 0,
@@ -116,6 +149,7 @@ export default class WerewolfRoom implements Party.Server {
       if (player.isHost) this.hostId = playerId;
     } else {
       player.connected = true;
+      player.disconnectedUntil = null;
       player.name = name.trim().slice(0, 20) || player.name;
       const pending = this.disconnectTimers.get(playerId);
       if (pending) clearTimeout(pending);
@@ -130,18 +164,28 @@ export default class WerewolfRoom implements Party.Server {
     this.broadcastState();
   }
 
+  // The grace period ran out. In the lobby the seat is simply freed; mid-game
+  // the player quietly drops out of the village (no reveal, no announcement) and
+  // the win condition is re-checked without them. After the game ends they
+  // stay, so the final role reveal still lists everyone.
   private finalizeDisconnect(playerId: string) {
     this.disconnectTimers.delete(playerId);
     const player = this.players.get(playerId);
     if (!player || player.connected) return;
-    if (this.phase === "lobby") this.players.delete(playerId);
-    if (this.hostId === playerId) {
-      if (player) player.isHost = false;
-      const next = [...this.players.values()].find(p => p.connected);
-      this.hostId = next?.id ?? null;
-      if (next) next.isHost = true;
+    player.disconnectedUntil = null;
+
+    if (this.phase === "lobby") {
+      this.players.delete(playerId);
+      if (this.hostId === playerId) this.transferHost(playerId);
+    } else if (this.phase !== "gameEnd") {
+      this.players.delete(playerId);
+      if (this.hostId === playerId) this.transferHost(playerId);
+      // Don't crown a winner just because the whole room emptied out.
+      if ([...this.players.values()].some((other) => other.connected) && this.checkWinner()) return;
     }
     this.broadcastState();
+    this.sendAllPrivate();
+    this.recheckEarlyAdvance();
   }
 
   private setReady(id: string, ready: boolean) {
@@ -388,7 +432,7 @@ export default class WerewolfRoom implements Party.Server {
 
   private resolveVotes() {
     const counts = new Map<string, number>();
-    for (const [id, secret] of this.secrets) if (this.players.get(id)?.alive && secret.voteTargetId) counts.set(secret.voteTargetId, (counts.get(secret.voteTargetId) ?? 0) + 1);
+    for (const [id, secret] of this.secrets) if (this.players.get(id)?.alive && secret.voteTargetId && this.isLivingTarget(secret.voteTargetId)) counts.set(secret.voteTargetId, (counts.get(secret.voteTargetId) ?? 0) + 1);
     this.lastVoteResult = [...counts].map(([playerId, votes]) => ({ playerId, votes })).sort((a, b) => b.votes - a.votes);
     // Ballots become public only now that voting is closed, so nobody can
     // just bandwagon on whoever voted first.
@@ -482,6 +526,7 @@ export default class WerewolfRoom implements Party.Server {
     this.voteHistory = [];
     this.lastNightSuspicion = null;
     this.secrets.clear();
+    for (const [id, player] of [...this.players]) if (!player.connected) this.players.delete(id);
     for (const player of this.players.values()) {
       player.alive = true;
       player.ready = false;
@@ -494,15 +539,13 @@ export default class WerewolfRoom implements Party.Server {
   private leave(sender: Party.Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
-    if (this.phase === "lobby") this.players.delete(sender.id);
-    else player.connected = false;
-
-    if (this.hostId === sender.id) {
-      const next = [...this.players.values()].find((candidate) => candidate.connected);
-      this.hostId = next?.id ?? null;
-      if (next) next.isHost = true;
+    if (this.phase === "lobby") {
+      this.players.delete(sender.id);
+      if (this.hostId === sender.id) this.transferHost(sender.id);
+      this.broadcastState();
     }
-    this.broadcastState();
+    // In a running game the close below starts the same 30s reconnect window
+    // as any other disconnect (see onClose).
     sender.close();
   }
 

@@ -50,6 +50,8 @@ export interface WerewolfPlayer {
   name: string;
   avatarSeed: string;
   connected: boolean;
+  /** Set while the player is offline: when their reconnect grace period ends. */
+  disconnectedUntil: number | null;
   alive: boolean;
   ready: boolean;
   isHost: boolean;
@@ -70,6 +72,8 @@ export interface WerewolfBallot {
 }
 
 export const MAX_VOTE_REASON_LENGTH = 120;
+export const RECONNECT_GRACE_MS = 30_000;
+export const MID_GAME_JOIN_MESSAGE = "Ngôi làng này đang yên ổn, bạn đừng vào :)))";
 
 export interface WerewolfChatEntry {
   id: string;

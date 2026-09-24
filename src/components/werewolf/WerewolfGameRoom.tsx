@@ -6,6 +6,7 @@ import { useWerewolfRoom } from "@/lib/useWerewolfRoom";
 import { werewolfFontClass } from "@/lib/werewolfFonts";
 import { useWerewolfSound } from "@/lib/werewolfSound";
 import { playClick, playPop, playTypeTick } from "@/lib/sound";
+import { MID_GAME_JOIN_MESSAGE } from "@shared/werewolfTypes";
 import type { WerewolfClientMessage, WerewolfPhase, WerewolfPlayer } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "./gameContent";
 import { PlayerStrip } from "./ui";
@@ -14,6 +15,7 @@ import { RoleRevealScreen } from "./screens/RoleRevealScreen";
 import { NightScreen } from "./screens/NightScreen";
 import { DawnScreen, DiscussionScreen, GameEndScreen, VoteResultScreen, VotingScreen } from "./screens/DayScreens";
 import { RoleQuickView } from "./RoleQuickView";
+import { DisconnectNotice } from "./DisconnectNotice";
 
 // Night phases get the dark "ma mị" (eerie) treatment; everything else
 // reads as daylight. This is keyed on the *game's* phase, deliberately not
@@ -35,7 +37,7 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
   const [quickRoleOpen, setQuickRoleOpen] = useState(false);
   const secondsRemaining = useCountdown(room.state?.phaseEndsAt);
   const self = room.state?.players.find((player) => player.id === playerId);
-  useWerewolfSound(room.state);
+  useWerewolfSound(self ? room.state : null);
 
   // Soft "pop" when someone else speaks in discussion.
   const chatCount = room.state?.chat.length ?? 0;
@@ -46,6 +48,11 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
     seenChatCount.current = chatCount;
   }, [chatCount, lastChat, playerId]);
 
+  // Joined a game that's already running (or was dropped after the reconnect
+  // window): the server refuses the seat, so there's no player to render.
+  if (room.state && !self && room.state.phase !== "lobby") {
+    return <LockedOut onBack={() => router.push("/werewolf")} />;
+  }
   if (!room.state || !self) return <LoadingRoom />;
 
   const leaveRoom = () => {
@@ -82,6 +89,8 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
 
         {!room.connected && <ConnectionWarning />}
         {room.error && <ErrorBanner message={room.error} onClose={room.clearError} />}
+
+        <DisconnectNotice players={room.state.players} />
 
         <PlayerStrip players={room.state.players} onLeave={leaveRoom} roles={room.privateState?.allRoles} />
 
@@ -221,6 +230,17 @@ function ErrorBanner({ message, onClose }: { message: string; onClose: () => voi
     <button onClick={onClose} className="w-full shrink-0 rounded-xl bg-[var(--ww-danger-soft)] p-3 text-left text-sm text-[var(--ww-danger)]">
       {message} · bấm để đóng
     </button>
+  );
+}
+
+function LockedOut({ onBack }: { onBack: () => void }) {
+  return (
+    <main className={`${werewolfFontClass} werewolf-root bg-werewolf-scene flex min-h-app flex-col items-center justify-center gap-5 px-6 text-center`}>
+      <div className="text-6xl">🏘️</div>
+      <p className="max-w-sm font-ww-display text-xl font-bold text-[var(--ww-text)]">{MID_GAME_JOIN_MESSAGE}</p>
+      <p className="max-w-sm text-sm text-[var(--ww-text-muted)]">Ván đang diễn ra hoặc bạn đã rời quá 30 giây. Hãy chờ ván sau hoặc tạo phòng mới.</p>
+      <button onClick={onBack} className="rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)]">Về sảnh Ma Sói</button>
+    </main>
   );
 }
 

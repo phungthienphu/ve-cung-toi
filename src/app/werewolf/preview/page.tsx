@@ -13,6 +13,7 @@ import {
   type WerewolfTeam,
 } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "@/components/werewolf/gameContent";
+import { DisconnectNotice } from "@/components/werewolf/DisconnectNotice";
 import { werewolfFontClass } from "@/lib/werewolfFonts";
 import { describeWerewolfSound, useWerewolfSound } from "@/lib/werewolfSound";
 import { LobbyScreen } from "@/components/werewolf/screens/LobbyScreen";
@@ -170,6 +171,7 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
         )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <DisconnectNotice players={state.players} />
           <PlayerStrip players={state.players} onLeave={() => setLastAction({ type: "leave_room" })} />
           <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
             <PreviewPhase
@@ -366,6 +368,7 @@ function createPlayers(): WerewolfPlayer[] {
     name,
     avatarSeed: `werewolf-preview-${index + 1}`,
     connected: index !== 7,
+    disconnectedUntil: index === 7 ? Date.now() + 27_000 : null,
     alive: true,
     ready: index !== 6,
     isHost: index === 0,
