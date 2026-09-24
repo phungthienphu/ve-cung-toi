@@ -66,6 +66,13 @@ export function DiscussionChat({ entries, selfId, canSend, onSend, emptyText, pl
 }
 
 function ChatBubble({ entry, isSelf }: { entry: WerewolfChatEntry; isSelf: boolean }) {
+  if (entry.system) {
+    return (
+      <div className="flex justify-center">
+        <span className="rounded-full bg-[var(--ww-surface-soft)] px-3 py-1 text-center text-xs text-[var(--ww-text-muted)]">{entry.text}</span>
+      </div>
+    );
+  }
   return (
     <div className={`flex ${isSelf ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-left ${isSelf ? "rounded-br-sm bg-[var(--ww-accent-soft)]" : "rounded-bl-sm bg-[var(--ww-surface-soft)]"}`}>

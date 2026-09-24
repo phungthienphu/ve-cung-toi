@@ -90,6 +90,8 @@ export interface WerewolfChatEntry {
   playerName: string;
   text: string;
   sentAt: number;
+  /** Server-generated notice (someone joined/left), not a player message. */
+  system?: boolean;
 }
 
 export interface WerewolfGameEvent {

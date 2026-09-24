@@ -76,12 +76,24 @@ export default class WerewolfRoom implements Party.Server {
     this.recheckEarlyAdvance();
   }
 
+  // Lobby-only notices ("Phú đã vào làng"). Mid-game departures stay silent on
+  // purpose — a leaver's role must not be revealed by an announcement.
+  private lobbyNotice(text: string) {
+    if (this.phase !== "lobby") return;
+    const now = Date.now();
+    this.chat.push({ id: `sys-${now.toString(36)}-${Math.random().toString(36).slice(2, 6)}`, playerId: "", playerName: "", text, sentAt: now, system: true });
+    if (this.chat.length > 100) this.chat.splice(0, this.chat.length - 100);
+  }
+
   private transferHost(fromId: string) {
     const from = this.players.get(fromId);
     if (from) from.isHost = false;
     const next = [...this.players.values()].find((candidate) => candidate.connected && candidate.id !== fromId);
     this.hostId = next?.id ?? null;
-    if (next) next.isHost = true;
+    if (next) {
+      next.isHost = true;
+      this.lobbyNotice(`${next.name} trở thành chủ phòng 👑`);
+    }
   }
 
   // Phases that skip ahead once everyone (connected) has acknowledged — must
@@ -147,6 +159,7 @@ export default class WerewolfRoom implements Party.Server {
       };
       this.players.set(playerId, player);
       if (player.isHost) this.hostId = playerId;
+      else this.lobbyNotice(`${player.name} đã vào làng 🏘️`);
     } else {
       player.connected = true;
       player.disconnectedUntil = null;
@@ -176,6 +189,7 @@ export default class WerewolfRoom implements Party.Server {
 
     if (this.phase === "lobby") {
       this.players.delete(playerId);
+      this.lobbyNotice(`${player.name} đã rời làng 👋`);
       if (this.hostId === playerId) this.transferHost(playerId);
     } else if (this.phase !== "gameEnd") {
       this.players.delete(playerId);
@@ -541,6 +555,7 @@ export default class WerewolfRoom implements Party.Server {
     if (!player) return;
     if (this.phase === "lobby") {
       this.players.delete(sender.id);
+      this.lobbyNotice(`${player.name} đã rời làng 👋`);
       if (this.hostId === sender.id) this.transferHost(sender.id);
       this.broadcastState();
     }
