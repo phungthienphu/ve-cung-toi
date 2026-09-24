@@ -624,6 +624,30 @@ export default class WerewolfRoom implements Party.Server {
 
   private broadcastState() {
     this.party.broadcast(JSON.stringify(this.stateMessage()));
+    this.reportToDirectory();
+  }
+
+  private lastListingKey = "";
+
+  /** Publishes this room to the home-screen list — fire-and-forget, and only
+   * when what the list shows actually changed (chat also broadcasts state). */
+  private reportToDirectory() {
+    const connected = [...this.players.values()].filter((player) => player.connected);
+    const host = this.hostId ? this.players.get(this.hostId) : undefined;
+    const listing = {
+      roomId: this.party.id,
+      hostName: host?.name ?? "",
+      playerCount: connected.length,
+      maxPlayers: MAX_WEREWOLF_PLAYERS,
+      status: this.phase === "lobby" ? "lobby" : "playing",
+    };
+    const key = JSON.stringify(listing);
+    if (key === this.lastListingKey) return;
+    this.lastListingKey = key;
+    this.party.context.parties["werewolflobby"]
+      .get("main")
+      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: key })
+      .catch(() => {});
   }
 
   private sendPrivate(id: string) {

@@ -71,6 +71,15 @@ export interface WerewolfBallot {
   reason: string;
 }
 
+/** One open lobby as shown on the home screen's room list. */
+export interface WerewolfRoomListing {
+  roomId: string;
+  hostName: string;
+  playerCount: number;
+  maxPlayers: number;
+  status: "lobby" | "playing";
+}
+
 export const MAX_VOTE_REASON_LENGTH = 120;
 export const RECONNECT_GRACE_MS = 30_000;
 export const MID_GAME_JOIN_MESSAGE = "Ngôi làng này đang yên ổn, bạn đừng vào :)))";
