@@ -29,7 +29,7 @@ export function DiscussionChat({ entries, selfId, canSend, onSend }: DiscussionC
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-strong)]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-strong)]">
       <div ref={listRef} className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {entries.length === 0 ? (
           <p className="py-12 text-center text-sm text-[var(--ww-text-faint)]">{content.emptyChat}</p>

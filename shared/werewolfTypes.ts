@@ -61,6 +61,16 @@ export interface VoteResult {
   votes: number;
 }
 
+/** One villager's ballot, revealed to everyone once voting closes — so the
+ * table can call people out ("sao bạn bầu tôi?") instead of only seeing totals. */
+export interface WerewolfBallot {
+  voterId: string;
+  targetId: string | null;
+  reason: string;
+}
+
+export const MAX_VOTE_REASON_LENGTH = 120;
+
 export interface WerewolfChatEntry {
   id: string;
   playerId: string;
@@ -104,6 +114,12 @@ export interface PublicWerewolfState {
   phaseEndsAt: number | null;
   nightDeaths: string[];
   lastVoteResult: VoteResult[];
+  lastVotes: WerewolfBallot[];
+  /** Who has already voted during the voting phase (not for whom). */
+  votedPlayerIds: string[];
+  /** Players who tapped "continue" on the vote-result screen; once every
+   * living connected player has, the phase skips its remaining time. */
+  resultAckedIds: string[];
   chat: WerewolfChatEntry[];
   events: WerewolfGameEvent[];
   suspicionStats: SuspicionStatistic[];
@@ -143,6 +159,7 @@ export interface PrivateWerewolfState {
   lastGuardedPlayerId: string | null;
   suspicionTargetId: string | null;
   voteTargetId: string | null;
+  voteReason: string;
 }
 
 export type WerewolfClientMessage =
@@ -155,9 +172,10 @@ export type WerewolfClientMessage =
   | { type: "lock_target"; targetId: string }
   | { type: "set_suspicion"; targetId: string }
   | { type: "witch_decision"; decision: "heal" | "poison" | "skip"; targetId?: string }
-  | { type: "cast_vote"; targetId: string | null }
+  | { type: "cast_vote"; targetId: string | null; reason?: string }
   | { type: "chat"; text: string }
   | { type: "end_discussion" }
+  | { type: "ack_result" }
   | { type: "play_again" }
   | { type: "leave_room" };
 

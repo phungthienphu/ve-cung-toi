@@ -1,6 +1,7 @@
 import type * as Party from "partykit/server";
 import {
   DEFAULT_WEREWOLF_CONFIG,
+  MAX_VOTE_REASON_LENGTH,
   MAX_WEREWOLF_PLAYERS,
   MIN_WEREWOLF_PLAYERS,
   rolesForPlayerCount,
@@ -8,6 +9,7 @@ import {
   type PublicWerewolfState,
   type WerewolfClientMessage,
   type WerewolfConfig,
+  type WerewolfBallot,
   type WerewolfChatEntry,
   type WerewolfGameEvent,
   type WerewolfPhase,
@@ -34,6 +36,8 @@ export default class WerewolfRoom implements Party.Server {
   phaseEndsAt: number | null = null;
   nightDeaths: string[] = [];
   lastVoteResult: Array<{ playerId: string; votes: number }> = [];
+  lastVotes: WerewolfBallot[] = [];
+  resultAcks = new Set<string>();
   chat: WerewolfChatEntry[] = [];
   events: WerewolfGameEvent[] = [];
   suspicionStats: SuspicionStatistic[] = [];
@@ -80,9 +84,10 @@ export default class WerewolfRoom implements Party.Server {
       case "lock_target": return this.lockTarget(sender.id, msg.targetId);
       case "set_suspicion": return this.setSuspicion(sender.id, msg.targetId);
       case "witch_decision": return this.witchDecision(sender.id, msg.decision, msg.targetId);
-      case "cast_vote": return this.castVote(sender.id, msg.targetId);
+      case "cast_vote": return this.castVote(sender.id, msg.targetId, msg.reason);
       case "chat": return this.sendChat(sender.id, msg.text);
       case "end_discussion": return this.endDiscussion(sender);
+      case "ack_result": return this.ackResult(sender.id);
       case "play_again": return this.playAgain(sender);
       case "leave_room": return this.leave(sender);
     }
@@ -174,6 +179,7 @@ export default class WerewolfRoom implements Party.Server {
     this.winner = null;
     this.nightDeaths = [];
     this.lastVoteResult = [];
+    this.lastVotes = [];
     this.chat = [];
     this.events = [];
     this.suspicionStats = [];
@@ -251,13 +257,16 @@ export default class WerewolfRoom implements Party.Server {
     this.sendPrivate(id);
   }
 
-  private castVote(id: string, targetId: string | null) {
+  private castVote(id: string, targetId: string | null, rawReason?: string) {
     if (this.phase !== "voting") return;
     const player = this.players.get(id);
     const secret = this.secrets.get(id);
     if (!player?.alive || !secret || targetId === id || (targetId && !this.isLivingTarget(targetId))) return;
     secret.voteTargetId = targetId;
+    secret.voteReason = typeof rawReason === "string" ? rawReason.trim().replace(/\s+/g, " ").slice(0, MAX_VOTE_REASON_LENGTH) : "";
     this.sendPrivate(id);
+    // Public progress ("n/m đã bỏ phiếu") — who has voted, never for whom.
+    this.broadcastState();
   }
 
   private sendChat(playerId: string, rawText: string) {
@@ -283,6 +292,18 @@ export default class WerewolfRoom implements Party.Server {
     this.broadcastState();
   }
 
+  // Everyone who's still playing can skip the vote-result read-through early;
+  // disconnected players don't hold the table up (the phase timer still ends it).
+  private ackResult(id: string) {
+    if (this.phase !== "voteResult" || !this.players.get(id)?.alive) return;
+    this.resultAcks.add(id);
+    const everyoneReady = [...this.players.values()]
+      .filter((player) => player.alive && player.connected)
+      .every((player) => this.resultAcks.has(player.id));
+    if (everyoneReady) this.startNight();
+    else this.broadcastState();
+  }
+
   private endDiscussion(sender: Party.Connection) {
     if (sender.id === this.hostId && this.phase === "discussion") this.enterPhase("voting", this.config.votingSeconds * 1000);
   }
@@ -297,6 +318,7 @@ export default class WerewolfRoom implements Party.Server {
       secret.witchDecision = null;
       secret.witchPoisonTargetId = null;
       secret.voteTargetId = null;
+      secret.voteReason = "";
       secret.suspicionTargetId = null;
     }
     this.enterPhase("nightExplore", PHASE_DURATION_MS.nightExplore);
@@ -368,6 +390,15 @@ export default class WerewolfRoom implements Party.Server {
     const counts = new Map<string, number>();
     for (const [id, secret] of this.secrets) if (this.players.get(id)?.alive && secret.voteTargetId) counts.set(secret.voteTargetId, (counts.get(secret.voteTargetId) ?? 0) + 1);
     this.lastVoteResult = [...counts].map(([playerId, votes]) => ({ playerId, votes })).sort((a, b) => b.votes - a.votes);
+    // Ballots become public only now that voting is closed, so nobody can
+    // just bandwagon on whoever voted first.
+    this.lastVotes = [...this.secrets]
+      .filter(([id]) => this.players.get(id)?.alive)
+      .map(([voterId, secret]) => ({
+        voterId,
+        targetId: secret.voteTargetId,
+        reason: secret.voteTargetId ? secret.voteReason : "",
+      }));
     this.voteHistory.push({
       day: this.day,
       results: this.lastVoteResult.map((result) => ({ ...result })),
@@ -392,6 +423,7 @@ export default class WerewolfRoom implements Party.Server {
       }
     }
     if (this.checkWinner()) return;
+    this.resultAcks.clear();
     this.enterPhase("voteResult", PHASE_DURATION_MS.voteResult);
   }
 
@@ -510,6 +542,7 @@ export default class WerewolfRoom implements Party.Server {
       lastGuardedPlayerId: secret.lastGuardedPlayerId,
       suspicionTargetId: secret.suspicionTargetId,
       voteTargetId: secret.voteTargetId,
+      voteReason: secret.voteReason,
     };
   }
 
@@ -524,6 +557,11 @@ export default class WerewolfRoom implements Party.Server {
       phaseEndsAt: this.phaseEndsAt,
       nightDeaths: this.nightDeaths,
       lastVoteResult: this.lastVoteResult,
+      lastVotes: this.lastVotes,
+      votedPlayerIds: this.phase === "voting"
+        ? [...this.secrets].filter(([id, secret]) => this.players.get(id)?.alive && secret.voteTargetId).map(([id]) => id)
+        : [],
+      resultAckedIds: this.phase === "voteResult" ? [...this.resultAcks] : [],
       chat: this.chat,
       events: this.events,
       suspicionStats: this.suspicionStats,
@@ -667,5 +705,6 @@ function emptyPrivateState(): PrivateWerewolfState {
     lastGuardedPlayerId: null,
     suspicionTargetId: null,
     voteTargetId: null,
+    voteReason: "",
   };
 }

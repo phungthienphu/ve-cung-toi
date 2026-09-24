@@ -6,6 +6,7 @@
 
 const MUTE_KEY = "vct_muted";
 const COMMENTARY_MUTE_KEY = "vct_blv_muted";
+export const MUTE_CHANGE_EVENT = "vct-mute-change";
 
 let ctx: AudioContext | null = null;
 let musicNodes: { stop: () => void } | null = null;
@@ -31,6 +32,9 @@ export function setMuted(muted: boolean) {
     stopMusic();
     stopTankBgMusic();
   }
+  // Games that own their own <audio> tracks (e.g. werewolf) listen for this
+  // instead of being hard-wired into this file.
+  window.dispatchEvent(new Event(MUTE_CHANGE_EVENT));
 }
 
 /** Separate from the main mute toggle — a browser's built-in Vietnamese
@@ -68,6 +72,12 @@ function tone(freq: number, startOffset: number, duration: number, gainPeak = 0.
 /** Soft UI click — for buttons like "Tạo phòng", "Vào phòng", "Bắt đầu". */
 export function playClick() {
   tone(720, 0, 0.08, 0.08, "triangle");
+}
+
+/** Very soft, slightly randomized tick per keystroke — quiet enough to type
+ * a whole sentence without it getting annoying. */
+export function playTypeTick() {
+  tone(1100 + Math.random() * 300, 0, 0.03, 0.025, "square");
 }
 
 /** Short two-note "pop" for lighter interactions (choosing a word, sending chat). */

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWerewolfRoom } from "@/lib/useWerewolfRoom";
 import { werewolfFontClass } from "@/lib/werewolfFonts";
+import { useWerewolfSound } from "@/lib/werewolfSound";
+import { playClick, playPop, playTypeTick } from "@/lib/sound";
 import type { WerewolfClientMessage, WerewolfPhase, WerewolfPlayer } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "./gameContent";
-import { PlayerSidebar } from "./ui";
+import { PlayerStrip } from "./ui";
 import { LobbyScreen } from "./screens/LobbyScreen";
 import { RoleRevealScreen } from "./screens/RoleRevealScreen";
 import { NightScreen } from "./screens/NightScreen";
@@ -33,6 +35,16 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
   const [quickRoleOpen, setQuickRoleOpen] = useState(false);
   const secondsRemaining = useCountdown(room.state?.phaseEndsAt);
   const self = room.state?.players.find((player) => player.id === playerId);
+  useWerewolfSound(room.state);
+
+  // Soft "pop" when someone else speaks in discussion.
+  const chatCount = room.state?.chat.length ?? 0;
+  const lastChat = room.state?.chat[chatCount - 1];
+  const seenChatCount = useRef(chatCount);
+  useEffect(() => {
+    if (chatCount > seenChatCount.current && lastChat && lastChat.playerId !== playerId) playPop();
+    seenChatCount.current = chatCount;
+  }, [chatCount, lastChat, playerId]);
 
   if (!room.state || !self) return <LoadingRoom />;
 
@@ -47,6 +59,15 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
   return (
     <main
       data-time={isNight ? "night" : "day"}
+      onClickCapture={(event) => {
+        const button = (event.target as HTMLElement).closest("button");
+        if (button && !button.disabled) playClick();
+      }}
+      onKeyDownCapture={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.tagName !== "TEXTAREA" && target.tagName !== "INPUT") return;
+        if (event.key.length === 1 || event.key === "Backspace") playTypeTick();
+      }}
       className={`${werewolfFontClass} werewolf-root ${sceneClass} flex min-h-app flex-col px-4 py-5 text-[var(--ww-text)] transition-colors duration-500 sm:py-8 md:h-dvh md:overflow-hidden`}
     >
       <div className="mx-auto flex w-full min-h-0 max-w-5xl flex-1 flex-col gap-3">
@@ -62,20 +83,17 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
         {!room.connected && <ConnectionWarning />}
         {room.error && <ErrorBanner message={room.error} onClose={room.clearError} />}
 
-        <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[1fr_260px]">
-          <section className="min-h-0 rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
-            <PhaseScreen
-              playerId={playerId}
-              self={self}
-              room={room}
-              showingRole={showingRole}
-              setShowingRole={setShowingRole}
-            />
-          </section>
-          <div className="min-h-0 md:overflow-y-auto">
-            <PlayerSidebar players={room.state.players} onLeave={leaveRoom} />
-          </div>
-        </div>
+        <PlayerStrip players={room.state.players} onLeave={leaveRoom} />
+
+        <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
+          <PhaseScreen
+            playerId={playerId}
+            self={self}
+            room={room}
+            showingRole={showingRole}
+            setShowingRole={setShowingRole}
+          />
+        </section>
       </div>
       {quickRoleOpen && room.privateState?.role && (
         <RoleQuickView role={room.privateState.role} onClose={() => setQuickRoleOpen(false)} />
@@ -143,12 +161,14 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
           players={state.players}
           self={self}
           selected={room.privateState?.voteTargetId ?? null}
+          initialReason={room.privateState?.voteReason ?? ""}
+          votedIds={state.votedPlayerIds}
           teammateIds={room.privateState?.role === "wolf" ? room.privateState.teammates : undefined}
           send={room.send}
         />
       );
     case "voteResult":
-      return <VoteResultScreen state={state} />;
+      return <VoteResultScreen state={state} self={self} send={room.send} />;
     case "gameEnd":
       return <GameEndScreen state={state} isHost={self.isHost} send={room.send} />;
   }

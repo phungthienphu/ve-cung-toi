@@ -6,6 +6,7 @@ export interface SecretPlayerState {
   lockedTargetId: string | null;
   suspicionTargetId: string | null;
   voteTargetId: string | null;
+  voteReason: string;
   roleAcknowledged: boolean;
   healAvailable: boolean;
   poisonAvailable: boolean;
@@ -22,7 +23,7 @@ export const PHASE_DURATION_MS = {
   wolfLock: 5_000,
   nightResolve: 15_000,
   dawn: 8_000,
-  voteResult: 8_000,
+  voteResult: 15_000,
 } as const;
 
 export function createSecretPlayerState(role: WerewolfRole): SecretPlayerState {
@@ -32,6 +33,7 @@ export function createSecretPlayerState(role: WerewolfRole): SecretPlayerState {
     lockedTargetId: null,
     suspicionTargetId: null,
     voteTargetId: null,
+    voteReason: "",
     roleAcknowledged: false,
     healAvailable: true,
     poisonAvailable: true,

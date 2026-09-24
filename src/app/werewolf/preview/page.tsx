@@ -24,7 +24,7 @@ import {
   VoteResultScreen,
   VotingScreen,
 } from "@/components/werewolf/screens/DayScreens";
-import { PlayerSidebar } from "@/components/werewolf/ui";
+import { PlayerStrip } from "@/components/werewolf/ui";
 import { SuspicionChart } from "@/components/werewolf/SuspicionChart";
 import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/components/werewolf/WerewolfHistoryDetail";
 
@@ -137,10 +137,10 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
   return (
     <main
       data-time={isNight ? "night" : "day"}
-      className={`${werewolfFontClass} werewolf-root ${sceneClass} min-h-app px-4 py-5 text-[var(--ww-text)] transition-colors duration-500 sm:py-8`}
+      className={`${werewolfFontClass} werewolf-root ${sceneClass} flex min-h-app flex-col px-4 py-5 text-[var(--ww-text)] transition-colors duration-500 sm:py-8 md:h-dvh md:overflow-hidden`}
     >
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-4 flex items-center justify-between gap-3">
+      <div className="mx-auto flex w-full min-h-0 max-w-5xl flex-1 flex-col">
+        <header className="mb-4 shrink-0 flex items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-1.5 font-ww-display text-xs uppercase tracking-widest text-[var(--ww-accent)]">
               <span aria-hidden>{isNight ? "🌙" : "☀️"}</span> {GAME_CONTENT.phaseLabels[phase]}
@@ -156,8 +156,9 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
           </button>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
-          <section className="rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <PlayerStrip players={state.players} onLeave={() => setLastAction({ type: "leave_room" })} />
+          <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
             <PreviewPhase
               state={state}
               scene={scene}
@@ -169,7 +170,6 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
               send={send}
             />
           </section>
-          <PlayerSidebar players={state.players} onLeave={() => setLastAction({ type: "leave_room" })} />
         </div>
       </div>
     </main>
@@ -212,9 +212,9 @@ function PreviewPhase(props: PreviewPhaseProps) {
     case "discussion":
       return <DiscussionScreen state={state} role={role} privateState={privateState} isHost self={self} send={send} />;
     case "voting":
-      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
+      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} initialReason={privateState.voteReason} votedIds={state.votedPlayerIds} teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
     case "voteResult":
-      return <VoteResultScreen state={state} />;
+      return <VoteResultScreen state={state} self={self} send={send} />;
     case "gameEnd":
       return <GameEndScreen state={state} isHost send={send} />;
   }
@@ -251,10 +251,25 @@ function createPublicState(phase: WerewolfPhase, winner: WerewolfTeam): PublicWe
     phaseEndsAt: Date.now() + 18_000,
     nightDeaths: ["p9"],
     lastVoteResult: [{ playerId: "p5", votes: 4 }, { playerId: "p2", votes: 2 }],
+    lastVotes: [
+      { voterId: "p1", targetId: "p5", reason: "Đổi lời khai từ đầu ngày, nghe không ổn." },
+      { voterId: "p2", targetId: "p5", reason: "" },
+      { voterId: "p3", targetId: "p2", reason: "Bình cứ hùa theo người khác." },
+      { voterId: "p4", targetId: "p5", reason: "Hạnh né câu hỏi của Chi." },
+      { voterId: "p5", targetId: "p2", reason: "Bình mới là sói, tôi chắc!" },
+      { voterId: "p6", targetId: "p5", reason: "Theo Tiên tri." },
+      { voterId: "p7", targetId: null, reason: "" },
+      { voterId: "p8", targetId: null, reason: "" },
+    ],
+    votedPlayerIds: ["p1", "p2", "p3", "p5"],
+    resultAckedIds: ["p2", "p3"],
     chat: [
       { id: "c1", playerId: "p2", playerName: "Bình", text: "Tôi thấy Hạnh đổi lời khai từ đầu ngày.", sentAt: Date.now() - 60_000 },
       { id: "c2", playerId: "p1", playerName: "Bạn · An", text: "Tối qua mình cũng đang nghi Hạnh.", sentAt: Date.now() - 40_000 },
       { id: "c3", playerId: "p5", playerName: "Hạnh", text: "Khoan, tôi chỉ đang trả lời câu hỏi của Chi thôi!", sentAt: Date.now() - 20_000 },
+      ...Array.from({ length: 14 }, (_, i) => ({ id: `x${i}`, playerId: i % 2 ? "p3" : "p6", playerName: i % 2 ? "Chi" : "Minh", text: `Tin nhắn dài thử cuộn số ${i + 1}: mình vẫn chưa chắc ai là sói cả.`, sentAt: Date.now() - 10_000 + i })),
+      { id: "c4", playerId: "p2", playerName: "Bình", text: "Khoan, tôi chỉ đang trả lời câu hỏi của Chi thôi!", sentAt: Date.now() - 15_000 },
+      { id: "c5", playerId: "p5", playerName: "Vạnh", text: "Khoan, tôi chỉ đang trả lời câu hỏi của Chi thôi!", sentAt: Date.now() - 10_000 },
     ],
     events: [
       { id: "night-1", day: 1, type: "peaceful_night", playerIds: [] },
@@ -326,6 +341,7 @@ function createPrivateState(role: WerewolfRole): PrivateWerewolfState {
     lastGuardedPlayerId: "p3",
     suspicionTargetId: "p6",
     voteTargetId: "p5",
+    voteReason: "Đổi lời khai từ đầu ngày, nghe không ổn.",
   };
 }
 

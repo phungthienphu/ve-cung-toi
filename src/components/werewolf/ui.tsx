@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- DiceBear returns generated SVG avatars. */
 import { werewolfAvatarUrl } from "@/lib/werewolfAvatar";
-import { ROLE_LABELS, type WerewolfPlayer } from "@shared/werewolfTypes";
+import { ROLE_EMOJI, ROLE_LABELS, type WerewolfPlayer } from "@shared/werewolfTypes";
 import type { WerewolfRole } from "@shared/werewolfTypes";
 import { ROLE_ARTWORK } from "./roleAssets";
 
@@ -75,43 +75,38 @@ export function TargetGrid({ players, selfId, selected, disabledIds = [], teamma
   );
 }
 
-export function PlayerSidebar({ players, onLeave }: { players: WerewolfPlayer[]; onLeave: () => void }) {
+export function PlayerStrip({ players, onLeave }: { players: WerewolfPlayer[]; onLeave: () => void }) {
   const livingCount = players.filter((player) => player.alive).length;
 
   return (
-    <aside className="flex h-full min-h-0 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-4 shadow-xl backdrop-blur-md">
-      <div className="mb-3 flex shrink-0 items-center justify-between">
-        <h3 className="font-ww-display font-bold text-[var(--ww-text)]">Ngôi làng</h3>
-        <span className="text-xs text-[var(--ww-text-faint)]">{livingCount} sống</span>
+    <aside className="shrink-0 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface)] px-3 py-2.5 shadow-xl backdrop-blur-md">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-ww-display text-sm font-bold text-[var(--ww-text)]">
+          Ngôi làng <span className="ml-1 text-xs font-normal text-[var(--ww-text-faint)]">{livingCount}/{players.length} sống</span>
+        </h3>
+        <button onClick={onLeave} className="rounded-lg border border-[var(--ww-border)] px-2.5 py-1 text-[11px] text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]">
+          Rời phòng
+        </button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+      <div className="no-scrollbar -mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-0.5">
         {players.map((player) => (
           <div
             key={player.id}
-            className={`flex items-center gap-2 rounded-xl p-2 ${player.alive ? "bg-[var(--ww-surface-soft)]" : "opacity-40 grayscale"}`}
+            title={playerStatus(player)}
+            className={`flex shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-3 ${player.alive ? "bg-[var(--ww-surface-soft)]" : "opacity-45 grayscale"}`}
           >
-            <PlayerAvatar player={player} size="sm" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-[var(--ww-text)]">{player.name}</div>
-              <div className="text-[11px] text-[var(--ww-text-faint)]">{playerStatus(player)}</div>
-            </div>
-            {player.revealedRole && (
-              <RoleArtwork
-                role={player.revealedRole}
-                className="h-11 w-8 rounded-lg object-cover object-top"
-              />
-            )}
+            <span className="relative shrink-0">
+              <PlayerAvatar player={player} size="sm" />
+              {!player.connected && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white bg-amber-400" />}
+            </span>
+            <span className="max-w-[88px] truncate text-xs font-medium text-[var(--ww-text)]">
+              {player.name}{player.isHost ? " 👑" : ""}
+            </span>
+            {!player.alive && <span className="text-xs">{player.revealedRole ? ROLE_EMOJI[player.revealedRole] : "💀"}</span>}
           </div>
         ))}
       </div>
-
-      <button
-        onClick={onLeave}
-        className="mt-4 w-full shrink-0 rounded-xl border border-[var(--ww-border)] py-2 text-xs text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]"
-      >
-        Rời phòng
-      </button>
     </aside>
   );
 }

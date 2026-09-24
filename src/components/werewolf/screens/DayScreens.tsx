@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ROLE_LABELS, type PrivateWerewolfState, type PublicWerewolfState, type WerewolfClientMessage, type WerewolfPlayer, type WerewolfRole } from "@shared/werewolfTypes";
+import { useEffect, useRef, useState } from "react";
+import { MAX_VOTE_REASON_LENGTH, ROLE_LABELS, type PrivateWerewolfState, type PublicWerewolfState, type WerewolfClientMessage, type WerewolfPlayer, type WerewolfRole } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "../gameContent";
 import { PlayerAvatar, RoleArtwork, TargetGrid } from "../ui";
 import { DiscussionChat } from "../DiscussionChat";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { NightSuspicionResult } from "../NightSuspicionResult";
 import { ExecutionRiskSummary } from "../ExecutionRiskSummary";
 import { DeathAnnouncement } from "../DeathAnnouncement";
+import { VoteReveal } from "../VoteReveal";
 
 export function DawnScreen({ state }: { state: PublicWerewolfState }) {
   const deathNames = state.nightDeaths.map((id) => playerName(id, state.players));
@@ -46,67 +47,60 @@ type DiscussionTab = "chat" | "notebook";
 export function DiscussionScreen({ state, role, privateState, isHost, self, send }: DiscussionScreenProps) {
   const content = GAME_CONTENT.discussion;
   const [tab, setTab] = useState<DiscussionTab>("chat");
-  // Village-wide suspicion is public, high-stakes information — everyone
-  // needs to see it without hunting for it, so it stays pinned above the
-  // fold instead of hiding behind a tab. Only the *personal* notebook
-  // (private seer history + this player's own suspicion log) is tabbed away,
-  // since that's reference material people check occasionally, not every
-  // discussion's headline.
-  const hasPersonalNotebook = Boolean((role === "seer" && privateState?.seerHistory.length) || privateState);
 
+  const notebook = (
+    <PersonalNotebook state={state} role={role} privateState={privateState} />
+  );
+
+  // Height is fixed on mobile (the page itself scrolls there) and flexed to
+  // fill the shell on md+, where the shell is exactly one viewport tall. The
+  // whole chain below is plain flex + min-h-0 rather than h-full percentages,
+  // because percentage heights silently collapse to "auto" when any ancestor
+  // is only flex/grid-sized — that's what let the chat grow forever and
+  // push the page instead of scrolling inside itself.
   return (
-    // Fixed height instead of letting chat + suspicion result + suspicion
-    // chart stack indefinitely — that stacking is exactly what forced the
-    // whole page to scroll before. Only one tab's content is mounted-visible
-    // at a time, and each tab manages its own internal scroll.
-    <div className="flex h-[70vh] min-h-[420px] flex-col md:h-full">
+    <div className="flex h-[88dvh] min-h-[480px] flex-col md:h-auto md:min-h-0 md:flex-1">
       <div className="shrink-0 text-center">
-        <h2 className="font-ww-display text-2xl font-bold text-[var(--ww-text)]">{content.title}</h2>
-        <p className="mt-1 text-sm text-[var(--ww-text-muted)]">{content.description}</p>
+        <h2 className="font-ww-display text-xl font-bold text-[var(--ww-text)] sm:text-2xl">{content.title}</h2>
+        <p className="mt-1 hidden text-sm text-[var(--ww-text-muted)] sm:block">{content.description}</p>
       </div>
 
-      {state.lastNightSuspicion && (
-        <div className="mt-4 max-h-40 shrink-0 overflow-y-auto">
-          <NightSuspicionResult data={state.lastNightSuspicion} players={state.players} compact />
-        </div>
-      )}
+      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {/* Below lg there's no room for a side column: the village-wide
+              suspicion result stays pinned (it's the headline everyone must
+              see) and the private notebook moves behind a tab. */}
+          {state.lastNightSuspicion && (
+            <div className="mb-3 max-h-32 shrink-0 overflow-y-auto lg:hidden">
+              <NightSuspicionResult data={state.lastNightSuspicion} players={state.players} compact />
+            </div>
+          )}
 
-      {hasPersonalNotebook && (
-        <div className="mt-4 flex shrink-0 justify-center gap-2">
-          <TabButton active={tab === "chat"} onClick={() => setTab("chat")}>
-            💬 Thảo luận
-          </TabButton>
-          <TabButton active={tab === "notebook"} onClick={() => setTab("notebook")}>
-            📓 Ghi chú riêng
-          </TabButton>
-        </div>
-      )}
+          {privateState && (
+            <div className="mb-3 flex shrink-0 justify-center gap-2 lg:hidden">
+              <TabButton active={tab === "chat"} onClick={() => setTab("chat")}>💬 Thảo luận</TabButton>
+              <TabButton active={tab === "notebook"} onClick={() => setTab("notebook")}>📓 Ghi chú riêng</TabButton>
+            </div>
+          )}
 
-      <div className="mt-4 min-h-0 flex-1 overflow-hidden">
-        {tab === "chat" || !hasPersonalNotebook ? (
-          <DiscussionChat
-            entries={state.chat}
-            selfId={self.id}
-            canSend={self.alive}
-            onSend={(text) => send({ type: "chat", text })}
-          />
-        ) : (
-          <div className="h-full space-y-4 overflow-y-auto pr-1">
-            {role === "seer" && privateState?.seerHistory.length ? (
-              <div className="rounded-2xl border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] p-4 text-left">
-                <div className="font-semibold text-[var(--ww-text)]">{content.seerHistoryTitle}</div>
-                {privateState.seerHistory.map((result) => (
-                  <div key={result.night} className="mt-2 text-sm text-[var(--ww-text-muted)]">
-                    Đêm {result.night}: {playerName(result.targetId, state.players)} —{" "}
-                    <strong className="text-[var(--ww-text)]">{result.isWolf ? content.wolfResult : content.safeResult}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {privateState && <SuspicionChart history={privateState.suspicionHistory} players={state.players} />}
+          <div className={`min-h-0 flex-1 flex-col ${tab === "chat" ? "flex" : "hidden lg:flex"}`}>
+            <DiscussionChat
+              entries={state.chat}
+              selfId={self.id}
+              canSend={self.alive}
+              onSend={(text) => send({ type: "chat", text })}
+            />
           </div>
-        )}
+
+          {tab === "notebook" && (
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 lg:hidden">{notebook}</div>
+          )}
+        </div>
+
+        <aside className="hidden min-h-0 w-80 shrink-0 space-y-4 overflow-y-auto pr-1 lg:block">
+          {state.lastNightSuspicion && <NightSuspicionResult data={state.lastNightSuspicion} players={state.players} />}
+          {notebook}
+        </aside>
       </div>
 
       {isHost && (
@@ -118,6 +112,26 @@ export function DiscussionScreen({ state, role, privateState, isHost, self, send
         </button>
       )}
     </div>
+  );
+}
+
+function PersonalNotebook({ state, role, privateState }: { state: PublicWerewolfState; role: WerewolfRole | null; privateState: PrivateWerewolfState | null }) {
+  const content = GAME_CONTENT.discussion;
+  return (
+    <>
+      {role === "seer" && privateState?.seerHistory.length ? (
+        <div className="rounded-2xl border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] p-4 text-left">
+          <div className="font-semibold text-[var(--ww-text)]">{content.seerHistoryTitle}</div>
+          {privateState.seerHistory.map((result) => (
+            <div key={result.night} className="mt-2 text-sm text-[var(--ww-text-muted)]">
+              Đêm {result.night}: {playerName(result.targetId, state.players)} —{" "}
+              <strong className="text-[var(--ww-text)]">{result.isWolf ? content.wolfResult : content.safeResult}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {privateState && <SuspicionChart history={privateState.suspicionHistory} players={state.players} />}
+    </>
   );
 }
 
@@ -140,25 +154,65 @@ interface VotingScreenProps {
   players: WerewolfPlayer[];
   self: WerewolfPlayer;
   selected: string | null;
+  initialReason: string;
+  votedIds: string[];
   teammateIds?: string[];
   send: (message: WerewolfClientMessage) => void;
 }
 
-export function VotingScreen({ players, self, selected, teammateIds, send }: VotingScreenProps) {
+export function VotingScreen({ players, self, selected, initialReason, votedIds, teammateIds, send }: VotingScreenProps) {
   const content = GAME_CONTENT.voting;
+  const [reason, setReason] = useState(initialReason);
+  const reasonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aliveCount = players.filter((player) => player.alive).length;
+
+  useEffect(() => () => {
+    if (reasonTimer.current) clearTimeout(reasonTimer.current);
+  }, []);
+
+  // Clicking your current pick again withdraws it (= bỏ phiếu trắng).
+  const pick = (targetId: string) => send({ type: "cast_vote", targetId: targetId === selected ? null : targetId, reason });
+
+  // Editing the reason after picking re-sends the same ballot (debounced) so
+  // the server always holds the latest text without a separate "save" step.
+  const editReason = (value: string) => {
+    setReason(value);
+    if (!selected) return;
+    if (reasonTimer.current) clearTimeout(reasonTimer.current);
+    reasonTimer.current = setTimeout(() => send({ type: "cast_vote", targetId: selected, reason: value }), 400);
+  };
 
   return (
     <div>
       <h2 className="text-center font-ww-display text-2xl font-bold text-[var(--ww-text)]">{content.title}</h2>
-      <p className="mb-5 mt-1 text-center text-sm text-[var(--ww-text-muted)]">{content.description}</p>
+      <p className="mt-1 text-center text-sm text-[var(--ww-text-muted)]">{content.description}</p>
+      <p className="mb-5 mt-1 text-center text-xs text-[var(--ww-text-faint)]">
+        Đã bỏ phiếu {votedIds.length}/{aliveCount} · Phiếu bầu và lý do sẽ được công khai khi kết thúc
+      </p>
       {self.alive ? (
-        <TargetGrid
-          players={players}
-          selfId={self.id}
-          selected={selected}
-          teammateIds={teammateIds}
-          onPick={(targetId) => send({ type: "cast_vote", targetId })}
-        />
+        <>
+          <TargetGrid
+            players={players}
+            selfId={self.id}
+            selected={selected}
+            teammateIds={teammateIds}
+            onPick={pick}
+          />
+          <label className="mt-4 block">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ww-text-faint)]">Lý do (không bắt buộc)</span>
+            <input
+              value={reason}
+              onChange={(event) => editReason(event.target.value)}
+              maxLength={MAX_VOTE_REASON_LENGTH}
+              placeholder={selected ? "Vì sao bạn bầu người này? Cả làng sẽ thấy…" : "Chọn một người trước, rồi ghi lý do nếu muốn"}
+              className="mt-1 w-full rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
+            />
+            <span className="mt-1 block text-right text-[11px] text-[var(--ww-text-faint)]">{reason.length}/{MAX_VOTE_REASON_LENGTH}</span>
+          </label>
+          {!selected && (
+            <p className="mt-1 text-center text-xs text-[var(--ww-text-faint)]">Không chọn ai = bỏ phiếu trắng. Bấm lại tên đã chọn để rút phiếu.</p>
+          )}
+        </>
       ) : (
         <p className="text-center text-[var(--ww-text-muted)]">{content.deadMessage}</p>
       )}
@@ -166,7 +220,30 @@ export function VotingScreen({ players, self, selected, teammateIds, send }: Vot
   );
 }
 
-export function VoteResultScreen({ state }: { state: PublicWerewolfState }) {
+function ContinueBar({ state, self, send }: { state: PublicWerewolfState; self: WerewolfPlayer; send: (message: WerewolfClientMessage) => void }) {
+  const voters = state.players.filter((player) => player.alive && player.connected);
+  const ready = voters.filter((player) => state.resultAckedIds.includes(player.id)).length;
+  const acked = state.resultAckedIds.includes(self.id);
+
+  return (
+    <div className="mt-5 flex flex-col items-center gap-2">
+      {self.alive && (
+        <button
+          disabled={acked}
+          onClick={() => send({ type: "ack_result" })}
+          className="w-full rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
+        >
+          {acked ? "✓ Đã xác nhận — chờ mọi người" : "Đã đọc xong, tiếp tục"}
+        </button>
+      )}
+      <p className="text-xs text-[var(--ww-text-faint)]">
+        {ready}/{voters.length} người sẵn sàng · tự chuyển khi hết giờ hoặc khi mọi người xác nhận
+      </p>
+    </div>
+  );
+}
+
+export function VoteResultScreen({ state, self, send }: { state: PublicWerewolfState; self: WerewolfPlayer; send: (message: WerewolfClientMessage) => void }) {
   const top = state.lastVoteResult[0];
   const tied = top && state.lastVoteResult.filter((result) => result.votes === top.votes).length > 1;
   let result: string = GAME_CONTENT.voteResult.noVotes;
@@ -178,6 +255,8 @@ export function VoteResultScreen({ state }: { state: PublicWerewolfState }) {
       <div>
         <DeathAnnouncement players={state.players} playerIds={[top.playerId]} cause="vote" />
         <p className="mt-4 text-center text-sm text-[var(--ww-text-muted)]">{result}</p>
+        <VoteReveal ballots={state.lastVotes} results={state.lastVoteResult} players={state.players} />
+        <ContinueBar state={state} self={self} send={send} />
       </div>
     );
   }
@@ -187,6 +266,10 @@ export function VoteResultScreen({ state }: { state: PublicWerewolfState }) {
       <div className="text-6xl">⚖️</div>
       <h2 className="mt-4 font-ww-display text-2xl font-bold text-[var(--ww-text)]">{GAME_CONTENT.voteResult.title}</h2>
       <p className="mt-3 text-[var(--ww-text-muted)]">{result}</p>
+      <div className="text-left">
+        <VoteReveal ballots={state.lastVotes} results={state.lastVoteResult} players={state.players} />
+      </div>
+      <ContinueBar state={state} self={self} send={send} />
     </div>
   );
 }
