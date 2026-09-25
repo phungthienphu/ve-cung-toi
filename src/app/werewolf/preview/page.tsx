@@ -227,7 +227,7 @@ function PreviewPhase(props: PreviewPhaseProps) {
     case "discussion":
       return <DiscussionScreen state={state} role={role} privateState={privateState} isHost self={self} send={send} />;
     case "voting":
-      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} initialReason={privateState.voteReason} votedIds={state.votedPlayerIds} teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
+      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} initialReason={privateState.voteReason} votedIds={state.votedPlayerIds} isHost teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
     case "voteResult":
       return <VoteResultScreen state={state} self={self} send={send} />;
     case "gameEnd":
@@ -358,6 +358,7 @@ function createPrivateState(role: WerewolfRole): PrivateWerewolfState {
     voteTargetId: "p5",
     voteReason: "Đổi lời khai từ đầu ngày, nghe không ổn.",
     allRoles: null,
+    nightDone: false,
   };
 }
 

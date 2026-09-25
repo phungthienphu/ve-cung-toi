@@ -181,6 +181,8 @@ export interface PrivateWerewolfState {
   voteReason: string;
   /** Only sent to dead players (spectators): every player's true role. */
   allRoles: Record<string, WerewolfRole> | null;
+  /** Tapped "xong" for the current night step (see ack_night). */
+  nightDone: boolean;
 }
 
 export type WerewolfClientMessage =
@@ -196,6 +198,8 @@ export type WerewolfClientMessage =
   | { type: "cast_vote"; targetId: string | null; reason?: string }
   | { type: "chat"; text: string }
   | { type: "end_discussion" }
+  | { type: "back_to_discussion" }
+  | { type: "ack_night" }
   | { type: "ack_result" }
   | { type: "play_again" }
   | { type: "leave_room" };

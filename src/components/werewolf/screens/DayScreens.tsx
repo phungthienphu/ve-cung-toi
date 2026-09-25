@@ -156,11 +156,12 @@ interface VotingScreenProps {
   selected: string | null;
   initialReason: string;
   votedIds: string[];
+  isHost: boolean;
   teammateIds?: string[];
   send: (message: WerewolfClientMessage) => void;
 }
 
-export function VotingScreen({ players, self, selected, initialReason, votedIds, teammateIds, send }: VotingScreenProps) {
+export function VotingScreen({ players, self, selected, initialReason, votedIds, isHost, teammateIds, send }: VotingScreenProps) {
   const content = GAME_CONTENT.voting;
   const [reason, setReason] = useState(initialReason);
   const reasonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,6 +199,14 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
 
   return (
     <div>
+      {isHost && (
+        <button
+          onClick={() => send({ type: "back_to_discussion" })}
+          className="mb-3 rounded-lg border border-[var(--ww-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]"
+        >
+          ← Quay lại thảo luận
+        </button>
+      )}
       <h2 className="text-center font-ww-display text-2xl font-bold text-[var(--ww-text)]">{content.title}</h2>
       <p className="mt-1 text-center text-sm text-[var(--ww-text-muted)]">{content.description}</p>
       <p className="mb-5 mt-1 text-center text-xs text-[var(--ww-text-faint)]">

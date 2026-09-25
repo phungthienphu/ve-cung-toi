@@ -185,6 +185,7 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
           selected={room.privateState?.voteTargetId ?? null}
           initialReason={room.privateState?.voteReason ?? ""}
           votedIds={state.votedPlayerIds}
+          isHost={self.isHost}
           teammateIds={room.privateState?.role === "wolf" ? room.privateState.teammates : undefined}
           send={room.send}
         />

@@ -66,6 +66,16 @@ export function NightScreen({ phase, role, selfId, players, privateState, send }
       {isWolf && phase !== "nightResolve" && (
         <WolfChoices players={players} wolfChoices={privateState.wolfChoices} />
       )}
+
+      {/* Same button for every role (and shows nothing about who's done), so
+          skipping the wait can't give away who is still deciding. */}
+      <button
+        onClick={() => send({ type: "ack_night" })}
+        disabled={privateState.nightDone}
+        className="mt-5 w-full rounded-xl border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-6 py-3 font-semibold text-[var(--ww-accent)] transition hover:brightness-125 disabled:opacity-60"
+      >
+        {privateState.nightDone ? "✓ Đã xong — chờ mọi người…" : "Xong, sang bước tiếp"}
+      </button>
     </div>
   );
 }
