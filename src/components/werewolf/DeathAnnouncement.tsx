@@ -35,7 +35,7 @@ export function DeathAnnouncement({ players, playerIds, cause }: DeathAnnounceme
               <PlayerAvatar player={victim} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xl font-black text-white">{victim.name}</div>
-                <div className="mt-1 text-sm text-rose-200">{cause === "night" ? "Đã chết trong đêm" : "Đã bị treo cổ"}</div>
+                <div className="mt-1 text-sm text-rose-200">{cause === "night" ? "Đã chết trong đêm" : "Đã bị xử bắn"}</div>
               </div>
               {victim.revealedRole && (
                 <div className="flex shrink-0 items-center gap-2">

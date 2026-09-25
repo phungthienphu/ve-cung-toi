@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { isMuted, setMuted, toggleMusic } from "@/lib/sound";
 
 export default function SoundToggle() {
   const [muted, setMutedState] = useState(true);
   const [musicOn, setMusicOn] = useState(false);
+  // Werewolf ships its own real soundtrack, so the generic synth-chime button
+  // would only be a confusing second "music" control there.
+  const inWerewolf = usePathname().startsWith("/werewolf");
 
   useEffect(() => {
     setMutedState(isMuted());
@@ -25,7 +29,7 @@ export default function SoundToggle() {
 
   return (
     <div className="fixed bottom-4 right-4 z-40 flex gap-2">
-      {!muted && (
+      {!muted && !inWerewolf && (
         <button
           onClick={handleMusicToggle}
           title={musicOn ? "Tắt nhạc nền" : "Bật nhạc nền"}

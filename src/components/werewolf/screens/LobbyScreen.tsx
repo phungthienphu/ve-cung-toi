@@ -140,6 +140,18 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
           className="h-5 w-5 shrink-0 accent-[var(--ww-accent-strong)]"
         />
       </label>
+      <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+        <span>
+          Phù thủy được tự cứu mình
+          <span className="block text-xs text-[var(--ww-text-faint)]">Tắt: Phù thủy không thể cứu chính mình khi bị Sói cắn</span>
+        </span>
+        <input
+          type="checkbox"
+          checked={state.config.witchCanSelfSave}
+          onChange={(event) => send({ type: "update_config", config: { ...state.config, witchCanSelfSave: event.target.checked } })}
+          className="h-5 w-5 shrink-0 accent-[var(--ww-accent-strong)]"
+        />
+      </label>
       <button
         disabled={connectedCount < MIN_WEREWOLF_PLAYERS}
         onClick={() => send({ type: "start_game" })}

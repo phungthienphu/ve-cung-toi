@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from "react";
 import type { PublicWerewolfState } from "@shared/werewolfTypes";
-import { isMuted, MUTE_CHANGE_EVENT } from "@/lib/sound";
+import { isMuted, MUTE_CHANGE_EVENT, playNightFall } from "@/lib/sound";
 
 const BASE = "/ma-soi/sound";
 const TRACKS = {
@@ -152,6 +152,7 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
     const key = `${phase}:${day}`;
     if (lastStingerKey.current === key) return;
     lastStingerKey.current = key;
+    if (phase === "nightExplore") playNightFall();
     const stinger = state ? stingerFor(state) : null;
     if (stinger) playStinger(stinger);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -15,7 +15,7 @@ const SHOWCASE_ROLES: WerewolfRole[] = ["wolf", "seer", "guardian", "witch", "vi
 const HOW_IT_WORKS = [
   { icon: "🌙", title: "Đêm xuống", text: "Ai cũng có nỗi bận tâm riêng của mình...." },
   { icon: "☀️", title: "Trời sáng", text: "Cả làng thảo luận, chất vấn, tìm ra kẻ đáng ngờ." },
-  { icon: "🗳️", title: "Bỏ phiếu", text: "Phiếu và lý do được công khai. Ai sẽ bị treo cổ?" },
+  { icon: "🗳️", title: "Bỏ phiếu", text: "Phiếu và lý do được công khai. Ai sẽ bị xử bắn?" },
 ];
 
 export default function WerewolfHomePage() {

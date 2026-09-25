@@ -29,7 +29,7 @@ export function ExecutionRiskSummary({ stats, players }: { stats: SuspicionStati
           );
         })}
       </div>
-      <p className="mt-4 text-[11px] leading-5 text-[var(--ww-text-faint)]">Công thức: phiếu nghi ngờ ban đêm + phiếu trục xuất ban ngày ×2. Tỉ lệ là phần điểm của mỗi người trên tổng điểm toàn làng.</p>
+      <p className="mt-4 text-[11px] leading-5 text-[var(--ww-text-faint)]">Công thức: phiếu nghi ngờ ban đêm + phiếu xử bắn ban ngày ×2. Tỉ lệ là phần điểm của mỗi người trên tổng điểm toàn làng.</p>
     </section>
   );
 }

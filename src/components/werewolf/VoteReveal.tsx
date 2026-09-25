@@ -43,7 +43,7 @@ export function VoteReveal({ ballots, results, players, selfId, eliminatedId }: 
                     🎯 {target.name}{target.id === selfId ? " (Bạn)" : ""}
                   </div>
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ww-danger)]">
-                    {executed ? "☠️ Bị treo cổ" : "Bị nhiều người chỉ mặt"}
+                    {executed ? "☠️ Bị xử bắn" : "Bị nhiều người chỉ mặt"}
                   </div>
                 </div>
                 <span className="rounded-full bg-[var(--ww-danger)] px-2.5 py-1 text-xs font-black text-[var(--ww-accent-ink)]">{result.votes} phiếu</span>

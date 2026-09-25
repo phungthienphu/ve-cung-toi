@@ -370,7 +370,7 @@ function GameTimeline({ state }: { state: PublicWerewolfState }) {
             ? "Không có ai chết trong đêm."
             : event.type === "night_death"
               ? `${names.join(", ")} đã chết trong đêm.`
-              : `${names.join(", ")} bị ngôi làng trục xuất.`;
+              : `${names.join(", ")} bị ngôi làng xử bắn.`;
           return (
             <div key={event.id} className="flex gap-3 text-sm">
               <span className="shrink-0 rounded-full bg-[var(--ww-surface-soft-hover)] px-2 py-1 text-xs text-[var(--ww-text-muted)]">Ngày {event.day}</span>

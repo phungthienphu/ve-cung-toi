@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useWerewolfRoom } from "@/lib/useWerewolfRoom";
 import { werewolfFontClass } from "@/lib/werewolfFonts";
 import { useWerewolfSound } from "@/lib/werewolfSound";
-import { playClick, playPop, playTypeTick } from "@/lib/sound";
+import { playClick, playClockTick, playPop, playTypeTick } from "@/lib/sound";
 import { MID_GAME_JOIN_MESSAGE } from "@shared/werewolfTypes";
 import type { WerewolfClientMessage, WerewolfPhase, WerewolfPlayer } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "./gameContent";
@@ -47,6 +47,13 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
     if (chatCount > seenChatCount.current && lastChat && lastChat.playerId !== playerId) playPop();
     seenChatCount.current = chatCount;
   }, [chatCount, lastChat, playerId]);
+
+  // Last-10-seconds tick while people are still talking or voting.
+  const livePhase = room.state?.phase;
+  useEffect(() => {
+    const ticking = livePhase === "discussion" || livePhase === "voting";
+    if (ticking && secondsRemaining !== null && secondsRemaining > 0 && secondsRemaining <= 10) playClockTick();
+  }, [secondsRemaining, livePhase]);
 
   // Joined a game that's already running (or was dropped after the reconnect
   // window): the server refuses the seat, so there's no player to render.

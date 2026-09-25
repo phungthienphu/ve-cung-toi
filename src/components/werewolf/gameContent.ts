@@ -159,7 +159,7 @@ export const GAME_CONTENT = {
   },
 
   voting: {
-    title: "Ai sẽ bị trục xuất?",
+    title: "Ai sẽ bị xử bắn?",
     description: "Phiếu được giữ kín đến hết giờ.",
     deadMessage: "Bạn đã chết và không thể bỏ phiếu.",
   },
@@ -167,8 +167,8 @@ export const GAME_CONTENT = {
   voteResult: {
     title: "Kết quả bỏ phiếu",
     noVotes: "Không có phiếu hợp lệ.",
-    tied: "Phiếu hòa — không ai bị loại.",
-    eliminated: (name: string, votes: number) => `${name} bị trục xuất với ${votes} phiếu.`,
+    tied: "Phiếu hòa — không ai bị xử bắn.",
+    eliminated: (name: string, votes: number) => `${name} bị xử bắn với ${votes} phiếu.`,
   },
 
   gameEnd: {

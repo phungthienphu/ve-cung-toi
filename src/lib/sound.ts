@@ -626,6 +626,13 @@ export function speakCommentary(text: string) {
  * render/tick broadcast (the caller is responsible for that debouncing,
  * since only it knows which second it's already played). Higher-pitched and
  * shorter than playClick so it reads as a ticking clock, not a UI blip. */
+/** A low, slow bell — the village going to sleep as a new night begins. */
+export function playNightFall() {
+  tone(196, 0, 1.4, 0.09, "sine");
+  tone(392, 0, 0.9, 0.03, "sine");
+  tone(147, 0.35, 1.6, 0.07, "sine");
+}
+
 export function playClockTick() {
   tone(1400, 0, 0.06, 0.08, "square");
 }
