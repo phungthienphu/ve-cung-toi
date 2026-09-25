@@ -1,79 +1,44 @@
 # Ma Sói Cùng Phòng — Game Design Specification
 
-**Trạng thái:** Draft v1  
+**Trạng thái:** v2 — cập nhật theo bản đang chạy (ngày 2026-09-25)  
 **Đối tượng:** Product Designer, Game Designer, UI/UX Designer  
 **Nền tảng:** Web responsive, ưu tiên điện thoại  
-**Số người:** 5–12 người  
-**Bối cảnh chính:** Nhóm bạn ngồi trong cùng văn phòng/phòng họp, mỗi người dùng thiết bị riêng
+**Số người:** 5–12 người (người thật + bot)  
+**Bối cảnh chính:** Nhóm bạn chơi cùng phòng hoặc từ xa, mỗi người dùng thiết bị riêng
+
+Quy ước: mục có nhãn **[Đã có]** là hành vi đang chạy; **[Chưa làm]** là ý tưởng hoặc phần của v1 chưa triển khai.
 
 ## 1. Tầm nhìn sản phẩm
 
 Ma Sói Cùng Phòng là game suy luận xã hội chơi trên trình duyệt. Điểm khác biệt chính là mọi người đều tương tác trong suốt pha đêm, nhờ đó tiếng chuột, bàn phím và thời gian thao tác không dễ làm lộ vai trò.
 
-Game không thay thế phần trò chuyện trực tiếp. Thiết bị chỉ đảm nhiệm:
+Thiết bị đảm nhiệm:
 
 - Chia vai và bảo mật thông tin.
 - Điều phối các pha và đồng hồ.
-- Nhận hành động bí mật.
-- Giải quyết luật và công bố kết quả.
-- Bỏ phiếu, ghi chú và lưu lịch sử ván.
+- Nhận hành động bí mật, giải quyết luật, công bố kết quả.
+- Trò chuyện, bỏ phiếu (công khai sau khi đóng phiếu), ghi chú và lưu lịch sử ván.
 
 ## 2. Nguyên tắc thiết kế
 
-1. **Ai cũng có việc để làm:** mọi người tương tác đến hết pha đêm, kể cả Dân và người đã chết.
-2. **Giao diện không tố cáo vai trò:** bố cục, số lần chuyển màn hình và chuyển động chính gần giống nhau giữa các vai.
-3. **Server là quản trò:** không cần một người biết toàn bộ vai để điều hành.
-4. **Thông tin bí mật chỉ xuất hiện khi cần:** vai trò và kết quả riêng được che mặc định.
-5. **Thảo luận ngoài đời là trung tâm:** ứng dụng không làm người chơi chú ý vào màn hình quá lâu vào ban ngày.
-6. **Không loại bỏ hoàn toàn tín hiệu xã hội:** game chỉ hạn chế tín hiệu kỹ thuật; nét mặt và cách tranh luận vẫn là một phần của Ma Sói.
+1. **Ai cũng có việc để làm:** mọi người tương tác đến hết pha đêm, kể cả Dân và người đã chết (hành động giả).
+2. **Giao diện không tố cáo vai trò:** bố cục và chuyển động gần giống nhau giữa các vai. Nút "Xong" ban đêm giống hệt nhau và không hiện ai đã bấm.
+3. **Server là quản trò:** không cần một người biết toàn bộ vai.
+4. **Thông tin bí mật chỉ xuất hiện khi cần.**
+5. **Thảo luận là trung tâm:** chat trong ứng dụng là kênh chính ban ngày; giao diện không bắt người chơi cuộn cả trang để đọc.
+6. **Thông tin công khai gây tranh luận:** kết quả dư luận sau đêm và phiếu bầu (ai bầu ai, lý do) được công khai để người chơi chất vấn nhau.
 
-## 3. Đối tượng và điều kiện chơi
+## 3. Bộ vai
 
-- Nhóm 5–12 người quen biết nhau.
-- Một người tạo phòng, những người khác vào bằng QR, link hoặc mã phòng.
-- Mỗi người dùng một điện thoại hoặc laptop riêng; điện thoại là trải nghiệm ưu tiên.
-- Thiết bị nên để im lặng và giảm độ sáng nếu ngồi gần nhau.
-- Một màn hình chung là tùy chọn, dùng để hiện đồng hồ và sự kiện công khai, tuyệt đối không hiện thông tin vai.
+| Vai | Phe | Ban đêm |
+|---|---|---|
+| Dân Làng | Dân | Chọn người nghi ngờ (ghi chú riêng). |
+| Ma Sói | Sói | Biết đồng đội; thăm dò rồi chốt nạn nhân chung. Không thể chọn đồng đội. |
+| Tiên Tri | Dân | Soi một người; kết quả hiện riêng cuối đêm (Thuộc / Không thuộc phe Sói). |
+| Bảo Vệ | Dân | Che chở một người khỏi Sói. Không bảo vệ cùng một người hai đêm liên tiếp; không tự chọn mình. Không chặn độc. |
+| Phù Thủy | Dân | 1 bình cứu + 1 bình độc, mỗi bình dùng một lần. Thấy nạn nhân ở bước cuối đêm. Tự cứu mình bật/tắt được (chủ phòng). |
 
-## 4. Bộ vai MVP
-
-### Dân Làng
-
-- Phe: Dân.
-- Ban đêm: chọn người mình nghi là Sói và cập nhật sổ nghi ngờ cá nhân.
-- Ban ngày: thảo luận và bỏ phiếu.
-
-### Ma Sói
-
-- Phe: Sói.
-- Biết những Sói còn lại.
-- Ban đêm: cùng đồng đội chọn một nạn nhân.
-- Thấy lựa chọn tạm thời và lựa chọn đã chốt của đồng đội.
-
-### Tiên Tri
-
-- Phe: Dân.
-- Mỗi đêm chọn một người còn sống để soi.
-- Cuối đêm nhận kết quả `Thuộc phe Sói` hoặc `Không thuộc phe Sói`.
-- Kết quả không xuất hiện ngay lúc chọn để tránh phản ứng làm lộ vai.
-
-### Bảo Vệ
-
-- Phe: Dân.
-- Mỗi đêm chọn một người để bảo vệ khỏi đòn cắn của Sói.
-- Không bảo vệ cùng một người hai đêm liên tiếp.
-- Không chặn bình độc của Phù Thủy.
-
-### Phù Thủy
-
-- Phe: Dân.
-- Có một bình cứu và một bình độc, mỗi bình dùng tối đa một lần trong cả ván.
-- Từ giây 25 của pha đêm, biết nạn nhân bị Sói nhắm đến.
-- Mỗi đêm chỉ được dùng tối đa một bình.
-- Nếu dùng độc, có thể chọn mục tiêu trong 15 giây cuối.
-- Hết giờ mà không chốt được hiểu là không sử dụng bình.
-
-## 5. Phân bổ vai đề xuất
+## 4. Phân bổ vai **[Đã có]**
 
 | Người chơi | Sói | Vai đặc biệt | Dân thường |
 |---:|---:|---|---:|
@@ -86,221 +51,177 @@ Game không thay thế phần trò chuyện trực tiếp. Thiết bị chỉ đ
 | 11 | 3 | Tiên Tri, Bảo Vệ, Phù Thủy | 5 |
 | 12 | 3 | Tiên Tri, Bảo Vệ, Phù Thủy | 6 |
 
-Preset có thể chỉnh, nhưng UI phải cảnh báo khi cấu hình khiến một phe quá mạnh.
+Bảng vai cố định, chưa có preset Nhanh/Tiêu chuẩn hay tùy chỉnh vai **[Chưa làm]**. Thẻ "Cài đặt phòng" ở sảnh hiển thị bảng vai tính theo số người hiện có (kể cả bot).
 
-## 6. Luồng toàn ván
+## 5. Luồng toàn ván **[Đã có]**
 
 ```text
-Tạo/tham gia phòng
-→ Phòng chờ và cấu hình
+Trang chủ Ma Sói (tạo phòng / nhập mã / chọn từ danh sách phòng)
+→ Nhập tên
+→ Sảnh chờ (cài đặt, chat, sẵn sàng)
 → Xem vai bí mật
-→ Đêm
+→ Đêm (thăm dò → chốt → quyết định cuối)
 → Bình minh
 → Thảo luận
 → Bỏ phiếu
-→ Kết quả bỏ phiếu
+→ Kết quả bỏ phiếu ("xử bắn")
 → Kiểm tra thắng
-→ Đêm tiếp theo hoặc kết thúc
+→ Đêm tiếp theo hoặc Kết thúc
 ```
 
-## 7. Phòng chờ
+## 6. Trang chủ và vào phòng **[Đã có]**
 
-Chủ phòng có thể:
+- Trang chủ Ma Sói: tạo phòng mới, nhập mã phòng, cách chơi 3 bước, danh sách phòng.
+- **Danh sách phòng:** mã phòng, tên chủ phòng, số người, nhãn **Đang chờ** hoặc **Đang chơi**; tự làm mới 4 giây và có nút "Làm mới". Phòng không còn người kết nối thì biến mất. Số người chỉ tính người thật.
+- Màn nhập tên: mã phòng dạng vé, avatar của người chơi, nút "Vào làng" (khóa khi chưa nhập tên).
+- **Không cho vào giữa ván:** người mới vào phòng đang chơi thấy "Ngôi làng này đang yên ổn, bạn đừng vào :)))" kèm nút về sảnh. Người đã rời quá 30 giây cũng bị chặn như vậy.
 
-- Chọn preset Nhanh, Tiêu chuẩn hoặc Tùy chỉnh.
-- Bật/tắt vai đặc biệt.
-- Chọn thời gian thảo luận và bỏ phiếu.
-- Chọn công khai hay ẩn vai của người chết.
-- Cho phép hoặc không cho phép Phù Thủy tự cứu.
-- Chọn phòng riêng tư hoặc công khai.
-- Kick người chơi trước khi bắt đầu.
+## 7. Sảnh chờ **[Đã có]**
 
-Mỗi người phải ở trạng thái `Sẵn sàng`. Chỉ bắt đầu khi có ít nhất 5 người và cấu hình hợp lệ.
+- Danh sách người chơi và trạng thái sẵn sàng.
+- **Thẻ "Cài đặt phòng"** cho mọi người: bảng vai, và (với người không phải chủ phòng) thời gian thảo luận, bỏ phiếu, lộ vai khi chết, Phù Thủy tự cứu.
+- **Chủ phòng chỉnh được:** thời gian thảo luận (60/120/180s), bỏ phiếu (20/30/45s), số bot, lộ vai khi chết, Phù Thủy tự cứu mình.
+- **Chat sảnh** cho mọi người, kèm thông báo hệ thống: "X đã vào làng", "X đã rời làng", "X trở thành chủ phòng". Chat sảnh bị xóa khi ván bắt đầu.
+- Chỉ bắt đầu khi có ít nhất 5 người (người thật + bot) và mọi người thật đã Sẵn sàng.
+- Chưa có: preset thời gian, bật/tắt vai đặc biệt, phòng riêng tư/công khai, kick người chơi **[Chưa làm]**.
 
-## 8. Xem vai bí mật
+## 8. Bot lấp chỗ trống **[Đã có]**
 
-- Vai được che bởi một thẻ `Giữ để xem vai`.
-- Người chơi phải giữ nút để xem, thả tay thì thẻ đóng lại.
-- Thẻ hiển thị tên vai, phe, mục tiêu và mô tả hành động ngắn.
+- Chủ phòng chọn số bot; bot vào làng khi ván bắt đầu, tên có 🤖.
+- Bot chơi theo luật đơn giản: đủ hành động đêm theo vai (sói chọn chung nạn nhân, tiên tri soi người chưa soi, bảo vệ che chở, phù thủy cứu/giết theo xác suất), chat 2–3 câu mỗi ngày bằng câu soạn sẵn, phản hồi khi bị nhắc tên, tiên tri bot công bố khi soi trúng sói, bỏ phiếu theo độ "nóng" trong chat và dư luận đêm.
+- Bot tự xác nhận vai và tự bấm tiếp tục ở màn kết quả; không chặn việc bỏ qua bước đêm.
+- **Ván có bot không lưu vào lịch sử.**
+- Bot chat bằng AI (Claude) **[Chưa làm]** — đã cân nhắc, chi phí ước tính vài cent đến ~1 USD mỗi ván tùy cách gọi.
+
+## 9. Xem vai bí mật **[Đã có]**
+
+- Thẻ "Nhấn giữ để xem vai": giữ để xem, thả tay thì đóng.
 - Sói thấy tên đồng đội.
-- Mỗi người bấm `Đã hiểu` sau khi xem.
-- Pha tự kết thúc khi tất cả đã sẵn sàng hoặc hết 30 giây.
+- Bấm "Đã hiểu vai"; pha kết thúc khi tất cả xác nhận hoặc hết 30 giây.
+- Màu vai chỉ nằm trong thẻ nhỏ, không đổi màu nền toàn màn hình.
+- Bất kỳ lúc nào sau đó, nút "Vai của tôi" mở lại thẻ vai.
 
-Không dùng màu nền toàn màn hình khác nhau theo vai. Màu vai chỉ xuất hiện bên trong thẻ nhỏ để hạn chế nhìn trộm từ xa.
+## 10. Pha đêm **[Đã có]**
 
-## 9. Pha đêm 40 giây
+Tổng 40 giây theo cấu trúc **20 + 5 + 15**, cố định trong MVP:
 
-### 9.1. Giây 00–20: thăm dò
+1. **Thăm dò (20s):** ai cũng chọn/đổi mục tiêu không giới hạn. Dân và Phù Thủy dùng lựa chọn làm ghi chú nghi ngờ; Sói thấy mục tiêu tạm của đồng đội; Tiên Tri/Bảo Vệ chọn thử.
+2. **Sói chốt (5s):** Sói khóa nạn nhân; Tiên Tri/Bảo Vệ có thể khóa. Hòa thì server chọn ngẫu nhiên; không ai chọn thì đêm đó Sói không tấn công.
+3. **Quyết định cuối (15s):** mục tiêu Sói đã khóa; Phù Thủy thấy nạn nhân và chọn Cứu / Đầu độc / Không làm gì; mọi người cập nhật "Note nghi ngờ cá nhân".
 
-Tất cả người còn sống đều có cùng cấu trúc màn hình:
+**Bỏ qua sớm:** mỗi bước có nút **"Xong, sang bước tiếp"**, giống hệt nhau cho mọi vai. Khi tất cả người thật còn sống và đang kết nối đã bấm, đêm chuyển bước ngay (nước đi bot còn chờ được chạy ngay). Giao diện **không hiện ai đã bấm** để không lộ ai còn đang quyết định.
 
-- Danh sách người còn sống.
-- Một người đang được chọn.
-- Đồng hồ.
-- Câu hướng dẫn theo vai.
-- Thẻ vai thu gọn ở góc.
+Người chết vẫn thấy màn đêm tương tự (hành động giả, kết quả bị bỏ qua).
 
-Trong 20 giây này:
+## 11. Dư luận và sổ nghi ngờ **[Đã có — khác v1]**
 
-- Người chơi chọn và đổi mục tiêu không giới hạn.
-- Chưa có lựa chọn nào là chính thức.
-- Dân dùng lựa chọn để ghi người đang nghi ngờ.
-- Sói thấy mục tiêu hiện tại của đồng đội theo thời gian thực.
-- Tiên Tri, Bảo Vệ chọn thử mục tiêu kỹ năng.
-- Phù Thủy chọn người nghi ngờ; lựa chọn này đồng thời là mục tiêu mặc định nếu sau đó muốn dùng độc.
+- **Dư luận sau đêm (công khai, tổng hợp):** sau mỗi đêm, phần "Dư luận sau đêm N — Ai đang bị cả làng nghi ngờ?" hiện xếp hạng theo % phiếu nghi ngờ, ẩn danh người ghi. Trình bày như một cảnh báo (đỏ, 🚨, người đứng đầu nổi bật) và luôn hiện ở màn Thảo luận.
+- **Sổ nghi ngờ cá nhân (riêng tư):** kết quả soi của Tiên Tri và biểu đồ những người mình đã nghi qua các đêm. Nằm trong tab "Ghi chú riêng" (mobile) hoặc cột bên phải (desktop).
+- Cuối ván có "Bảng phong thần": ai suýt bị xử nhiều nhất (đêm + ngày ×2).
+- Nhãn nhanh cho ghi chú (Mâu thuẫn, Quá im lặng…) **[Chưa làm]**.
 
-### 9.2. Giây 20–25: Sói chốt nạn nhân
+## 12. Bình minh **[Đã có]**
 
-- Sói có 5 giây để chốt.
-- Sói thấy lựa chọn của đồng đội và trạng thái đã chốt/chưa chốt.
-- Người không phải Sói tiếp tục chỉnh lựa chọn như bình thường.
-- Giao diện của tất cả người chơi đều có thay đổi nhỏ tại giây 20 để không lộ riêng màn hình Sói.
+- 8 giây, cố định, chưa có nút bỏ qua.
+- Hiện "Không ai chết" hoặc thông báo tử vong; nếu bật, lật vai người chết. Không giải thích nguyên nhân.
+- Kèm phần dư luận sau đêm.
 
-Quy tắc chọn nạn nhân:
+## 13. Thảo luận **[Đã có]**
 
-- Đa số Sói cùng chọn một người: người đó là nạn nhân.
-- Hòa: server chọn ngẫu nhiên giữa các mục tiêu hòa.
-- Sói không chốt: dùng mục tiêu cuối của giai đoạn thăm dò.
-- Không có bất kỳ mục tiêu nào: đêm đó Sói không tấn công.
+- **Chat trong ứng dụng** là kênh chính. Người chết không chat được.
+- Thời lượng theo cài đặt chủ phòng (60/120/180s, mặc định 120s). Chủ phòng bấm "Chuyển sang bỏ phiếu" để kết thúc sớm.
+- Bố cục: chat cuộn bên trong; từ màn rộng chia 2 cột (chat | dư luận + ghi chú riêng); màn hẹp có dư luận ghim trên và tab Thảo luận / Ghi chú riêng.
+- Đếm ngược "tick" ở 10 giây cuối.
 
-### 9.3. Giây 25–40: phản ứng và chốt
+## 14. Bỏ phiếu **[Đã có]**
 
-- Mục tiêu Sói đã bị khóa và không thể đổi.
-- Phù Thủy thấy nạn nhân và chọn cứu, đầu độc hoặc không hành động.
-- Tiên Tri và Bảo Vệ tiếp tục chọn đến hết giây 40.
-- Dân tiếp tục cập nhật sổ nghi ngờ.
-- Sói chuyển sang hoạt động nghi ngờ/ghi chú giả để vẫn có lý do tương tác.
-- Người chết có màn hình tương tác giả tương tự, nhưng kết quả bị bỏ qua.
+- Chỉ người còn sống được bỏ phiếu; không tự bầu mình.
+- Chọn tên là phiếu được ghi nhận ngay; có nút **"Xác nhận bầu X"** để chốt kèm lý do. Bấm lại tên đã chọn để rút phiếu. Không chọn ai = bỏ phiếu trắng. Đổi được đến hết giờ.
+- **Lý do (tùy chọn, tối đa 120 ký tự)**, tự lưu và gửi kèm khi xác nhận.
+- Hiển thị tiến độ "Đã bỏ phiếu n/m" (chỉ ai đã bỏ, không lộ bầu cho ai).
+- Chủ phòng có nút **"← Quay lại thảo luận"** nếu lỡ bấm; quay về với thời gian còn lại (tối thiểu 30 giây), phiếu đã bỏ được giữ.
+- Đếm ngược "tick" ở 10 giây cuối.
+- Thời lượng theo cài đặt (20/30/45s, mặc định 30s).
 
-Tại giây 40, server khóa mọi lựa chọn và giải quyết đêm cùng lúc.
+## 15. Kết quả bỏ phiếu **[Đã có]**
 
-## 10. Sổ nghi ngờ cá nhân
+- Người nhiều phiếu nhất bị **xử bắn** (từ thống nhất toàn game). **Hòa hoặc không có phiếu hợp lệ: không ai bị xử bắn.** Chưa có vòng biện hộ và bỏ phiếu lại **[Chưa làm]**.
+- **Phiếu công khai sau khi đóng:** bảng "Ai đã bầu ai?" nhóm theo người bị bầu, mỗi phiếu kèm lý do. Người bị bầu có 🎯 và viền đỏ; người bị xử bắn có nhãn ☠️; người bầu là chip riêng kèm 🗳️; phiếu của bạn có chữ "Bạn"; người không bầu được liệt kê riêng.
+- Thời lượng 15 giây, có nút **"Đã đọc xong, tiếp tục"** kèm "n/m người sẵn sàng". Khi mọi người còn sống và đang kết nối đều bấm, ván sang đêm ngay.
 
-Sổ nghi ngờ là công cụ riêng, không phải biểu đồ công khai của cả làng.
+## 16. Điều kiện thắng **[Đã có]**
 
-Mỗi đêm, người chơi có thể:
+- Dân thắng khi không còn Sói sống.
+- Sói thắng khi số Sói sống **bằng hoặc nhiều hơn** số người phe Dân sống.
+- Kiểm tra sau khi giải quyết đêm, sau khi xử bắn ban ngày, và sau khi có người bị xóa khỏi phòng.
+- Màn kết thúc lộ mọi vai, dòng thời gian, bảng phong thần, nút "Chơi ván mới" (chủ phòng) và liên kết lịch sử trận.
 
-- Chọn một người đáng ngờ nhất.
-- Gắn một nhãn nhanh: `Mâu thuẫn`, `Quá im lặng`, `Bỏ phiếu lạ`, `Đang bao che`, `Chưa rõ`.
-- Xem lại lựa chọn của chính mình từ các đêm trước.
+## 17. Người chết và khán giả **[Đã có]**
 
-Ví dụ:
+- Người chết chỉ theo dõi: không chat, không bỏ phiếu, không dùng kỹ năng. Banner "👻 Bạn đã chết — chỉ được theo dõi…".
+- **Hồn ma biết vai của mọi người:** thanh "Ngôi làng" hiện icon vai cạnh mỗi tên. Thông tin này chỉ gửi cho người đã chết, không gửi cho người sống.
+- Lộ vai công khai khi chết là tùy chọn của chủ phòng (mặc định bật). Khi tắt, chỉ hồn ma biết.
+- Chat riêng giữa người chết **[Chưa làm]**.
 
-| Người | Đêm 1 | Đêm 2 | Đêm 3 |
-|---|---|---|---|
-| An | Chưa rõ | Nghi ngờ | Nghi ngờ |
-| Bình | Nghi ngờ | Nghi ngờ | — |
-| Chi | — | — | Nghi ngờ |
+## 18. Mất kết nối và rời phòng **[Đã có]**
 
-Sổ không được chia sẻ tự động. Người chơi tự quyết định có nói nội dung đó trong thảo luận hay không. Sau khi ván kết thúc, game có thể dùng dữ liệu này để tạo recap vui.
+- Ngắt kết nối (mất mạng, đóng tab, "Rời phòng") có **30 giây** để vào lại; vào lại bằng cùng trình duyệt thì giữ nguyên chỗ. Làm mới trang không bị tính là ngắt kết nối.
+- **Thông báo công khai:** "📡 X đã mất kết nối — còn 27s để hồi sinh" (nhiều người thì gộp một banner, mỗi người một đếm ngược, chiều cao giới hạn).
+- Quá 30 giây: người chơi bị **xóa âm thầm** (không lộ vai, không thông báo tử vong; ở sảnh thì giải phóng chỗ) và điều kiện thắng được kiểm tra lại. Sau khi ván kết thúc thì họ vẫn ở lại để màn lộ vai đủ người.
+- Chủ phòng ngắt kết nối: quyền chủ phòng chuyển ngay sang người khác đang online.
+- Nếu người chưa xác nhận vai hoặc chưa bấm tiếp tục bị ngắt, game kiểm tra lại và chuyển tiếp.
+- Khi không còn người thật, phòng đang chơi tự đóng.
+- Đánh dấu AFK và kick **[Chưa làm]**.
 
-## 11. Bình minh
+## 19. Giao diện **[Đã có]**
 
-- Tất cả thiết bị chuyển pha cùng lúc.
-- Hiện `Không ai chết` hoặc danh sách người chết.
-- Nếu cấu hình công khai vai, lật vai người chết sau một animation ngắn.
-- Không giải thích nguyên nhân sống/chết; ví dụ không nói rõ người đó được Bảo Vệ hay Phù Thủy cứu.
-- Thời lượng đề xuất: 8 giây.
+- **Giao diện theo ngày/đêm:** pha đêm (gồm cả xem vai) dùng tông tối "ma mị" với nền trăng; các pha ngày dùng tông sáng. Theo pha của game, không theo giao diện hệ thống. Font tiêu đề Playfair Display, nội dung Manrope (có tiếng Việt).
+- **Khung cố định:** thanh "Ngôi làng" ngang phía trên (avatar, tên, 👑 chủ phòng, icon vai của người chết, chấm vàng khi mất kết nối, nút Rời phòng); bên dưới là khung pha cuộn bên trong, không làm trang tràn. Trên mobile trang tự cuộn.
+- Từ khóa thiết kế: bo góc lớn, thẻ nổi, banner thông báo gọn.
+- Đánh dấu 🐺 cho đồng đội Sói trong lưới chọn mục tiêu, cả ban đêm lẫn lúc bỏ phiếu ban ngày.
+- Trang "View as" (`/werewolf/preview`) là công cụ thiết kế: chọn vai, cảnh, kích thước màn hình và nghe thử âm thanh của cảnh.
+- Bottom sheet cho chat/sổ, màn hình chung tùy chọn **[Chưa làm]**.
 
-## 12. Thảo luận ban ngày
+## 20. Âm thanh **[Đã có]**
 
-- Người chơi trò chuyện trực tiếp; ứng dụng chủ yếu hiển thị đồng hồ và danh sách người sống.
-- Chat trong ứng dụng là tùy chọn, dành cho nhóm chơi từ xa hoặc hỗ trợ tiếp cận.
-- Người chết không được nói hoặc gửi chat cho người sống.
-- Chủ phòng có thể cộng 30 giây hoặc kết thúc thảo luận sớm.
-- Thời lượng mặc định: 180 giây.
+- **Nhạc nền lặp:** sảnh (`nhac-ngoai-sanh`), đêm và xem vai (`ban-dem`), ngày gồm bình minh, thảo luận, bỏ phiếu, kết quả (`ban-ngay`); chuyển cảnh mượt.
+- **Tiếng sự kiện:** sói hú (`soi-hu`) khi bình minh có người chết; tiếng xử án (`dan-lang-xu-ban`) khi có người bị xử bắn; nhạc kết thúc (`end-game`); chuông trầm khi đêm bắt đầu (tổng hợp bằng code). Nhạc nền nhỏ đi khi có tiếng sự kiện.
+- **Hiệu ứng giao diện:** tiếng bấm nút, tiếng gõ phím ở ô chat/lý do, tiếng "pop" khi người khác nhắn hoặc có thông báo sảnh, tiếng "tick" ở 10 giây cuối thảo luận và bỏ phiếu.
+- Không có âm thanh riêng theo vai; mọi người nghe cùng một soundtrack.
+- Nút bật/tắt âm thanh chung điều khiển tất cả; nút nhạc tổng hợp 🎶 bị ẩn trong Ma Sói.
+- Giọng quản trò dẫn truyện **[Chưa làm]** (đề xuất: Web Speech hoặc file thu sẵn; câu ban đêm phải chung chung để không lộ vai). Âm riêng cho từng phe thắng **[Chưa làm]**.
 
-## 13. Bỏ phiếu
+## 21. Lịch sử ván **[Đã có]**
 
-- Chỉ người còn sống được bỏ phiếu.
-- Không được tự bỏ phiếu cho mình.
-- Phiếu được giữ kín cho đến hết pha.
-- Có thể đổi phiếu cho tới khi hết giờ.
-- Hết giờ mà chưa chọn được tính là phiếu trắng.
-- Người nhiều phiếu nhất bị loại.
+- Ván không có bot được lưu vào lịch sử chung, xem ở "Lịch sử trận đấu" (tab Ma Sói).
+- Có thể xóa từng trận hoặc toàn bộ lịch sử một game; cần mật khẩu, được kiểm tra trên server (biến môi trường `HISTORY_DELETE_PASSWORD`).
 
-Nếu hòa:
+## 22. Thời gian mặc định
 
-1. Các ứng viên hòa có 20 giây biện hộ.
-2. Người còn lại bỏ phiếu lại trong 20 giây.
-3. Nếu tiếp tục hòa, không ai bị loại.
+| Pha | Thời lượng | Ghi chú |
+|---|---:|---|
+| Xem vai | 30s | Tự chuyển khi mọi người xác nhận. |
+| Đêm | 20 + 5 + 15s | Cố định; bỏ qua sớm bằng nút "Xong". |
+| Bình minh | 8s | Cố định. |
+| Thảo luận | 60 / 120 / 180s | Mặc định 120s. |
+| Bỏ phiếu | 20 / 30 / 45s | Mặc định 30s. |
+| Kết quả bỏ phiếu | 15s | Tự chuyển khi mọi người bấm tiếp tục. |
+| Vào lại sau mất kết nối | 30s | Sau đó bị xóa khỏi phòng. |
 
-## 14. Điều kiện thắng
-
-- Phe Dân thắng khi không còn Sói sống.
-- Phe Sói thắng khi số Sói sống bằng hoặc nhiều hơn tổng số người phe Dân còn sống.
-- Điều kiện thắng được kiểm tra sau khi giải quyết đêm và sau khi loại người ban ngày.
-- Không kết thúc giữa một animation; chuyển sang màn hình kết quả chung.
-
-## 15. Người chết và khán giả
-
-- Người chết vẫn đi qua cùng các pha để hạn chế lộ hành vi của người còn sống.
-- Hành động ban đêm của họ là giả và không ảnh hưởng kết quả.
-- Người chết có thể chat riêng với nhau nếu chủ phòng bật tùy chọn này.
-- Người vào phòng giữa ván trở thành khán giả và không được xem vai người sống.
-- Khán giả chỉ được tham gia từ ván sau.
-
-## 16. Mất kết nối và AFK
-
-- Giữ chỗ cho người chơi mất kết nối trong 90 giây.
-- Khi quay lại, họ nhận lại vai, thông tin riêng và pha hiện tại.
-- Nếu hết hạn hành động khi offline, áp dụng hành động mặc định của vai.
-- Người bỏ lỡ hai pha liên tiếp được đánh dấu AFK.
-- Host chỉ được kick người AFK ở điểm chuyển pha an toàn.
-- Nếu host rời phòng, quyền host chuyển cho người kết nối lâu nhất.
-
-## 17. UI responsive
-
-### Mobile
-
-- Đồng hồ cố định phía trên.
-- Danh sách mục tiêu là grid hai cột.
-- Nút hành động chính cố định phía dưới.
-- Chat và sổ nghi ngờ mở bằng bottom sheet.
-- Vùng chạm tối thiểu 44×44 px.
-
-### Desktop
-
-- Trung tâm: hướng dẫn pha và danh sách người.
-- Bên phải: trạng thái người chơi/chat.
-- Bên trái: lịch sử công khai và sổ cá nhân.
-- Không dùng layout khác nhau đáng kể giữa các vai.
-
-## 18. Âm thanh và chuyển động
-
-- Không có âm thanh riêng theo vai.
-- Âm thanh chuyển pha giống nhau trên mọi thiết bị.
-- Rung phản hồi phải giống nhau cho hành động thật và giả.
-- Animation xác nhận có cùng thời lượng.
-- Có chế độ `Chơi cùng phòng` mặc định tắt toàn bộ âm thanh cá nhân.
-
-## 19. Preset thời gian
-
-| Pha | Nhanh | Tiêu chuẩn |
-|---|---:|---:|
-| Xem vai | 20s | 30s |
-| Đêm | 40s | 40s |
-| Bình minh | 6s | 8s |
-| Thảo luận | 90s | 180s |
-| Bỏ phiếu | 20s | 30s |
-| Biện hộ khi hòa | 15s | 20s |
-
-Pha đêm luôn giữ cấu trúc 20 + 5 + 15 giây, không cho host tùy chỉnh từng đoạn trong MVP.
-
-## 20. Tiêu chí UX thành công
+## 23. Tiêu chí UX thành công
 
 - Người mới hiểu việc cần làm trong vòng 10 giây sau khi pha bắt đầu.
-- Người ngồi cách 1–2 mét không thể nhận biết vai chỉ qua bố cục/màu màn hình.
-- Mọi người có thể tương tác đến hết pha đêm mà không phải giả vờ thủ công.
-- Không có thông tin bí mật xuất hiện trên màn hình chung.
+- Người ngồi cách 1–2 mét không nhận biết vai qua bố cục/màu màn hình.
+- Không có màn nào buộc cuộn cả trang để xem nội dung chính trên desktop.
+- Mọi người tương tác đến hết pha đêm mà không phải giả vờ thủ công.
+- Phiếu bầu và lý do đủ rõ để tạo tranh luận ngay sau khi công bố.
 - Một ván 8 người hoàn thành trong khoảng 15–30 phút.
 
-## 21. Ngoài phạm vi MVP
+## 24. Ngoài phạm vi hiện tại
 
-- Voice/video tích hợp.
-- Matchmaking xếp hạng.
-- Tài khoản và hệ thống bạn bè.
-- Vai trung lập, Cupid, Thợ Săn và Kẻ Ngốc.
-- Mỹ phẩm, tiền tệ hoặc shop.
-- AI quản trò hoặc AI phân tích lời nói.
-
+- Voice/video tích hợp giữa người chơi.
+- Matchmaking xếp hạng, tài khoản, bạn bè.
+- Vai trung lập, Cupid, Thợ Săn, Kẻ Ngốc.
+- Bot chat bằng AI (đang ở dạng ý tưởng).
+- Vòng biện hộ và bỏ phiếu lại khi hòa.
+- Phòng riêng tư, kick người chơi, đánh dấu AFK.
