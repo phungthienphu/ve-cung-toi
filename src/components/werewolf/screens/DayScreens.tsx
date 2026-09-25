@@ -65,7 +65,7 @@ export function DiscussionScreen({ state, role, privateState, isHost, self, send
         <p className="mt-1 hidden text-sm text-[var(--ww-text-muted)] sm:block">{content.description}</p>
       </div>
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Below lg there's no room for a side column: the village-wide
               suspicion result stays pinned (it's the headline everyone must
@@ -106,7 +106,7 @@ export function DiscussionScreen({ state, role, privateState, isHost, self, send
       {isHost && (
         <button
           onClick={() => send({ type: "end_discussion" })}
-          className="mt-4 w-full shrink-0 rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90"
+          className="mt-2 w-full shrink-0 rounded-sm bg-[var(--ww-accent-strong)] px-4 py-2 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 hover:font-extrabold"
         >
           {content.endButton}
         </button>
@@ -120,7 +120,7 @@ function PersonalNotebook({ state, role, privateState }: { state: PublicWerewolf
   return (
     <>
       {role === "seer" && privateState?.seerHistory.length ? (
-        <div className="rounded-2xl border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] p-4 text-left">
+        <div className="rounded-md border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] p-4 text-left">
           <div className="font-semibold text-[var(--ww-text)]">{content.seerHistoryTitle}</div>
           {privateState.seerHistory.map((result) => (
             <div key={result.night} className="mt-2 text-sm text-[var(--ww-text-muted)]">
@@ -202,7 +202,7 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
       {isHost && (
         <button
           onClick={() => send({ type: "back_to_discussion" })}
-          className="mb-3 rounded-lg border border-[var(--ww-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]"
+          className="mb-3 rounded-md border border-[var(--ww-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]"
         >
           ← Quay lại thảo luận
         </button>
@@ -231,14 +231,14 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
               onKeyDown={(event) => {
                 if (event.key === "Enter") confirm();
               }}
-              className="mt-1 w-full rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
+              className="mt-1 w-full rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
             />
             <span className="mt-1 block text-right text-[11px] text-[var(--ww-text-faint)]">{reason.length}/{MAX_VOTE_REASON_LENGTH}</span>
           </label>
           <button
             onClick={confirm}
             disabled={!selected || confirmed}
-            className="mt-3 w-full rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50"
+            className="mt-3 w-full rounded-md bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50"
           >
             {!selected ? "Chọn một người để bỏ phiếu" : confirmed ? `✓ Đã gửi phiếu bầu ${selectedName ?? ""}` : `Xác nhận bầu ${selectedName ?? ""}`}
           </button>
@@ -266,7 +266,7 @@ function ContinueBar({ state, self, send }: { state: PublicWerewolfState; self: 
         <button
           disabled={acked}
           onClick={() => send({ type: "ack_result" })}
-          className="w-full rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
+          className="w-full rounded-md bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
         >
           {acked ? "✓ Đã xác nhận — chờ mọi người" : "Đã đọc xong, tiếp tục"}
         </button>
@@ -318,7 +318,7 @@ export function GameEndScreen({ state, isHost, send }: { state: PublicWerewolfSt
 
   return (
     <div>
-      <header className={`rounded-3xl border p-6 text-center ${winner === "village" ? "border-[var(--ww-warn)]/30 bg-[var(--ww-warn-soft)]" : "border-[var(--ww-danger)]/30 bg-[var(--ww-danger-soft)]"}`}>
+      <header className={`rounded-xl border p-6 text-center ${winner === "village" ? "border-[var(--ww-warn)]/30 bg-[var(--ww-warn-soft)]" : "border-[var(--ww-danger)]/30 bg-[var(--ww-danger-soft)]"}`}>
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-[var(--ww-text-muted)]">Ván đấu kết thúc · {state.day} ngày</p>
         <h2 className="mt-3 font-ww-display text-3xl font-black text-[var(--ww-text)]">{GAME_CONTENT.gameEnd.title[winner]}</h2>
         <p className="mt-2 text-sm text-[var(--ww-text-muted)]">{winningPlayers.map((player) => player.name).join(", ")} đã chiến thắng.</p>
@@ -327,7 +327,7 @@ export function GameEndScreen({ state, isHost, send }: { state: PublicWerewolfSt
       <h3 className="mt-7 text-sm font-bold uppercase tracking-[0.18em] text-[var(--ww-text-faint)]">Vai trò được hé lộ</h3>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {state.players.map((player) => (
-          <div key={player.id} className={`flex items-center gap-3 rounded-2xl border p-3 ${winningPlayers.some((winnerPlayer) => winnerPlayer.id === player.id) ? "border-[var(--ww-safe)]/30 bg-[var(--ww-safe)]/10" : "border-[var(--ww-border)] bg-[var(--ww-surface-soft)]"}`}>
+          <div key={player.id} className={`flex items-center gap-3 rounded-md border p-3 ${winningPlayers.some((winnerPlayer) => winnerPlayer.id === player.id) ? "border-[var(--ww-safe)]/30 bg-[var(--ww-safe)]/10" : "border-[var(--ww-border)] bg-[var(--ww-surface-soft)]"}`}>
             <PlayerAvatar player={player} size="sm" />
             <div className="min-w-0 flex-1 text-left">
               <div className="truncate font-medium text-[var(--ww-text)]">{player.name}</div>
@@ -335,7 +335,7 @@ export function GameEndScreen({ state, isHost, send }: { state: PublicWerewolfSt
             </div>
             {player.revealedRole && (
               <div className="flex items-center gap-2">
-                <RoleArtwork role={player.revealedRole} className="h-14 w-10 rounded-lg object-cover object-top" />
+                <RoleArtwork role={player.revealedRole} className="h-14 w-10 rounded-md object-cover object-top" />
                 <span className="text-xs text-[var(--ww-text-muted)]">{ROLE_LABELS[player.revealedRole]}</span>
               </div>
             )}
@@ -352,13 +352,13 @@ export function GameEndScreen({ state, isHost, send }: { state: PublicWerewolfSt
       )}
 
       <div className="mt-7 grid gap-3 sm:grid-cols-2">
-        <Link href="/leaderboard?game=werewolf" className="rounded-xl border border-[var(--ww-border)] px-6 py-3 text-center font-semibold text-[var(--ww-text)] transition hover:bg-[var(--ww-surface-soft)]">
+        <Link href="/leaderboard?game=werewolf" className="rounded-md border border-[var(--ww-border)] px-6 py-3 text-center font-semibold text-[var(--ww-text)] transition hover:bg-[var(--ww-surface-soft)]">
           Xem lịch sử trận
         </Link>
       {isHost && (
         <button
           onClick={() => send({ type: "play_again" })}
-          className="rounded-xl bg-[var(--ww-accent-strong)] px-8 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90"
+          className="rounded-md bg-[var(--ww-accent-strong)] px-8 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90"
         >
           {GAME_CONTENT.gameEnd.playAgainButton}
         </button>
@@ -370,7 +370,7 @@ export function GameEndScreen({ state, isHost, send }: { state: PublicWerewolfSt
 
 function GameTimeline({ state }: { state: PublicWerewolfState }) {
   return (
-    <section className="mt-7 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4">
+    <section className="mt-7 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4">
       <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--ww-text-faint)]">Diễn biến chính</h3>
       <div className="mt-4 space-y-3">
         {state.events.map((event) => {

@@ -57,7 +57,7 @@ export function TargetGrid({ players, selfId, selected, disabledIds = [], teamma
             key={player.id}
             disabled={disabled}
             onClick={() => onPick(player.id)}
-            className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${selectedClass} disabled:cursor-not-allowed disabled:opacity-30`}
+            className={`flex items-center gap-3 rounded-md border p-3 text-left transition ${selectedClass} disabled:cursor-not-allowed disabled:opacity-30`}
           >
             <span className="relative shrink-0">
               <PlayerAvatar player={player} size="sm" />
@@ -79,12 +79,12 @@ export function PlayerStrip({ players, onLeave, roles }: { players: WerewolfPlay
   const livingCount = players.filter((player) => player.alive).length;
 
   return (
-    <aside className="shrink-0 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface)] px-3 py-2.5 shadow-xl backdrop-blur-md">
+    <aside className="shrink-0 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface)] px-3 py-2.5 shadow-xl backdrop-blur-md">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-ww-display text-sm font-bold text-[var(--ww-text)]">
           Ngôi làng <span className="ml-1 text-xs font-normal text-[var(--ww-text-faint)]">{livingCount}/{players.length} sống</span>
         </h3>
-        <button onClick={onLeave} className="rounded-lg border border-[var(--ww-border)] px-2.5 py-1 text-[11px] text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]">
+        <button onClick={onLeave} className="rounded-md border border-[var(--ww-border)] px-2.5 py-1 text-[11px] text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]">
           Rời phòng
         </button>
       </div>

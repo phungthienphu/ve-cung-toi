@@ -131,6 +131,10 @@ export interface PublicWerewolfState {
   players: WerewolfPlayer[];
   config: WerewolfConfig;
   phaseEndsAt: number | null;
+  /** When the current phase began, and a per-phase random number shared by
+   * every client so the narrator picks the same caption line everywhere. */
+  phaseStartedAt: number | null;
+  narrationSeed: number;
   nightDeaths: string[];
   lastVoteResult: VoteResult[];
   lastVotes: WerewolfBallot[];

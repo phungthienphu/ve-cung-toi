@@ -26,11 +26,11 @@ export function RoleRevealScreen(props: RoleRevealScreenProps) {
         onPointerDown={() => setShowingRole(true)}
         onPointerUp={() => setShowingRole(false)}
         onPointerLeave={() => setShowingRole(false)}
-        className={`mt-6 w-full rounded-3xl border p-8 transition ${showingRole ? "border-[var(--ww-accent)] bg-[var(--ww-accent-soft)]" : "border-[var(--ww-border)] bg-[var(--ww-surface-soft)]"}`}
+        className={`mt-6 w-full rounded-xl border p-8 transition ${showingRole ? "border-[var(--ww-accent)] bg-[var(--ww-accent-soft)]" : "border-[var(--ww-border)] bg-[var(--ww-surface-soft)]"}`}
       >
         {showingRole && role && content ? (
           <>
-            <RoleArtwork role={role} className="mx-auto max-h-[56vh] w-auto max-w-full rounded-2xl shadow-2xl" />
+            <RoleArtwork role={role} className="mx-auto max-h-[56vh] w-auto max-w-full rounded-md shadow-2xl" />
             <div className="mt-4 font-ww-display text-2xl font-bold text-[var(--ww-text)]">{content.title}</div>
             <p className="mx-auto mt-2 max-w-lg text-sm text-[var(--ww-text-muted)]">{content.instruction}</p>
             {role === "wolf" && teammateNames && (
@@ -44,7 +44,7 @@ export function RoleRevealScreen(props: RoleRevealScreenProps) {
           </>
         )}
       </button>
-      <button onClick={onConfirm} className="mt-5 rounded-xl bg-[var(--ww-accent-strong)] px-8 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90">
+      <button onClick={onConfirm} className="mt-5 rounded-md bg-[var(--ww-accent-strong)] px-8 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90">
         {GAME_CONTENT.roleReveal.confirmButton}
       </button>
     </div>

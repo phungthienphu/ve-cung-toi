@@ -3,7 +3,7 @@ import { PlayerAvatar } from "./ui";
 
 export function ExecutionRiskSummary({ stats, players }: { stats: SuspicionStatistic[]; players: WerewolfPlayer[] }) {
   return (
-    <section className="rounded-2xl border border-[var(--ww-danger)]/25 bg-[var(--ww-danger-soft)] p-4 text-left">
+    <section className="rounded-md border border-[var(--ww-danger)]/25 bg-[var(--ww-danger-soft)] p-4 text-left">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--ww-danger)]">Bảng phong thần</p>
       <h3 className="mt-1 font-semibold text-[var(--ww-text)]">Ai suýt bị cả làng xử nhiều nhất?</h3>
 

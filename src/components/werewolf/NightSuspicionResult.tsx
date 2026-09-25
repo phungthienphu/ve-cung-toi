@@ -10,7 +10,7 @@ export function NightSuspicionResult({ data, players, compact = false }: { data:
   const results = compact ? data.results.slice(0, 3) : data.results;
 
   return (
-    <section className="rounded-2xl border border-[var(--ww-danger)]/40 bg-[var(--ww-danger-soft)] p-4 text-left shadow-[0_0_24px_-8px_var(--ww-danger)]">
+    <section className="rounded-md border border-[var(--ww-danger)]/40 bg-[var(--ww-danger-soft)] p-4 text-left shadow-[0_0_24px_-8px_var(--ww-danger)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[var(--ww-danger)]">
@@ -32,7 +32,7 @@ export function NightSuspicionResult({ data, players, compact = false }: { data:
             return (
               <div
                 key={result.playerId}
-                className={`grid grid-cols-[24px_36px_1fr_auto] items-center gap-2 ${isTop ? "-mx-2 rounded-xl bg-[var(--ww-danger)]/12 px-2 py-1.5" : ""}`}
+                className={`grid grid-cols-[24px_36px_1fr_auto] items-center gap-2 ${isTop ? "-mx-2 rounded-md bg-[var(--ww-danger)]/12 px-2 py-1.5" : ""}`}
               >
                 <span className={`text-center font-black ${isTop ? "text-base text-[var(--ww-warn)]" : "text-xs text-[var(--ww-text-faint)]"}`}>#{index + 1}</span>
                 <PlayerAvatar player={player} size="sm" />

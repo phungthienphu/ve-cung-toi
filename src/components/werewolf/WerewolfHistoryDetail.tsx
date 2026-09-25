@@ -24,7 +24,7 @@ export interface WerewolfHistoryDetailData {
 export function WerewolfHistoryDetail({ detail, winner }: { detail: WerewolfHistoryDetailData; winner?: WerewolfTeam | null }) {
   return (
     <div>
-      <div className={`mb-4 rounded-xl border p-4 ${winner === "village" ? "border-amber-300/20 bg-amber-50" : "border-rose-300/30 bg-rose-50"}`}>
+      <div className={`mb-4 rounded-md border p-4 ${winner === "village" ? "border-amber-300/20 bg-amber-50" : "border-rose-300/30 bg-rose-50"}`}>
         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Kết quả</div>
         <div className="mt-1 text-lg font-bold text-slate-900">
           {winner === "village" ? "Phe Dân chiến thắng" : "Phe Sói chiến thắng"}
@@ -34,7 +34,7 @@ export function WerewolfHistoryDetail({ detail, winner }: { detail: WerewolfHist
 
       <div className="grid gap-2 sm:grid-cols-2">
         {detail.players.map((player) => (
-          <div key={player.name} className={`flex items-center gap-3 rounded-xl border p-3 ${player.won ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+          <div key={player.name} className={`flex items-center gap-3 rounded-md border p-3 ${player.won ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
             <RoleArtwork role={player.role} className="h-16 w-11 rounded object-cover object-top shadow" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-slate-900">{player.name}</div>
@@ -48,7 +48,7 @@ export function WerewolfHistoryDetail({ detail, winner }: { detail: WerewolfHist
       </div>
 
       {detail.suspicionStats?.length ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Chỉ số bị xử</div>
           <div className="mt-3 space-y-2">
             {detail.suspicionStats.map((stat) => {

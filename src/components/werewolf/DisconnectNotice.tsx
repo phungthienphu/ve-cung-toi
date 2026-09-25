@@ -25,7 +25,7 @@ export function DisconnectNotice({ players }: { players: WerewolfPlayer[] }) {
   if (offline.length === 1) {
     const [player] = offline;
     return (
-      <div className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-400/40 bg-[var(--ww-warn-soft)] px-3 py-2 text-sm text-[var(--ww-warn)]">
+      <div className="flex shrink-0 items-center gap-2 rounded-md border border-amber-400/40 bg-[var(--ww-warn-soft)] px-3 py-2 text-sm text-[var(--ww-warn)]">
         <span aria-hidden>📡</span>
         <span className="min-w-0 flex-1">
           <strong>{player.name}</strong> đã mất kết nối — còn <strong className="tabular-nums">{secondsLeft(player)}s</strong> để hồi sinh
@@ -35,7 +35,7 @@ export function DisconnectNotice({ players }: { players: WerewolfPlayer[] }) {
   }
 
   return (
-    <div className="max-h-24 shrink-0 overflow-y-auto rounded-xl border border-amber-400/40 bg-[var(--ww-warn-soft)] px-3 py-2 text-sm text-[var(--ww-warn)]">
+    <div className="max-h-24 shrink-0 overflow-y-auto rounded-md border border-amber-400/40 bg-[var(--ww-warn-soft)] px-3 py-2 text-sm text-[var(--ww-warn)]">
       <div>
         <span aria-hidden>📡</span> <strong>{offline.length} người</strong> đã mất kết nối — mỗi người có 30s để hồi sinh
       </div>

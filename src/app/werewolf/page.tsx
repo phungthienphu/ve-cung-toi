@@ -60,7 +60,7 @@ export default function WerewolfHomePage() {
           </p>
           <div className="mt-6 flex justify-center gap-2 sm:gap-3">
             {SHOWCASE_ROLES.map((role, index) => (
-              <div key={role} title={ROLE_LABELS[role]} className="w-14 overflow-hidden rounded-xl border border-[var(--ww-border-strong)] bg-[var(--ww-surface)] shadow-lg transition hover:-translate-y-1.5 sm:w-20" style={{ transform: `rotate(${(index - 2) * 3}deg)` }}>
+              <div key={role} title={ROLE_LABELS[role]} className="w-14 overflow-hidden rounded-md border border-[var(--ww-border-strong)] bg-[var(--ww-surface)] shadow-lg transition hover:-translate-y-1.5 sm:w-20" style={{ transform: `rotate(${(index - 2) * 3}deg)` }}>
                 <RoleArtwork role={role} className="h-full w-full object-cover" />
               </div>
             ))}
@@ -68,13 +68,13 @@ export default function WerewolfHomePage() {
         </header>
 
         <div className="mt-9 grid gap-5 lg:grid-cols-[1fr_1fr]">
-          <section className="rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-6 shadow-2xl backdrop-blur-md sm:p-7">
+          <section className="rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-6 shadow-2xl backdrop-blur-md sm:p-7">
             <button
               onClick={() => {
                 playClick();
                 router.push(`/werewolf/${makeRoomId()}`);
               }}
-              className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 font-ww-display text-lg font-bold shadow-lg shadow-violet-900/40 transition hover:-translate-y-0.5 hover:brightness-110"
+              className="w-full rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 font-ww-display text-lg font-bold shadow-lg shadow-violet-900/40 transition hover:-translate-y-0.5 hover:brightness-110"
             >
               🐺 Tạo phòng mới
             </button>
@@ -91,16 +91,16 @@ export default function WerewolfHomePage() {
                 onChange={(event) => setCode(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && join()}
                 placeholder="MÃ PHÒNG"
-                className="min-w-0 flex-1 rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 text-center font-mono uppercase tracking-[0.3em] outline-none placeholder:tracking-normal placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
+                className="min-w-0 flex-1 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 text-center font-mono uppercase tracking-[0.3em] outline-none placeholder:tracking-normal placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
               />
-              <button onClick={join} className="rounded-xl border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-6 font-semibold text-[var(--ww-accent)] transition hover:brightness-125">
+              <button onClick={join} className="rounded-md border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-6 font-semibold text-[var(--ww-accent)] transition hover:brightness-125">
                 Vào
               </button>
             </div>
 
             <ul className="mt-6 space-y-3">
               {HOW_IT_WORKS.map((step) => (
-                <li key={step.title} className="flex gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5">
+                <li key={step.title} className="flex gap-3 rounded-md bg-[var(--ww-surface-soft)] px-3 py-2.5">
                   <span className="text-2xl">{step.icon}</span>
                   <div>
                     <div className="text-sm font-bold">{step.title}</div>
@@ -111,15 +111,15 @@ export default function WerewolfHomePage() {
             </ul>
           </section>
 
-          <section className="rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-6 shadow-2xl backdrop-blur-md sm:p-7">
+          <section className="rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-6 shadow-2xl backdrop-blur-md sm:p-7">
             <div className="flex items-center justify-between">
               <h2 className="font-ww-display text-lg font-bold">Ngôi làng đang mở</h2>
-              <button onClick={refresh} className="rounded-lg border border-[var(--ww-border)] px-3 py-1 text-xs text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]">
+              <button onClick={refresh} className="rounded-md border border-[var(--ww-border)] px-3 py-1 text-xs text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]">
                 <span className={refreshing ? "inline-block animate-spin" : "inline-block"}>🔄</span> Làm mới
               </button>
             </div>
             {rooms.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-[var(--ww-border)] px-4 py-10 text-center">
+              <div className="mt-4 rounded-md border border-dashed border-[var(--ww-border)] px-4 py-10 text-center">
                 <div className="text-4xl opacity-70">🏚️</div>
                 <p className="mt-2 text-sm text-[var(--ww-text-muted)]">Chưa có ngôi làng nào. Hãy tạo phòng đầu tiên nhé!</p>
               </div>
@@ -128,7 +128,7 @@ export default function WerewolfHomePage() {
                 {rooms.map((room) => {
                   const playing = room.status === "playing";
                   return (
-                    <li key={room.roomId} className="flex items-center gap-3 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 transition hover:border-[var(--ww-border-strong)]">
+                    <li key={room.roomId} className="flex items-center gap-3 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 transition hover:border-[var(--ww-border-strong)]">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm font-bold tracking-widest">{room.roomId}</span>
@@ -142,7 +142,7 @@ export default function WerewolfHomePage() {
                       </div>
                       <button
                         onClick={() => router.push(`/werewolf/${room.roomId}`)}
-                        className="rounded-xl bg-[var(--ww-accent-strong)] px-4 py-2 text-sm font-semibold text-[var(--ww-accent-ink)] transition hover:brightness-110"
+                        className="rounded-md bg-[var(--ww-accent-strong)] px-4 py-2 text-sm font-semibold text-[var(--ww-accent-ink)] transition hover:brightness-110"
                       >
                         Vào
                       </button>

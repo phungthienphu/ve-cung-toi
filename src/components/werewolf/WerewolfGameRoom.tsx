@@ -16,6 +16,7 @@ import { NightScreen } from "./screens/NightScreen";
 import { DawnScreen, DiscussionScreen, GameEndScreen, VoteResultScreen, VotingScreen } from "./screens/DayScreens";
 import { RoleQuickView } from "./RoleQuickView";
 import { DisconnectNotice } from "./DisconnectNotice";
+import { NarratorLine } from "./NarratorLine";
 
 // Night phases get the dark "ma mị" (eerie) treatment; everything else
 // reads as daylight. This is keyed on the *game's* phase, deliberately not
@@ -102,12 +103,14 @@ export default function WerewolfGameRoom({ roomId, playerId, name }: WerewolfGam
         <PlayerStrip players={room.state.players} onLeave={leaveRoom} roles={room.privateState?.allRoles} />
 
         {!self.alive && room.state.phase !== "lobby" && room.state.phase !== "gameEnd" && (
-          <div className="shrink-0 rounded-xl bg-[var(--ww-accent-soft)] px-3 py-2 text-center text-xs text-[var(--ww-accent)]">
+          <div className="shrink-0 rounded-md bg-[var(--ww-accent-soft)] px-3 py-2 text-center text-xs text-[var(--ww-accent)]">
             👻 Bạn đã chết — chỉ được theo dõi. Bạn biết vai của mọi người (xem trên thanh ngôi làng), đừng tiết lộ nhé.
           </div>
         )}
 
-        <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
+        {room.state.phase !== "lobby" && <NarratorLine state={room.state} />}
+
+        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
           <PhaseScreen
             playerId={playerId}
             self={self}
@@ -227,7 +230,7 @@ function RoomHeader({ roomId, phaseLabel, isNight, secondsRemaining, canViewRole
 
 function ConnectionWarning() {
   return (
-    <div className="shrink-0 rounded-xl bg-[var(--ww-warn-soft)] p-3 text-sm text-[var(--ww-warn)]">
+    <div className="shrink-0 rounded-md bg-[var(--ww-warn-soft)] p-3 text-sm text-[var(--ww-warn)]">
       Mất kết nối — đang thử kết nối lại…
     </div>
   );
@@ -235,7 +238,7 @@ function ConnectionWarning() {
 
 function ErrorBanner({ message, onClose }: { message: string; onClose: () => void }) {
   return (
-    <button onClick={onClose} className="w-full shrink-0 rounded-xl bg-[var(--ww-danger-soft)] p-3 text-left text-sm text-[var(--ww-danger)]">
+    <button onClick={onClose} className="w-full shrink-0 rounded-md bg-[var(--ww-danger-soft)] p-3 text-left text-sm text-[var(--ww-danger)]">
       {message} · bấm để đóng
     </button>
   );
@@ -247,7 +250,7 @@ function LockedOut({ onBack }: { onBack: () => void }) {
       <div className="text-6xl">🏘️</div>
       <p className="max-w-sm font-ww-display text-xl font-bold text-[var(--ww-text)]">{MID_GAME_JOIN_MESSAGE}</p>
       <p className="max-w-sm text-sm text-[var(--ww-text-muted)]">Ván đang diễn ra hoặc bạn đã rời quá 30 giây. Hãy chờ ván sau hoặc tạo phòng mới.</p>
-      <button onClick={onBack} className="rounded-xl bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)]">Về sảnh Ma Sói</button>
+      <button onClick={onBack} className="rounded-md bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)]">Về sảnh Ma Sói</button>
     </main>
   );
 }

@@ -32,11 +32,11 @@ export default function WerewolfRoomPage({ params }: { params: Promise<{ roomId:
   if (!confirmed) {
     return (
       <main data-time="night" className={`${werewolfFontClass} werewolf-root bg-werewolf-scene flex min-h-app items-center justify-center px-4 text-[var(--ww-text)]`}>
-        <section className="w-full max-w-sm rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-7 text-center shadow-2xl backdrop-blur-md">
+        <section className="w-full max-w-sm rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-7 text-center shadow-2xl backdrop-blur-md">
           <div className="text-5xl drop-shadow-[0_0_20px_rgba(167,139,250,0.7)]">🌕</div>
           <h1 className="mt-3 font-ww-display text-2xl font-bold">Gia nhập ngôi làng</h1>
 
-          <div className="mx-auto mt-4 w-fit rounded-xl border border-dashed border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-5 py-2">
+          <div className="mx-auto mt-4 w-fit rounded-md border border-dashed border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-5 py-2">
             <div className="text-[10px] uppercase tracking-[0.25em] text-[var(--ww-text-faint)]">Mã phòng</div>
             <div className="font-mono text-xl font-bold tracking-[0.3em] text-[var(--ww-accent)]">{roomId}</div>
           </div>
@@ -56,12 +56,12 @@ export default function WerewolfRoomPage({ params }: { params: Promise<{ roomId:
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && enter()}
             placeholder="Ví dụ: Phú"
-            className="mt-1.5 w-full rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
+            className="mt-1.5 w-full rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-4 py-3 outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)]"
           />
           <button
             onClick={enter}
             disabled={!name.trim()}
-            className="mt-4 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-ww-display font-bold shadow-lg transition hover:brightness-110 disabled:opacity-50"
+            className="mt-4 w-full rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-ww-display font-bold shadow-lg transition hover:brightness-110 disabled:opacity-50"
           >
             Vào làng 🐺
           </button>

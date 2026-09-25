@@ -31,7 +31,7 @@ export function DiscussionChat({ entries, selfId, canSend, onSend, emptyText, pl
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-strong)]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-strong)]">
       <div ref={listRef} className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {entries.length === 0 ? (
           <p className="py-12 text-center text-sm text-[var(--ww-text-faint)]">{emptyText ?? content.emptyChat}</p>
@@ -51,12 +51,12 @@ export function DiscussionChat({ entries, selfId, canSend, onSend, emptyText, pl
           rows={1}
           maxLength={300}
           placeholder={canSend ? (placeholder ?? content.inputPlaceholder) : content.deadInputPlaceholder}
-          className="max-h-24 min-h-10 min-w-0 flex-1 resize-none rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="max-h-24 min-h-10 min-w-0 flex-1 resize-none rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2 text-sm text-[var(--ww-text)] outline-none placeholder:text-[var(--ww-text-faint)] focus:border-[var(--ww-accent)] disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!canSend || !text.trim()}
-          className="rounded-xl bg-[var(--ww-accent-strong)] px-4 py-2.5 text-sm font-semibold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-30"
+          className="rounded-md bg-[var(--ww-accent-strong)] px-4 py-2.5 text-sm font-semibold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-30"
         >
           {content.sendButton}
         </button>
@@ -75,7 +75,7 @@ function ChatBubble({ entry, isSelf }: { entry: WerewolfChatEntry; isSelf: boole
   }
   return (
     <div className={`flex ${isSelf ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-left ${isSelf ? "rounded-br-sm bg-[var(--ww-accent-soft)]" : "rounded-bl-sm bg-[var(--ww-surface-soft)]"}`}>
+      <div className={`max-w-[85%] rounded-lg px-3 py-2 text-left ${isSelf ? "rounded-br-sm bg-[var(--ww-accent-soft)]" : "rounded-bl-sm bg-[var(--ww-surface-soft)]"}`}>
         <div className={`mb-0.5 text-[11px] font-semibold ${isSelf ? "text-[var(--ww-accent)]" : "text-[var(--ww-text-muted)]"}`}>
           {entry.playerName}
         </div>

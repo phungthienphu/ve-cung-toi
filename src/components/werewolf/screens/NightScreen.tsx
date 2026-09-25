@@ -33,7 +33,7 @@ export function NightScreen({ phase, role, selfId, players, privateState, send }
 
   return (
     <div>
-      <header className="mb-5 rounded-2xl bg-[var(--ww-surface-strong)] p-4 text-center">
+      <header className="mb-5 rounded-md bg-[var(--ww-surface-strong)] p-4 text-center">
         <div className="text-3xl">🌙</div>
         <h2 className="mt-2 font-ww-display text-xl font-bold text-[var(--ww-text)]">{title}</h2>
         <p className="mt-1 text-xs text-[var(--ww-text-muted)]">{content.description}</p>
@@ -72,7 +72,7 @@ export function NightScreen({ phase, role, selfId, players, privateState, send }
       <button
         onClick={() => send({ type: "ack_night" })}
         disabled={privateState.nightDone}
-        className="mt-5 w-full rounded-xl border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-6 py-3 font-semibold text-[var(--ww-accent)] transition hover:brightness-125 disabled:opacity-60"
+        className="mt-5 w-full rounded-md border border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)] px-6 py-3 font-semibold text-[var(--ww-accent)] transition hover:brightness-125 disabled:opacity-60"
       >
         {privateState.nightDone ? "✓ Đã xong — chờ mọi người…" : "Xong, sang bước tiếp"}
       </button>
@@ -82,13 +82,13 @@ export function NightScreen({ phase, role, selfId, players, privateState, send }
 
 function SuspicionVote({ players, selfId, selected, send }: Pick<NightScreenProps, "players" | "selfId" | "send"> & { selected: string | null }) {
   return (
-    <label className="mt-5 block rounded-2xl border border-[var(--ww-warn)]/25 bg-[var(--ww-warn-soft)] p-4">
+    <label className="mt-5 block rounded-md border border-[var(--ww-warn)]/25 bg-[var(--ww-warn-soft)] p-4">
       <span className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ww-warn)]">Note nghi ngờ cá nhân</span>
       <span className="mt-1 block text-sm text-[var(--ww-text-muted)]">Theo bạn, ai có khả năng là Sói nhất đêm nay?</span>
       <select
         value={selected ?? ""}
         onChange={(event) => event.target.value && send({ type: "set_suspicion", targetId: event.target.value })}
-        className="mt-3 w-full rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] px-3 py-2.5 text-sm text-[var(--ww-text)] outline-none focus:border-[var(--ww-warn)]"
+        className="mt-3 w-full rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] px-3 py-2.5 text-sm text-[var(--ww-text)] outline-none focus:border-[var(--ww-warn)]"
       >
         <option value="">Chưa ghi nhận</option>
         {players.filter((player) => player.alive && player.id !== selfId).map((player) => (
@@ -108,20 +108,20 @@ function WitchActions({ selected, privateState, send }: Pick<NightScreenProps, "
       <button
         disabled={!privateState.healAvailable || !privateState.witchVictimId}
         onClick={() => send({ type: "witch_decision", decision: "heal" })}
-        className="rounded-xl bg-[var(--ww-safe)] p-3 font-semibold text-[var(--ww-accent-ink)] disabled:opacity-30"
+        className="rounded-md bg-[var(--ww-safe)] p-3 font-semibold text-[var(--ww-accent-ink)] disabled:opacity-30"
       >
         🧪 {content.healButton}
       </button>
       <button
         disabled={!privateState.poisonAvailable || !selected}
         onClick={() => selected && send({ type: "witch_decision", decision: "poison", targetId: selected })}
-        className="rounded-xl bg-[var(--ww-danger)] p-3 font-semibold text-[var(--ww-accent-ink)] disabled:opacity-30"
+        className="rounded-md bg-[var(--ww-danger)] p-3 font-semibold text-[var(--ww-accent-ink)] disabled:opacity-30"
       >
         ☠️ {content.poisonButton}
       </button>
       <button
         onClick={() => send({ type: "witch_decision", decision: "skip" })}
-        className="rounded-xl bg-[var(--ww-surface-soft)] p-3 font-semibold text-[var(--ww-text)]"
+        className="rounded-md bg-[var(--ww-surface-soft)] p-3 font-semibold text-[var(--ww-text)]"
       >
         {content.skipButton}
       </button>
@@ -139,7 +139,7 @@ function LockAction({ phase, role, privateState, send }: Pick<NightScreenProps, 
     <button
       disabled={!targetId}
       onClick={() => targetId && send({ type: "lock_target", targetId })}
-      className={`mt-4 w-full rounded-xl py-3 font-bold text-[var(--ww-accent-ink)] disabled:opacity-30 ${wolfCanLock ? "bg-[var(--ww-danger)]" : "bg-[var(--ww-accent-strong)]"}`}
+      className={`mt-4 w-full rounded-md py-3 font-bold text-[var(--ww-accent-ink)] disabled:opacity-30 ${wolfCanLock ? "bg-[var(--ww-danger)]" : "bg-[var(--ww-accent-strong)]"}`}
     >
       {wolfCanLock ? GAME_CONTENT.night.wolfLockButton : GAME_CONTENT.night.lockButton}
     </button>
@@ -148,7 +148,7 @@ function LockAction({ phase, role, privateState, send }: Pick<NightScreenProps, 
 
 function WolfChoices({ players, wolfChoices }: Pick<PrivateWerewolfState, "wolfChoices"> & { players: WerewolfPlayer[] }) {
   return (
-    <div className="mt-5 rounded-2xl border border-[var(--ww-danger)]/25 bg-[var(--ww-danger-soft)] p-4">
+    <div className="mt-5 rounded-md border border-[var(--ww-danger)]/25 bg-[var(--ww-danger-soft)] p-4">
       <div className="text-xs font-bold uppercase tracking-wider text-[var(--ww-danger)]">
         {GAME_CONTENT.night.wolfChoicesTitle}
       </div>

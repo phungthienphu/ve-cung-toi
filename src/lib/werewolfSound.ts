@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from "react";
 import type { PublicWerewolfState } from "@shared/werewolfTypes";
-import { isMuted, MUTE_CHANGE_EVENT, playNightFall } from "@/lib/sound";
+import { getAudioContext, isMuted, MUTE_CHANGE_EVENT, playNightFall } from "@/lib/sound";
 
 const BASE = "/ma-soi/sound";
 const TRACKS = {
@@ -25,6 +25,32 @@ type TrackName = keyof typeof TRACKS;
 type StingerName = keyof typeof STINGERS;
 
 const FADE_MS = 700;
+
+// One-shot stingers (howl, verdict, game over) are decoded once and played
+// through Web Audio — the same path as the UI ticks. Plain <audio>.play() calls
+// that start on their own (a phase change, not a tap) get blocked by browser
+// autoplay rules, which is why these used to go silent unless triggered by a
+// button. The narrator's typing ticks stay quiet while one is sounding.
+const stingerBuffers = new Map<string, Promise<AudioBuffer | null>>();
+const liveStingers = new Set<AudioBufferSourceNode>();
+
+export function isStingerPlaying(): boolean {
+  return liveStingers.size > 0;
+}
+
+function loadStinger(src: string): Promise<AudioBuffer | null> {
+  const ctx = getAudioContext();
+  if (!ctx) return Promise.resolve(null);
+  let pending = stingerBuffers.get(src);
+  if (!pending) {
+    pending = fetch(src)
+      .then((response) => response.arrayBuffer())
+      .then((data) => ctx.decodeAudioData(data))
+      .catch(() => null);
+    stingerBuffers.set(src, pending);
+  }
+  return pending;
+}
 
 function fadeTo(el: HTMLAudioElement, target: number, onDone?: () => void) {
   const from = el.volume;
@@ -83,8 +109,11 @@ function eliminatedByVote(state: PublicWerewolfState): boolean {
 export function useWerewolfSound(state: PublicWerewolfState | null) {
   const current = useRef<{ name: TrackName; el: HTMLAudioElement } | null>(null);
   const wantedRef = useRef<TrackName | null>(null);
-  const stingerEls = useRef<HTMLAudioElement[]>([]);
+
   const lastStingerKey = useRef<string>("");
+  // A stinger the browser refused to autoplay; replayed on the next tap/key if
+  // that happens soon enough for it to still make sense.
+  const blockedStinger = useRef<{ name: StingerName; at: number } | null>(null);
 
   const phase = state?.phase ?? null;
   const day = state?.day ?? 0;
@@ -118,26 +147,52 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
     });
   }
 
-  function playStinger(name: StingerName) {
+  async function playStinger(name: StingerName) {
     if (isMuted()) return;
     const cfg = STINGERS[name];
-    const el = new Audio(cfg.src);
-    el.volume = cfg.volume;
-    stingerEls.current.push(el);
-    el.addEventListener("ended", () => {
-      stingerEls.current = stingerEls.current.filter((x) => x !== el);
-    });
-    el.play().catch(() => {});
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const buffer = await loadStinger(cfg.src);
+    if (!buffer || isMuted()) return;
+    if (ctx.state !== "running") await ctx.resume().catch(() => {});
+    if (ctx.state !== "running") {
+      // Still no user gesture on this page — retry on the first tap/key.
+      blockedStinger.current = { name, at: Date.now() };
+      return;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = cfg.volume;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    liveStingers.add(source);
     // Ambience ducks under a stinger so the howl/verdict actually lands.
     const music = current.current;
-    if (music) {
-      const base = TRACKS[music.name].volume;
-      fadeTo(music.el, base * 0.25);
-      el.addEventListener("ended", () => {
-        if (current.current?.el === music.el) fadeTo(music.el, base);
-      });
-    }
+    const base = music ? TRACKS[music.name].volume : 0;
+    if (music) fadeTo(music.el, base * 0.25);
+    source.onended = () => {
+      liveStingers.delete(source);
+      if (music && current.current?.el === music.el) fadeTo(music.el, base);
+    };
+    source.start();
   }
+
+  function stopStingers() {
+    for (const source of [...liveStingers]) {
+      try {
+        source.stop();
+      } catch {
+        // already ended
+      }
+    }
+    liveStingers.clear();
+  }
+
+  // Decode the stinger files up front so they can fire the instant a phase starts.
+  useEffect(() => {
+    for (const cfg of Object.values(STINGERS)) void loadStinger(cfg.src);
+  }, []);
 
   // Scene changes → ambience.
   useEffect(() => {
@@ -163,20 +218,25 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
     const onMuteChange = () => {
       if (isMuted()) {
         stopCurrent();
-        for (const el of stingerEls.current) el.pause();
-        stingerEls.current = [];
+        stopStingers();
       } else {
         startTrack(wantedRef.current);
       }
     };
     const onGesture = () => {
-      if (!isMuted() && wantedRef.current) startTrack(wantedRef.current);
+      if (isMuted()) return;
+      if (wantedRef.current) startTrack(wantedRef.current);
+      const blocked = blockedStinger.current;
+      blockedStinger.current = null;
+      if (blocked && Date.now() - blocked.at < 10_000) playStinger(blocked.name);
     };
     window.addEventListener(MUTE_CHANGE_EVENT, onMuteChange);
     window.addEventListener("pointerdown", onGesture);
+    window.addEventListener("keydown", onGesture);
     return () => {
       window.removeEventListener(MUTE_CHANGE_EVENT, onMuteChange);
       window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -185,10 +245,7 @@ export function useWerewolfSound(state: PublicWerewolfState | null) {
     return () => {
       current.current?.el.pause();
       current.current = null;
-      // Read the ref at cleanup time: the array is reassigned whenever a
-      // stinger ends, so a copy taken at mount would miss later ones.
-      for (const el of stingerEls.current) el.pause();
-      stingerEls.current = [];
+      stopStingers();
     };
   }, []);
 

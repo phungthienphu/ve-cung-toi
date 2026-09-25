@@ -21,7 +21,7 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
 
         <div className="mt-5 grid gap-2 sm:grid-cols-2">
           {state.players.map((player) => (
-            <div key={player.id} className="flex items-center gap-3 rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-3">
+            <div key={player.id} className="flex items-center gap-3 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-3">
               <PlayerAvatar player={player} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium text-[var(--ww-text)]">
@@ -41,7 +41,7 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
         ) : (
           <button
             onClick={() => send({ type: "set_ready", ready: !self.ready })}
-            className={`mt-6 w-full rounded-xl py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 ${self.ready ? "bg-[var(--ww-safe)]" : "bg-[var(--ww-accent-strong)]"}`}
+            className={`mt-6 w-full rounded-md py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 ${self.ready ? "bg-[var(--ww-safe)]" : "bg-[var(--ww-accent-strong)]"}`}
           >
             {self.ready ? "✓ Đã sẵn sàng" : "Tôi đã sẵn sàng"}
           </button>
@@ -74,7 +74,7 @@ function RoomSettingsCard({ state, playerCount, botCount, showSettings }: { stat
   const { config } = state;
 
   return (
-    <section className="mt-5 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4 text-sm">
+    <section className="mt-5 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4 text-sm">
       <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--ww-text-faint)]">⚙️ Cài đặt phòng</h3>
 
       <div className="mt-3">
@@ -113,7 +113,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
   };
 
   return (
-    <div className="mt-6 rounded-2xl border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4">
+    <div className="mt-6 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] p-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <TimeSelect
           label="Thảo luận"
@@ -128,7 +128,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
           onChange={(value) => updateNumber("votingSeconds", value)}
         />
       </div>
-      <label className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+      <label className="mt-4 flex items-center justify-between gap-3 rounded-md bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
         <span>
           🤖 Chơi cùng dân làng AI
           <span className="block text-xs text-[var(--ww-text-faint)]">Bot tự chơi theo luật, vào làng khi bắt đầu. Ván có bot không lưu vào lịch sử.</span>
@@ -136,14 +136,14 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
         <select
           value={state.config.botCount}
           onChange={(event) => send({ type: "update_config", config: { ...state.config, botCount: Number(event.target.value) } })}
-          className="shrink-0 rounded-lg border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] p-1.5 text-[var(--ww-text)]"
+          className="shrink-0 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] p-1.5 text-[var(--ww-text)]"
         >
           {Array.from({ length: MAX_WEREWOLF_PLAYERS - Math.max(1, connectedCount) + 1 }, (_, count) => (
             <option key={count} value={count}>{count === 0 ? "Không dùng" : `${count} bot`}</option>
           ))}
         </select>
       </label>
-      <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+      <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-md bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
         <span>
           Lộ vai khi chết
           <span className="block text-xs text-[var(--ww-text-faint)]">Tắt: người chết không bị lộ vai cho cả làng (hồn ma vẫn biết hết)</span>
@@ -155,7 +155,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
           className="h-5 w-5 shrink-0 accent-[var(--ww-accent-strong)]"
         />
       </label>
-      <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+      <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-md bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
         <span>
           Phù thủy được tự cứu mình
           <span className="block text-xs text-[var(--ww-text-faint)]">Tắt: Phù thủy không thể cứu chính mình khi bị Sói cắn</span>
@@ -170,7 +170,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
       <button
         disabled={connectedCount + state.config.botCount < MIN_WEREWOLF_PLAYERS}
         onClick={() => send({ type: "start_game" })}
-        className="mt-4 w-full rounded-xl bg-[var(--ww-accent-strong)] py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-40"
+        className="mt-4 w-full rounded-md bg-[var(--ww-accent-strong)] py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-40"
       >
         Bắt đầu ván
       </button>
@@ -185,7 +185,7 @@ function TimeSelect({ label, value, options, onChange }: { label: string; value:
       <select
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-1 block w-full rounded-lg border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] p-2 text-[var(--ww-text)]"
+        className="mt-1 block w-full rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] p-2 text-[var(--ww-text)]"
       >
         {options.map((seconds) => <option key={seconds} value={seconds}>{seconds} giây</option>)}
       </select>

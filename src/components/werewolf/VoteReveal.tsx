@@ -20,7 +20,7 @@ export function VoteReveal({ ballots, results, players, selfId, eliminatedId }: 
   if (ballots.length === 0) return null;
 
   return (
-    <section className="mt-5 rounded-2xl border border-[var(--ww-danger)]/40 bg-[var(--ww-danger-soft)] p-4 text-left shadow-[0_0_24px_-8px_var(--ww-danger)]">
+    <section className="mt-5 rounded-md border border-[var(--ww-danger)]/40 bg-[var(--ww-danger-soft)] p-4 text-left shadow-[0_0_24px_-8px_var(--ww-danger)]">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--ww-danger)]">⚖️ Ai đã bầu ai?</p>
 
       <div className="mt-3 space-y-3">
@@ -32,7 +32,7 @@ export function VoteReveal({ ballots, results, players, selfId, eliminatedId }: 
           return (
             <div
               key={result.playerId}
-              className={`overflow-hidden rounded-xl border-l-4 border-[var(--ww-danger)] ${executed ? "bg-[var(--ww-danger)]/15 ring-1 ring-[var(--ww-danger)]/50" : "bg-[var(--ww-surface-soft)]"}`}
+              className={`overflow-hidden rounded-md border-l-4 border-[var(--ww-danger)] ${executed ? "bg-[var(--ww-danger)]/15 ring-1 ring-[var(--ww-danger)]/50" : "bg-[var(--ww-surface-soft)]"}`}
             >
               <div className="flex items-center gap-2.5 bg-[var(--ww-danger)]/10 px-3 py-2">
                 <span className="rounded-full ring-2 ring-[var(--ww-danger)]">
@@ -61,7 +61,7 @@ export function VoteReveal({ ballots, results, players, selfId, eliminatedId }: 
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${isSelf ? "bg-[var(--ww-accent)] text-[var(--ww-accent-ink)]" : "bg-[var(--ww-accent-soft)] text-[var(--ww-accent)]"}`}>
                           {voter?.name ?? "Ai đó"}{isSelf ? " · Bạn" : ""}
                         </span>
-                        <p className={`mt-1 rounded-lg border-l-2 px-2 py-1 text-[13px] ${ballot.reason ? "border-[var(--ww-accent)] bg-[var(--ww-surface-soft)] italic text-[var(--ww-text)]" : "border-transparent text-[var(--ww-text-faint)]"}`}>
+                        <p className={`mt-1 rounded-md border-l-2 px-2 py-1 text-[13px] ${ballot.reason ? "border-[var(--ww-accent)] bg-[var(--ww-surface-soft)] italic text-[var(--ww-text)]" : "border-transparent text-[var(--ww-text-faint)]"}`}>
                           {ballot.reason ? `“${ballot.reason}”` : "không nêu lý do"}
                         </p>
                       </div>

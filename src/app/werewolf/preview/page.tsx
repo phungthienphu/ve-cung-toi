@@ -14,6 +14,7 @@ import {
 } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "@/components/werewolf/gameContent";
 import { DisconnectNotice } from "@/components/werewolf/DisconnectNotice";
+import { NarratorLine } from "@/components/werewolf/NarratorLine";
 import { werewolfFontClass } from "@/lib/werewolfFonts";
 import { describeWerewolfSound, useWerewolfSound } from "@/lib/werewolfSound";
 import { LobbyScreen } from "@/components/werewolf/screens/LobbyScreen";
@@ -91,12 +92,12 @@ export default function WerewolfPreviewPage() {
             <h1 className="mt-1 text-2xl font-bold">View as — Ma Sói</h1>
             <p className="mt-1 text-sm text-slate-400">Render trực tiếp component production với dữ liệu mẫu.</p>
           </div>
-          <Link href="/werewolf" className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">
+          <Link href="/werewolf" className="rounded-md border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">
             ← Về game
           </Link>
         </header>
 
-        <section className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 md:grid-cols-4">
+        <section className="mb-5 grid gap-3 rounded-md border border-white/10 bg-slate-900 p-4 md:grid-cols-4">
           <PreviewSelect label="View as role" value={role} onChange={(value) => setRole(value as WerewolfRole)}>
             {ROLES.map((item) => <option key={item} value={item}>{GAME_CONTENT.roleReveal.roles[item].title}</option>)}
           </PreviewSelect>
@@ -112,14 +113,14 @@ export default function WerewolfPreviewPage() {
           </PreviewSelect>
         </section>
 
-        <div className="overflow-auto rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-6">
+        <div className="overflow-auto rounded-md border border-white/10 bg-black/40 p-3 sm:p-6">
           <iframe
             key={iframeUrl}
             title={`Preview ${role} ${scene}`}
             allow="autoplay"
             src={iframeUrl}
             style={{ width: VIEWPORTS[viewport].width, height: 820 }}
-            className="mx-auto block max-w-none rounded-xl border border-white/10 bg-slate-950 shadow-2xl"
+            className="mx-auto block max-w-none rounded-md border border-white/10 bg-slate-950 shadow-2xl"
           />
         </div>
       </div>
@@ -165,7 +166,7 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
         <p className="-mt-2 mb-3 text-right font-mono text-[11px] text-[var(--ww-text-faint)]">{describeWerewolfSound(state)}</p>
 
         {lastAction && (
-          <button onClick={() => setLastAction(null)} className="mb-3 w-full rounded-lg bg-[var(--ww-safe)]/15 p-2 text-left text-xs text-[var(--ww-safe)]">
+          <button onClick={() => setLastAction(null)} className="mb-3 w-full rounded-md bg-[var(--ww-safe)]/15 p-2 text-left text-xs text-[var(--ww-safe)]">
             Action preview: {JSON.stringify(lastAction)}
           </button>
         )}
@@ -173,7 +174,8 @@ function PreviewCanvas({ role, scene, winner }: { role: WerewolfRole; scene: Pre
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <DisconnectNotice players={state.players} />
           <PlayerStrip players={state.players} onLeave={() => setLastAction({ type: "leave_room" })} />
-          <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
+          {phase !== "lobby" && <NarratorLine state={state} />}
+          <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--ww-border)] bg-[var(--ww-surface)] p-5 shadow-2xl backdrop-blur-md sm:p-7 md:overflow-y-auto">
             <PreviewPhase
               state={state}
               scene={scene}
@@ -239,7 +241,7 @@ function PreviewSelect({ label, value, onChange, children }: { label: string; va
   return (
     <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
       {label}
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 block w-full rounded-lg border border-white/10 bg-slate-800 px-3 py-2 text-sm normal-case tracking-normal text-white">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 block w-full rounded-md border border-white/10 bg-slate-800 px-3 py-2 text-sm normal-case tracking-normal text-white">
         {children}
       </select>
     </label>
@@ -264,6 +266,8 @@ function createPublicState(phase: WerewolfPhase, winner: WerewolfTeam): PublicWe
     players,
     config: { ...DEFAULT_WEREWOLF_CONFIG },
     phaseEndsAt: Date.now() + 18_000,
+    phaseStartedAt: Date.now(),
+    narrationSeed: 7,
     nightDeaths: ["p9"],
     lastVoteResult: [{ playerId: "p5", votes: 4 }, { playerId: "p2", votes: 2 }],
     lastVotes: [

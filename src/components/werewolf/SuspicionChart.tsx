@@ -17,7 +17,7 @@ export function SuspicionChart({ history, players }: { history: SuspicionEntry[]
     : 0;
 
   return (
-    <section className="rounded-2xl border border-[var(--ww-warn)]/25 bg-[var(--ww-warn-soft)] p-4 text-left">
+    <section className="rounded-md border border-[var(--ww-warn)]/25 bg-[var(--ww-warn-soft)] p-4 text-left">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--ww-warn)]">Sổ nghi ngờ riêng</p>
@@ -31,12 +31,12 @@ export function SuspicionChart({ history, players }: { history: SuspicionEntry[]
       ) : (
         <>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-[var(--ww-surface-soft)] p-3">
+          <div className="rounded-md bg-[var(--ww-surface-soft)] p-3">
             <div className="text-xs text-[var(--ww-text-muted)]">Bị nghi nhiều nhất</div>
             <div className="mt-1 truncate font-bold text-[var(--ww-text)]">{mostSuspectedPlayer?.name}</div>
             <div className="mt-1 text-xs text-[var(--ww-warn)]">{mostSuspected?.[1]} lần</div>
           </div>
-          <div className="rounded-xl bg-[var(--ww-surface-soft)] p-3">
+          <div className="rounded-md bg-[var(--ww-surface-soft)] p-3">
             <div className="text-xs text-[var(--ww-text-muted)]">Tần suất bạn nghi</div>
             <div className="mt-1 text-2xl font-black text-[var(--ww-danger)]">{highestFrequency}%</div>
             <div className="text-[11px] text-[var(--ww-text-faint)]">Trong note cá nhân</div>

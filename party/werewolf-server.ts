@@ -43,6 +43,8 @@ export default class WerewolfRoom implements Party.Server {
   resultAcks = new Set<string>();
   botTimers = new Map<ReturnType<typeof setTimeout>, () => void>();
   discussionResumeMs = 0;
+  phaseStartedAt: number | null = null;
+  narrationSeed = 0;
   botClaimed = new Set<string>();
   chat: WerewolfChatEntry[] = [];
   events: WerewolfGameEvent[] = [];
@@ -654,6 +656,8 @@ export default class WerewolfRoom implements Party.Server {
 
   private enterPhase(phase: WerewolfPhase, durationMs: number) {
     this.clearBotTimers();
+    this.phaseStartedAt = Date.now();
+    this.narrationSeed = Math.floor(Math.random() * 1_000_000);
     for (const secret of this.secrets.values()) secret.nightDone = false;
     if (this.timer) clearTimeout(this.timer);
     this.phase = phase;
@@ -760,6 +764,8 @@ export default class WerewolfRoom implements Party.Server {
       players: [...this.players.values()],
       config: this.config,
       phaseEndsAt: this.phaseEndsAt,
+      phaseStartedAt: this.phaseStartedAt,
+      narrationSeed: this.narrationSeed,
       nightDeaths: this.nightDeaths,
       lastVoteResult: this.lastVoteResult,
       lastVotes: this.lastVotes,

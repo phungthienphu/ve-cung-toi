@@ -11,6 +11,11 @@ export const MUTE_CHANGE_EVENT = "vct-mute-change";
 let ctx: AudioContext | null = null;
 let musicNodes: { stop: () => void } | null = null;
 
+/** Shared Web Audio context (resumed on demand) for games that decode their own sound files. */
+export function getAudioContext(): AudioContext | null {
+  return getCtx();
+}
+
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -76,8 +81,8 @@ export function playClick() {
 
 /** Very soft, slightly randomized tick per keystroke — quiet enough to type
  * a whole sentence without it getting annoying. */
-export function playTypeTick() {
-  tone(1100 + Math.random() * 300, 0, 0.03, 0.025, "square");
+export function playTypeTick(gain = 0.025) {
+  tone(1100 + Math.random() * 300, 0, 0.03, gain, "square");
 }
 
 /** Short two-note "pop" for lighter interactions (choosing a word, sending chat). */
@@ -626,8 +631,16 @@ export function speakCommentary(text: string) {
  * render/tick broadcast (the caller is responsible for that debouncing,
  * since only it knows which second it's already played). Higher-pitched and
  * shorter than playClick so it reads as a ticking clock, not a UI blip. */
+// Synthesized effects that are long enough for other quiet sounds (the
+// narrator's typing ticks) to politely wait for.
+let sfxBusyUntil = 0;
+export function isSfxBusy(): boolean {
+  return Date.now() < sfxBusyUntil;
+}
+
 /** A low, slow bell — the village going to sleep as a new night begins. */
 export function playNightFall() {
+  sfxBusyUntil = Date.now() + 1900;
   tone(196, 0, 1.4, 0.09, "sine");
   tone(392, 0, 0.9, 0.03, "sine");
   tone(147, 0.35, 1.6, 0.07, "sine");

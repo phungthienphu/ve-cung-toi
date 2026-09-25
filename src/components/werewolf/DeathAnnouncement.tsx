@@ -22,7 +22,7 @@ export function DeathAnnouncement({ players, playerIds, cause }: DeathAnnounceme
     : "Sẽ có những oan hồn không thể siêu thoát,... và những người ở lại liệu có yên ổn..?";
 
   return (
-    <section className="animate-death-banner relative overflow-hidden rounded-3xl border border-rose-300/25 bg-gradient-to-br from-slate-950 via-rose-950 to-slate-950 p-5 text-center shadow-2xl shadow-rose-950/60 sm:p-7">
+    <section className="animate-death-banner relative overflow-hidden rounded-xl border border-rose-300/25 bg-gradient-to-br from-slate-950 via-rose-950 to-slate-950 p-5 text-center shadow-2xl shadow-rose-950/60 sm:p-7">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.18),transparent_55%)]" />
       <div className="relative">
         <div className="text-5xl drop-shadow-lg">☠️</div>
@@ -31,7 +31,7 @@ export function DeathAnnouncement({ players, playerIds, cause }: DeathAnnounceme
 
         <div className={`mx-auto mt-5 grid max-w-2xl gap-3 ${victims.length > 1 ? "sm:grid-cols-2" : "max-w-md"}`}>
           {victims.map((victim) => (
-            <div key={victim.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 text-left backdrop-blur">
+            <div key={victim.id} className="flex items-center gap-4 rounded-md border border-white/10 bg-black/25 p-4 text-left backdrop-blur">
               <PlayerAvatar player={victim} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xl font-black text-white">{victim.name}</div>
@@ -39,7 +39,7 @@ export function DeathAnnouncement({ players, playerIds, cause }: DeathAnnounceme
               </div>
               {victim.revealedRole && (
                 <div className="flex shrink-0 items-center gap-2">
-                  <RoleArtwork role={victim.revealedRole} className="h-16 w-11 rounded-lg object-cover object-top" />
+                  <RoleArtwork role={victim.revealedRole} className="h-16 w-11 rounded-md object-cover object-top" />
                   <span className="hidden text-xs font-semibold text-slate-300 sm:block">{ROLE_LABELS[victim.revealedRole]}</span>
                 </div>
               )}
