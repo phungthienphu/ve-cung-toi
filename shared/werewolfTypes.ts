@@ -36,6 +36,8 @@ export interface WerewolfConfig {
   votingSeconds: number;
   revealRoleOnDeath: boolean;
   witchCanSelfSave: boolean;
+  /** Bots added at game start to fill up the table (0 = humans only). */
+  botCount: number;
 }
 
 export const DEFAULT_WEREWOLF_CONFIG: WerewolfConfig = {
@@ -43,6 +45,7 @@ export const DEFAULT_WEREWOLF_CONFIG: WerewolfConfig = {
   votingSeconds: 30,
   revealRoleOnDeath: true,
   witchCanSelfSave: true,
+  botCount: 0,
 };
 
 export interface WerewolfPlayer {
@@ -56,6 +59,7 @@ export interface WerewolfPlayer {
   ready: boolean;
   isHost: boolean;
   revealedRole: WerewolfRole | null;
+  isBot?: boolean;
 }
 
 export interface VoteResult {

@@ -21,6 +21,7 @@ import {
   type NightSuspicionResult,
   type WerewolfTeam,
 } from "../shared/werewolfTypes";
+import { BOT_NAMES, botsReactToChat, scheduleBotPhase, type BotActions } from "./werewolf/bots";
 import {
   createSecretPlayerState,
   PHASE_DURATION_MS,
@@ -40,6 +41,8 @@ export default class WerewolfRoom implements Party.Server {
   lastVoteResult: Array<{ playerId: string; votes: number }> = [];
   lastVotes: WerewolfBallot[] = [];
   resultAcks = new Set<string>();
+  botTimers = new Set<ReturnType<typeof setTimeout>>();
+  botClaimed = new Set<string>();
   chat: WerewolfChatEntry[] = [];
   events: WerewolfGameEvent[] = [];
   suspicionStats: SuspicionStatistic[] = [];
@@ -88,7 +91,7 @@ export default class WerewolfRoom implements Party.Server {
   private transferHost(fromId: string) {
     const from = this.players.get(fromId);
     if (from) from.isHost = false;
-    const next = [...this.players.values()].find((candidate) => candidate.connected && candidate.id !== fromId);
+    const next = [...this.players.values()].find((candidate) => candidate.connected && !candidate.isBot && candidate.id !== fromId);
     this.hostId = next?.id ?? null;
     if (next) {
       next.isHost = true;
@@ -194,6 +197,13 @@ export default class WerewolfRoom implements Party.Server {
     } else if (this.phase !== "gameEnd") {
       this.players.delete(playerId);
       if (this.hostId === playerId) this.transferHost(playerId);
+      // Every human is gone (only bots, if anything, left): shut the game down
+      // instead of letting it play on to nobody forever.
+      if (![...this.players.values()].some((other) => !other.isBot)) {
+        this.resetAbandonedRoom();
+        this.broadcastState();
+        return;
+      }
       // Don't crown a winner just because the whole room emptied out.
       if ([...this.players.values()].some((other) => other.connected) && this.checkWinner()) return;
     }
@@ -217,21 +227,43 @@ export default class WerewolfRoom implements Party.Server {
       votingSeconds: Math.min(60, Math.max(15, Math.round(incoming.votingSeconds) || 30)),
       revealRoleOnDeath: !!incoming.revealRoleOnDeath,
       witchCanSelfSave: !!incoming.witchCanSelfSave,
+      botCount: Math.min(MAX_WEREWOLF_PLAYERS - 1, Math.max(0, Math.round(incoming.botCount) || 0)),
     };
     this.broadcastState();
   }
 
   private startGame(sender: Party.Connection) {
     if (sender.id !== this.hostId || this.phase !== "lobby") return;
-    const participants = [...this.players.values()].filter(p => p.connected);
-    if (participants.length < MIN_WEREWOLF_PLAYERS) return this.sendError(sender, `Cần ít nhất ${MIN_WEREWOLF_PLAYERS} người.`);
-    if (participants.some(p => !p.ready && p.id !== this.hostId)) return this.sendError(sender, "Mọi người cần bấm Sẵn sàng.");
+    const humans = [...this.players.values()].filter(p => p.connected && !p.isBot);
+    const botTotal = Math.max(0, Math.min(this.config.botCount, MAX_WEREWOLF_PLAYERS - humans.length));
+    if (humans.length + botTotal < MIN_WEREWOLF_PLAYERS) {
+      return this.sendError(sender, `Cần ít nhất ${MIN_WEREWOLF_PLAYERS} người (đang có ${humans.length} người${botTotal ? ` + ${botTotal} bot` : ""}).`);
+    }
+    if (humans.some(p => !p.ready && p.id !== this.hostId)) return this.sendError(sender, "Mọi người cần bấm Sẵn sàng.");
+    this.removeBots();
+    const bots = shuffled(BOT_NAMES).slice(0, botTotal).map((name, index): WerewolfPlayer => ({
+      id: `bot-${index + 1}`,
+      name: `🤖 ${name}`,
+      avatarSeed: `bot-${name}`,
+      connected: true,
+      disconnectedUntil: null,
+      alive: true,
+      ready: true,
+      isHost: false,
+      revealedRole: null,
+      isBot: true,
+    }));
+    for (const bot of bots) this.players.set(bot.id, bot);
+    const participants = [...humans, ...bots];
     const roles = shuffled(rolesForPlayerCount(participants.length));
     this.secrets.clear();
+    this.botClaimed.clear();
     participants.forEach((player, index) => {
       player.alive = true;
       player.revealedRole = null;
-      this.secrets.set(player.id, createSecretPlayerState(roles[index]));
+      const secret = createSecretPlayerState(roles[index]);
+      if (player.isBot) secret.roleAcknowledged = true;
+      this.secrets.set(player.id, secret);
     });
     this.day = 0;
     this.winner = null;
@@ -348,6 +380,7 @@ export default class WerewolfRoom implements Party.Server {
     });
     if (this.chat.length > 100) this.chat.splice(0, this.chat.length - 100);
     this.broadcastState();
+    if (this.phase === "discussion" && !player.isBot) botsReactToChat(this.botHost(), this.botActions(), this.chat[this.chat.length - 1]);
   }
 
   // Everyone who's still playing can skip the vote-result read-through early;
@@ -516,7 +549,70 @@ export default class WerewolfRoom implements Party.Server {
     else if (expected === "voteResult") this.startNight();
   }
 
+  private resetAbandonedRoom() {
+    this.clearBotTimers();
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.players.clear();
+    this.secrets.clear();
+    this.phase = "lobby";
+    this.day = 0;
+    this.winner = null;
+    this.phaseEndsAt = null;
+    this.hostId = null;
+    this.nightDeaths = [];
+    this.lastVoteResult = [];
+    this.lastVotes = [];
+    this.chat = [];
+    this.events = [];
+    this.suspicionStats = [];
+    this.voteHistory = [];
+    this.lastNightSuspicion = null;
+  }
+
+  private botHost() {
+    return this;
+  }
+
+  private botActions(): BotActions {
+    return {
+      preview: (id, target) => this.previewTarget(id, target),
+      lock: (id, target) => this.lockTarget(id, target),
+      suspect: (id, target) => this.setSuspicion(id, target),
+      witch: (id, decision, target) => this.witchDecision(id, decision, target),
+      vote: (id, target, reason) => this.castVote(id, target, reason),
+      ackResult: (id) => this.ackResult(id),
+      say: (id, text) => this.botSay(id, text),
+      later: (delayMs, fn) => {
+        const handle = setTimeout(() => {
+          this.botTimers.delete(handle);
+          fn();
+        }, delayMs);
+        this.botTimers.add(handle);
+      },
+    };
+  }
+
+  private botSay(id: string, text: string) {
+    const bot = this.players.get(id);
+    if (this.phase !== "discussion" || !bot?.alive) return;
+    const now = Date.now();
+    this.chat.push({ id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 7)}`, playerId: id, playerName: bot.name, text, sentAt: now });
+    if (this.chat.length > 100) this.chat.splice(0, this.chat.length - 100);
+    this.broadcastState();
+  }
+
+  private clearBotTimers() {
+    for (const handle of this.botTimers) clearTimeout(handle);
+    this.botTimers.clear();
+  }
+
+  private removeBots() {
+    for (const [id, player] of [...this.players]) if (player.isBot) this.players.delete(id);
+  }
+
   private enterPhase(phase: WerewolfPhase, durationMs: number) {
+    this.clearBotTimers();
     if (this.timer) clearTimeout(this.timer);
     this.phase = phase;
     this.phaseEndsAt = durationMs > 0 ? Date.now() + durationMs : null;
@@ -524,6 +620,7 @@ export default class WerewolfRoom implements Party.Server {
     this.broadcastState();
     this.sendAllPrivate();
     if (durationMs > 0) this.timer = setTimeout(() => this.onPhaseTimeout(phase), durationMs);
+    scheduleBotPhase(this.botHost(), this.botActions(), phase, durationMs);
   }
 
   private playAgain(sender: Party.Connection) {
@@ -540,6 +637,8 @@ export default class WerewolfRoom implements Party.Server {
     this.voteHistory = [];
     this.lastNightSuspicion = null;
     this.secrets.clear();
+    this.clearBotTimers();
+    this.removeBots();
     for (const [id, player] of [...this.players]) if (!player.connected) this.players.delete(id);
     for (const player of this.players.values()) {
       player.alive = true;
@@ -647,7 +746,7 @@ export default class WerewolfRoom implements Party.Server {
   /** Publishes this room to the home-screen list — fire-and-forget, and only
    * when what the list shows actually changed (chat also broadcasts state). */
   private reportToDirectory() {
-    const connected = [...this.players.values()].filter((player) => player.connected);
+    const connected = [...this.players.values()].filter((player) => player.connected && !player.isBot);
     const host = this.hostId ? this.players.get(this.hostId) : undefined;
     const listing = {
       roomId: this.party.id,
@@ -687,6 +786,8 @@ export default class WerewolfRoom implements Party.Server {
   private async reportHistory() {
     if (this.historyReported || !this.winner) return;
     this.historyReported = true;
+    // Games with bots are practice — they stay out of the shared history.
+    if ([...this.players.values()].some((player) => player.isBot)) return;
 
     try {
       const base = this.party.env.NEXT_APP_URL as string | undefined;

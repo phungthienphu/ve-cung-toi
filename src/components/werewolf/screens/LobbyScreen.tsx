@@ -34,7 +34,7 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
           ))}
         </div>
 
-        <RoomSettingsCard state={state} playerCount={connectedCount} showSettings={!self.isHost} />
+        <RoomSettingsCard state={state} playerCount={connectedCount + state.config.botCount} botCount={state.config.botCount} showSettings={!self.isHost} />
 
         {self.isHost ? (
           <HostControls state={state} connectedCount={connectedCount} send={send} />
@@ -67,7 +67,7 @@ export function LobbyScreen({ state, self, send }: LobbyScreenProps) {
 // what the game will run with and speak up if the host missed something. The
 // role line is computed from the current head-count with the same function the
 // server uses to deal roles, so it updates live as people join or leave.
-function RoomSettingsCard({ state, playerCount, showSettings }: { state: PublicWerewolfState; playerCount: number; showSettings: boolean }) {
+function RoomSettingsCard({ state, playerCount, botCount, showSettings }: { state: PublicWerewolfState; playerCount: number; botCount: number; showSettings: boolean }) {
   const dealt = Math.min(MAX_WEREWOLF_PLAYERS, Math.max(MIN_WEREWOLF_PLAYERS, playerCount));
   const counts = new Map<WerewolfRole, number>();
   for (const role of rolesForPlayerCount(dealt)) counts.set(role, (counts.get(role) ?? 0) + 1);
@@ -79,7 +79,7 @@ function RoomSettingsCard({ state, playerCount, showSettings }: { state: PublicW
 
       <div className="mt-3">
         <div className="text-xs text-[var(--ww-text-muted)]">
-          Vai trong ván ({dealt} người{playerCount < MIN_WEREWOLF_PLAYERS ? ` — đang có ${playerCount}, cần tối thiểu ${MIN_WEREWOLF_PLAYERS}` : ""})
+          Vai trong ván ({dealt} người{botCount > 0 ? `, gồm ${botCount} 🤖 bot` : ""}{playerCount < MIN_WEREWOLF_PLAYERS ? ` — đang có ${playerCount}, cần tối thiểu ${MIN_WEREWOLF_PLAYERS}` : ""})
         </div>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {[...counts].map(([role, count]) => (
@@ -128,7 +128,22 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
           onChange={(value) => updateNumber("votingSeconds", value)}
         />
       </div>
-      <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+      <label className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
+        <span>
+          🤖 Chơi cùng dân làng AI
+          <span className="block text-xs text-[var(--ww-text-faint)]">Bot tự chơi theo luật, vào làng khi bắt đầu. Ván có bot không lưu vào lịch sử.</span>
+        </span>
+        <select
+          value={state.config.botCount}
+          onChange={(event) => send({ type: "update_config", config: { ...state.config, botCount: Number(event.target.value) } })}
+          className="shrink-0 rounded-lg border border-[var(--ww-border)] bg-[var(--ww-surface-strong)] p-1.5 text-[var(--ww-text)]"
+        >
+          {Array.from({ length: MAX_WEREWOLF_PLAYERS - Math.max(1, connectedCount) + 1 }, (_, count) => (
+            <option key={count} value={count}>{count === 0 ? "Không dùng" : `${count} bot`}</option>
+          ))}
+        </select>
+      </label>
+      <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-[var(--ww-surface-soft)] px-3 py-2.5 text-sm text-[var(--ww-text)]">
         <span>
           Lộ vai khi chết
           <span className="block text-xs text-[var(--ww-text-faint)]">Tắt: người chết không bị lộ vai cho cả làng (hồn ma vẫn biết hết)</span>
@@ -153,7 +168,7 @@ function HostControls({ state, connectedCount, send }: Omit<LobbyScreenProps, "s
         />
       </label>
       <button
-        disabled={connectedCount < MIN_WEREWOLF_PLAYERS}
+        disabled={connectedCount + state.config.botCount < MIN_WEREWOLF_PLAYERS}
         onClick={() => send({ type: "start_game" })}
         className="mt-4 w-full rounded-xl bg-[var(--ww-accent-strong)] py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-40"
       >
