@@ -1,30 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SoundToggle from "@/components/SoundToggle";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ve-cung-toi.vercel.app";
-const title = "Vẽ Cùng Tôi";
-const description = "Các game nhiều người chơi trên trình duyệt — vẽ đoán chữ, đại chiến xe tăng, đối kháng";
+import { GAMES_SEO, SITE_NAME, SITE_URL, seoMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title,
-  description,
-  openGraph: {
-    title,
-    description,
-    url: siteUrl,
-    siteName: title,
-    images: [{ url: "/OG.png", width: 1024, height: 1536, alt: title }],
-    locale: "vi_VN",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-    images: ["/OG.png"],
-  },
+  metadataBase: new URL(SITE_URL),
+  ...seoMetadata(GAMES_SEO.home),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
