@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 import SoundToggle from "@/components/SoundToggle";
 import { GAMES_SEO, SITE_NAME, SITE_URL, seoMetadata } from "@/lib/seo";
@@ -12,13 +11,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
+    // Monetag's tag stamps attributes (e.g. data-fp) on <html> before React
+    // hydrates; that mismatch is expected and harmless.
+    <html lang="vi" suppressHydrationWarning>
+      <head>
+        {/* Monetag In-Page Push. A plain tag (not next/script) so it is in the
+            server-rendered <head>, where Monetag's installation check reads
+            it; next/script only leaves a preload there and injects the real
+            tag later. async keeps it from blocking the page. */}
+        <script src="https://nap5k.com/tag.min.js" data-zone="11920062" async />
+      </head>
       <body className="min-h-app text-slate-900 antialiased">
         {children}
         <SoundToggle />
-        {/* Monetag tag — same as their snippet (a script with data-zone), loaded
-            after the page is interactive so it never delays a game. */}
-        <Script src="https://nap5k.com/tag.min.js" data-zone="11920062" strategy="afterInteractive" />
       </body>
     </html>
   );
