@@ -64,11 +64,15 @@ export default function BattleshipRoom({ roomId, playerId, name }: { roomId: str
         </ul>
       </section>
 
-      {state.phase !== "lobby" && state.log.length > 0 && (
-        <section className={`${card} p-3`}>
-          <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-sky-100/60">Nhật ký trận</h3>
-          <ul className="max-h-32 space-y-1 overflow-y-auto text-xs text-sky-100/80">
-            {[...state.log].reverse().map((entry) => <li key={entry.id}>{entry.text}</li>)}
+      {/* Fixed height from the first match phase on, shown even while empty:
+          it used to appear with the first entry and grow line by line, which
+          kept shoving the chat (and on mobile, everything below) around. */}
+      {state.phase !== "lobby" && (
+        <section className={`${card} flex h-36 flex-col p-3`}>
+          <h3 className="mb-1 shrink-0 text-xs font-bold uppercase tracking-wider text-sky-100/60">Nhật ký trận</h3>
+          <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto text-xs text-sky-100/80">
+            {state.log.length === 0 && <li className="text-sky-100/40">Chưa có diễn biến.</li>}
+            {[...state.log].reverse().map((entry) => <li key={entry.id} className="truncate" title={entry.text}>{entry.text}</li>)}
           </ul>
         </section>
       )}
