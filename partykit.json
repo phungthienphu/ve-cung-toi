@@ -10,7 +10,9 @@
     "soccerlobby": "party/soccer-directory.ts",
     "drawlobby": "party/draw-directory.ts",
     "werewolf": "party/werewolf-server.ts",
-    "werewolflobby": "party/werewolf-directory.ts"
+    "werewolflobby": "party/werewolf-directory.ts",
+    "battleship": "party/battleship-server.ts",
+    "battleshiplobby": "party/battleship-directory.ts"
   },
   "compatibilityDate": "2024-11-01"
 }

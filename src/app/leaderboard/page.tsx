@@ -10,13 +10,14 @@ import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/compone
 // leaderboard, which quietly merged their scores into one row. A per-match
 // history (what actually happened, when) doesn't have that problem: every
 // entry is its own game, nothing to conflate.
-type GameType = "draw" | "tank" | "soccer" | "werewolf";
+type GameType = "draw" | "tank" | "soccer" | "werewolf" | "battleship";
 
 const TABS: { id: GameType; label: string; emptyText: string }[] = [
   { id: "draw", label: "🎨 Vẽ Cùng Tôi", emptyText: "Chưa có ván vẽ nào được lưu lại." },
   { id: "tank", label: "🎯 Tank", emptyText: "Chưa có trận tank nào được lưu lại." },
   { id: "soccer", label: "⚽ Bóng đá", emptyText: "Chưa có trận bóng nào được lưu lại." },
   { id: "werewolf", label: "🐺 Ma Sói", emptyText: "Chưa có ván Ma Sói nào được lưu lại." },
+  { id: "battleship", label: "🚢 Hải Chiến", emptyText: "Chưa có trận Hải Chiến nào được lưu lại." },
 ];
 
 interface DrawDetail {
@@ -52,7 +53,7 @@ interface HistoryEntry {
   winnerName?: string | null;
   winningTeam?: "A" | "B" | WerewolfTeam | null;
   teamScores?: { A: number; B: number };
-  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[] | WerewolfHistoryDetailData;
+  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[] | WerewolfHistoryDetailData | BattleshipDetail[];
   playedAt: string;
 }
 
@@ -69,6 +70,11 @@ function summarize(e: HistoryEntry): string {
     }
     return e.winnerName ? `${e.winnerName} thắng` : `Đấu tự do — hòa điểm (${e.players.length} người)`;
   }
+  if (e.gameType === "battleship") {
+    const mode = e.mode === "team" ? "Đồng đội" : e.mode === "ffa" ? "Hỗn chiến" : "Solo";
+    if (e.winningTeam) return `${mode} · Đội ${e.winningTeam === "A" ? "Xanh" : "Đỏ"} thắng`;
+    return e.winnerName ? `${mode} · ${e.winnerName} thắng` : `${mode} · hòa (${e.players.length} người)`;
+  }
   if (e.gameType === "werewolf") {
     const winner = e.winningTeam === "village" ? "Phe Dân" : "Phe Sói";
     const detail = e.detail as WerewolfHistoryDetailData | undefined;
@@ -80,7 +86,46 @@ function summarize(e: HistoryEntry): string {
   return e.winningTeam ? `Đội ${e.winningTeam === "A" ? "Xanh" : "Đỏ"} thắng ${a} - ${b}` : `Hòa ${a} - ${b}`;
 }
 
+interface BattleshipDetail {
+  name: string;
+  team: "A" | "B" | null;
+  place: number | null;
+  shots: number;
+  hits: number;
+  sinks: number;
+}
+
 function DetailTable({ entry }: { entry: HistoryEntry }) {
+  if (entry.gameType === "battleship") {
+    const rows = (entry.detail as BattleshipDetail[] | undefined) ?? [];
+    if (rows.length === 0) return <SimpleScoreList players={entry.players} />;
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-slate-400">
+            <tr>
+              <th className="py-1 pr-3">Hạng</th>
+              <th className="py-1 pr-3">Thuyền trưởng</th>
+              <th className="py-1 pr-3 text-right">Phát bắn</th>
+              <th className="py-1 pr-3 text-right">Trúng</th>
+              <th className="py-1 pr-3 text-right">Đánh chìm</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rows].sort((a, b) => (a.place ?? 99) - (b.place ?? 99)).map((p) => (
+              <tr key={p.name} className="border-t border-slate-100">
+                <td className="py-1.5 pr-3">{p.place ?? "—"}</td>
+                <td className="py-1.5 pr-3 font-medium">{p.name}{p.team && entry.mode === "team" ? ` · ${p.team === "A" ? "Xanh" : "Đỏ"}` : ""}</td>
+                <td className="py-1.5 pr-3 text-right text-slate-500">{p.shots}</td>
+                <td className="py-1.5 pr-3 text-right text-slate-500">{p.shots ? `${Math.round((p.hits / p.shots) * 100)}%` : "—"}</td>
+                <td className="py-1.5 pr-3 text-right font-semibold text-brand-600">{p.sinks}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
   if (entry.gameType === "werewolf") {
     const detail = entry.detail as WerewolfHistoryDetailData | undefined;
     if (!detail?.players.length) return <SimpleScoreList players={entry.players} />;

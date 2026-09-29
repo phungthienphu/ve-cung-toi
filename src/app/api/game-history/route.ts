@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import GameHistory from "@/lib/models/GameHistory";
 
-const VALID_GAME_TYPES = ["draw", "tank", "soccer", "werewolf"] as const;
+const VALID_GAME_TYPES = ["draw", "tank", "soccer", "werewolf", "battleship"] as const;
 type GameType = (typeof VALID_GAME_TYPES)[number];
 
 export async function POST(req: Request) {

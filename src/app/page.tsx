@@ -58,6 +58,17 @@ const GAMES: GameCard[] = [
     border: "border-sky-300",
     button: "from-blue-600 to-sky-500",
   },
+  {
+    href: "/battleship",
+    emoji: "🚢",
+    title: "Hải Chiến",
+    description: "Giấu hạm đội, đoán tọa độ, nã pháo. Solo, hỗn chiến hoặc chia đội.",
+    tag: "Bắn tàu",
+    players: "2–8 người · có bot",
+    gradient: "from-cyan-400 via-sky-600 to-indigo-800",
+    border: "border-cyan-300",
+    button: "from-sky-600 to-cyan-500",
+  },
 ];
 
 export default function GamePickerPage() {
