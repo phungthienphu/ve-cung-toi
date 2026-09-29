@@ -85,7 +85,10 @@ export default function Chat({ entries, selfId, canGuess, onSend }: Props) {
               }`}
             >
               <span className="text-xs font-semibold text-ink/50">{entry.name}: </span>
-              <span className="break-all">{entry.text}</span>
+              {/* Wrap at spaces; only split a "word" that can't fit a whole line
+                  (a pasted link, "kkkkkkkk…"). break-all split ordinary words
+                  like "nghi" into "ng" / "hi". */}
+              <span className="[overflow-wrap:anywhere]">{entry.text}</span>
             </div>
           );
         })}
