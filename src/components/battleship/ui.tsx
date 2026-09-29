@@ -11,6 +11,9 @@ export const btnGhost =
 export const TEAM_COLOR = { A: "text-sky-300", B: "text-rose-300" } as const;
 export const TEAM_BG = { A: "bg-sky-500/15 border-sky-400/40", B: "bg-rose-500/15 border-rose-400/40" } as const;
 
+/** Keeps the main board square and fully on screen on desktop. */
+export const MAIN_BOARD_STYLE = { maxWidth: "min(100%, calc(100dvh - 210px))" } as const;
+
 export function playerName(state: PublicBattleshipState, id: string): string {
   return state.players.find((player) => player.id === id)?.name ?? "?";
 }

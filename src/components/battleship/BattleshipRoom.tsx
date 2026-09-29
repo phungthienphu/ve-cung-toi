@@ -48,6 +48,49 @@ export default function BattleshipRoom({ roomId, playerId, name }: { roomId: str
     router.push("/battleship");
   };
   const teamMode = state.config.mode === "team" && state.phase !== "lobby";
+  const side = (
+    <>
+      <section className={`${card} p-3`}>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-sky-100/60">Thuyền trưởng ({state.players.length})</h3>
+        <ul className="space-y-1 text-sm">
+          {state.players.map((player) => (
+            <li key={player.id} className="flex items-center justify-between gap-2">
+              <span className={player.team && state.config.mode === "team" ? TEAM_COLOR[player.team] : ""}>
+                <PlayerBadge player={player} suffix={player.id === self.id ? "(bạn)" : undefined} />
+              </span>
+              <span className="shrink-0 text-xs text-sky-100/60">{statusOf(state, player)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {state.phase !== "lobby" && state.log.length > 0 && (
+        <section className={`${card} p-3`}>
+          <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-sky-100/60">Nhật ký trận</h3>
+          <ul className="max-h-32 space-y-1 overflow-y-auto text-xs text-sky-100/80">
+            {[...state.log].reverse().map((entry) => <li key={entry.id}>{entry.text}</li>)}
+          </ul>
+        </section>
+      )}
+
+      <section className={`${card} flex h-64 flex-col overflow-hidden`}>
+        {teamMode && (
+          <div className="flex border-b border-white/10 text-xs">
+            {(["all", "team"] as const).map((tab) => (
+              <button key={tab} onClick={() => setChatTab(tab)} className={`flex-1 py-2 font-semibold ${chatTab === tab ? "bg-white/10 text-amber-200" : "text-sky-100/60"}`}>
+                {tab === "all" ? "Chat chung" : "Chat đội"}
+              </button>
+            ))}
+          </div>
+        )}
+        {teamMode && chatTab === "team" ? (
+          <ChatBox entries={priv?.teamChat ?? []} selfId={self.id} empty="Bàn chiến thuật với đồng đội…" onSend={(text) => room.send({ type: "chat", text, teamOnly: true })} />
+        ) : (
+          <ChatBox entries={state.chat} selfId={self.id} empty="Chào cả bến tàu 👋" onSend={(text) => room.send({ type: "chat", text })} />
+        )}
+      </section>
+    </>
+  );
 
   return (
     <main
@@ -83,56 +126,21 @@ export default function BattleshipRoom({ roomId, playerId, name }: { roomId: str
         )}
         <DisconnectNotice players={state.players} />
 
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="min-w-0">
-            {state.phase === "lobby" && <LobbyPanel state={state} self={self} send={room.send} />}
-            {state.phase === "placement" && <PlacementPanel state={state} priv={priv} self={self} send={room.send} />}
-            {state.phase === "battle" && <BattlePanel state={state} priv={priv} self={self} send={room.send} />}
-            {state.phase === "gameEnd" && <EndPanel state={state} self={self} send={room.send} />}
+        {state.phase === "lobby" ? (
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <LobbyPanel state={state} self={self} send={room.send} />
+            <aside className="space-y-3">{side}</aside>
           </div>
-
-          <aside className="space-y-3">
-            <section className={`${card} p-3`}>
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-sky-100/60">Thuyền trưởng ({state.players.length})</h3>
-              <ul className="space-y-1 text-sm">
-                {state.players.map((player) => (
-                  <li key={player.id} className="flex items-center justify-between gap-2">
-                    <span className={player.team && state.config.mode === "team" ? TEAM_COLOR[player.team] : ""}>
-                      <PlayerBadge player={player} suffix={player.id === self.id ? "(bạn)" : undefined} />
-                    </span>
-                    <span className="shrink-0 text-xs text-sky-100/60">{statusOf(state, player)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {state.phase !== "lobby" && state.log.length > 0 && (
-              <section className={`${card} p-3`}>
-                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-sky-100/60">Nhật ký trận</h3>
-                <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-sky-100/80">
-                  {[...state.log].reverse().map((entry) => <li key={entry.id}>{entry.text}</li>)}
-                </ul>
-              </section>
-            )}
-
-            <section className={`${card} flex h-72 flex-col overflow-hidden`}>
-              {teamMode && (
-                <div className="flex border-b border-white/10 text-xs">
-                  {(["all", "team"] as const).map((tab) => (
-                    <button key={tab} onClick={() => setChatTab(tab)} className={`flex-1 py-2 font-semibold ${chatTab === tab ? "bg-white/10 text-amber-200" : "text-sky-100/60"}`}>
-                      {tab === "all" ? "Chat chung" : "Chat đội"}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {teamMode && chatTab === "team" ? (
-                <ChatBox entries={priv?.teamChat ?? []} selfId={self.id} empty="Bàn chiến thuật với đồng đội…" onSend={(text) => room.send({ type: "chat", text, teamOnly: true })} />
-              ) : (
-                <ChatBox entries={state.chat} selfId={self.id} empty="Chào cả bến tàu 👋" onSend={(text) => room.send({ type: "chat", text })} />
-              )}
-            </section>
-          </aside>
-        </div>
+        ) : state.phase === "placement" ? (
+          <PlacementPanel state={state} priv={priv} self={self} send={room.send} side={side} />
+        ) : state.phase === "battle" ? (
+          <BattlePanel state={state} priv={priv} self={self} send={room.send} side={side} />
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <EndPanel state={state} self={self} send={room.send} />
+            <aside className="space-y-3">{side}</aside>
+          </div>
+        )}
       </div>
     </main>
   );

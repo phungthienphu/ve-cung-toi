@@ -32,6 +32,14 @@ interface BoardCanvasProps {
   /** Dims the board (e.g. a sunk-out fleet). */
   dimmed?: boolean;
   onCellClick?: (cell: number) => void;
+  /** Drag support (placement editor): pointer down / move / up on cells. */
+  onCellDown?: (cell: number) => void;
+  onCellMove?: (cell: number | null) => void;
+  onCellUp?: (cell: number | null) => void;
+  /** Ship being dragged: drawn translucent, green if it fits, red if not. */
+  ghost?: { ship: ShipPlacement; valid: boolean } | null;
+  /** Index into `ships` to skip drawing (it's the one being dragged). */
+  hiddenShip?: number | null;
 }
 
 // One board: water, grid with A–J / 1–10 labels, ships, shots, aim markers,
@@ -49,7 +57,13 @@ export function BoardCanvas({
   interactive = false,
   dimmed = false,
   onCellClick,
+  onCellDown,
+  onCellMove,
+  onCellUp,
+  ghost = null,
+  hiddenShip = null,
 }: BoardCanvasProps) {
+  const draggable = !!onCellDown;
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
@@ -143,10 +157,22 @@ export function BoardCanvas({
     // Ships
     const sunkKeys = new Set(sunk.map((ship) => `${ship.kind}:${ship.x}:${ship.y}`));
     ships.forEach((ship, index) => {
+      if (index === hiddenShip) return;
       if (sunkKeys.has(`${ship.kind}:${ship.x}:${ship.y}`)) return;
       drawShip(ctx, ship, cell, pad, pad, { outline: index === selectedShip ? "#fde047" : undefined });
     });
     for (const ship of sunk) drawShip(ctx, ship, cell, pad, pad, { sunk: true, alpha: 0.9 });
+    if (ghost) {
+      const length = shipCells(ghost.ship, size).length;
+      ctx.fillStyle = ghost.valid ? "rgba(74,222,128,0.28)" : "rgba(248,113,113,0.32)";
+      ctx.fillRect(
+        pad + ghost.ship.x * cell,
+        pad + ghost.ship.y * cell,
+        (ghost.ship.vertical ? 1 : length) * cell,
+        (ghost.ship.vertical ? length : 1) * cell,
+      );
+      drawShip(ctx, ghost.ship, cell, pad, pad, { alpha: 0.75, outline: ghost.valid ? "#4ade80" : "#f87171" });
+    }
 
     // Shots
     const sunkCells = new Set(sunk.flatMap((ship) => shipCells(ship, size)));
@@ -211,9 +237,10 @@ export function BoardCanvas({
       ctx.fillStyle = "rgba(2,6,23,0.45)";
       ctx.fillRect(pad, pad, cell * size, cell * size);
     }
-  }, [cell, pad, size, hits, misses, ships, sunk, aims, selectedShip, hover, interactive, dimmed, frame, mine]);
+  }, [cell, pad, size, hits, misses, ships, sunk, aims, selectedShip, hover, interactive, dimmed, frame, mine, ghost, hiddenShip]);
 
   const cellFromEvent = (event: React.PointerEvent<HTMLCanvasElement>): number | null => {
+    if (cell <= 0) return null;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.floor((event.clientX - rect.left - pad) / cell);
     const y = Math.floor((event.clientY - rect.top - pad) / cell);
@@ -225,14 +252,27 @@ export function BoardCanvas({
     <div ref={wrapRef} className="w-full select-none">
       <canvas
         ref={canvasRef}
-        className={`block w-full touch-manipulation ${interactive ? "cursor-crosshair" : ""}`}
-        onPointerMove={(event) => interactive && event.pointerType === "mouse" && setHover(cellFromEvent(event))}
+        className={`block w-full ${draggable && interactive ? "cursor-grab touch-none" : "touch-manipulation"} ${interactive && !draggable ? "cursor-crosshair" : ""}`}
+        onPointerDown={(event) => {
+          if (!interactive || !onCellDown) return;
+          const c = cellFromEvent(event);
+          if (c === null) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          onCellDown(c);
+        }}
+        onPointerMove={(event) => {
+          if (!interactive) return;
+          if (onCellMove) onCellMove(cellFromEvent(event));
+          else if (event.pointerType === "mouse") setHover(cellFromEvent(event));
+        }}
         onPointerLeave={() => setHover(null)}
         onPointerUp={(event) => {
-          if (!interactive || !onCellClick) return;
+          if (!interactive) return;
           const c = cellFromEvent(event);
-          if (c !== null) onCellClick(c);
+          if (onCellUp) return onCellUp(c);
+          if (onCellClick && c !== null) onCellClick(c);
         }}
+        onPointerCancel={() => onCellUp?.(null)}
         onContextMenu={(event) => event.preventDefault()}
       />
     </div>

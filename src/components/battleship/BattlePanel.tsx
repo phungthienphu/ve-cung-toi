@@ -3,21 +3,47 @@
 import { useEffect, useState } from "react";
 import type { BattleshipClientMessage, BattleshipPlayer, PrivateBattleshipState, PublicBattleshipState, PublicBoard } from "@shared/battleshipTypes";
 import { BoardCanvas, type AimMarker } from "./BoardCanvas";
-import { boardOwnerLabel, btnPrimary, card, playerName, shipsLeft } from "./ui";
+import { MAIN_BOARD_STYLE, boardOwnerLabel, btnPrimary, card, playerName, shipsLeft } from "./ui";
 
 interface BattlePanelProps {
   state: PublicBattleshipState;
   priv: PrivateBattleshipState | null;
   self: BattleshipPlayer;
   send: (message: BattleshipClientMessage) => void;
+  side: React.ReactNode;
 }
 
 const MY_AIM = "#fde047";
 const TEAM_AIM = "#67e8f9";
 
+// Layout for every battle view: one big board you act on (left, sized to fit
+// the screen height) and a right column with your own fleet, then the shared
+// side panel (captains, log, chat).
 export function BattlePanel(props: BattlePanelProps) {
   if (props.state.config.mode === "solo") return <SoloBattle {...props} />;
   return <RoundBattle {...props} />;
+}
+
+function Layout({ main, right, side }: { main: React.ReactNode; right: React.ReactNode; side: React.ReactNode }) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-3">{main}</div>
+      <aside className="space-y-3">
+        {right}
+        {side}
+      </aside>
+    </div>
+  );
+}
+
+function FleetStatus({ board }: { board: PublicBoard }) {
+  return (
+    <span className="flex items-center gap-1" title={`còn ${shipsLeft(board)}/${board.shipsTotal} tàu`}>
+      {Array.from({ length: board.shipsTotal }, (_, index) => (
+        <span key={index} className={`h-2 w-4 rounded-sm ${index < shipsLeft(board) ? "bg-sky-300" : "bg-rose-400/40"}`} />
+      ))}
+    </span>
+  );
 }
 
 function OwnBoard({ state, priv, title }: { state: PublicBattleshipState; priv: PrivateBattleshipState | null; title: string }) {
@@ -25,9 +51,9 @@ function OwnBoard({ state, priv, title }: { state: PublicBattleshipState; priv: 
   if (!board) return null;
   return (
     <section className={`${card} p-3`}>
-      <div className="mb-2 flex items-center justify-between text-sm text-sky-50">
+      <div className="mb-2 flex items-center justify-between gap-2 text-sm text-sky-50">
         <h3 className="font-semibold">{title}</h3>
-        <span className="text-xs text-sky-100/60">còn {shipsLeft(board)}/{board.shipsTotal} tàu</span>
+        <FleetStatus board={board} />
       </div>
       <BoardCanvas
         size={board.size}
@@ -43,44 +69,77 @@ function OwnBoard({ state, priv, title }: { state: PublicBattleshipState; priv: 
   );
 }
 
+function MainBoard({
+  state,
+  board,
+  active,
+  aims,
+  footer,
+  onCell,
+}: {
+  state: PublicBattleshipState;
+  board: PublicBoard;
+  active: boolean;
+  aims?: AimMarker[];
+  footer?: React.ReactNode;
+  onCell: (cell: number) => void;
+}) {
+  return (
+    <section className={`${card} p-3 sm:p-4 ${active ? "ring-2 ring-amber-300/70" : ""}`}>
+      <div className="mx-auto" style={MAIN_BOARD_STYLE}>
+        <div className="mb-2 flex items-center justify-between gap-2 text-sky-50">
+          <h3 className="truncate font-bold">🎯 Biển địch — {boardOwnerLabel(state, board)}</h3>
+          <FleetStatus board={board} />
+        </div>
+        <BoardCanvas
+          size={board.size}
+          boardId={board.id}
+          hits={board.hits}
+          misses={board.misses}
+          sunk={board.sunk}
+          aims={aims}
+          flashes={state.lastShots}
+          interactive={active}
+          onCellClick={onCell}
+        />
+        {footer}
+      </div>
+    </section>
+  );
+}
+
 // ---------- Solo: alternating turns ----------
 
-function SoloBattle({ state, priv, self, send }: BattlePanelProps) {
+function SoloBattle({ state, priv, self, send, side }: BattlePanelProps) {
   const enemy = state.boards.find((board) => board.id !== priv?.myBoardId);
+  const mine = state.boards.find((board) => board.id === priv?.myBoardId);
   const myTurn = state.turnPlayerId === self.id;
   if (!enemy) return null;
 
   return (
-    <div className="space-y-3">
-      <TurnBanner active={myTurn}>
-        {myTurn ? "🎯 Lượt của bạn — chọn một ô trên biển địch để khai hỏa" : `⏳ Lượt của ${playerName(state, state.turnPlayerId ?? "")}…`}
-      </TurnBanner>
-      <div className="grid gap-3 md:grid-cols-2">
-        <section className={`${card} p-3 ${myTurn ? "ring-2 ring-amber-300/70" : ""}`}>
-          <div className="mb-2 flex items-center justify-between text-sm text-sky-50">
-            <h3 className="font-semibold">Biển địch — {boardOwnerLabel(state, enemy)}</h3>
-            <span className="text-xs text-sky-100/60">còn {shipsLeft(enemy)}/{enemy.shipsTotal} tàu</span>
-          </div>
-          <BoardCanvas
-            size={enemy.size}
-            boardId={enemy.id}
-            hits={enemy.hits}
-            misses={enemy.misses}
-            sunk={enemy.sunk}
-            flashes={state.lastShots}
-            interactive={myTurn}
-            onCellClick={(cell) => send({ type: "shoot", cell })}
-          />
-        </section>
-        <OwnBoard state={state} priv={priv} title="Hạm đội của bạn" />
-      </div>
-    </div>
+    <Layout
+      main={
+        <>
+          <TurnBanner active={myTurn}>
+            <span>{myTurn ? "🎯 Lượt của bạn — chạm một ô trên biển địch để khai hỏa" : `⏳ Lượt của ${playerName(state, state.turnPlayerId ?? "")}…`}</span>
+            {mine && (
+              <span className="hidden shrink-0 text-xs font-normal text-sky-100/70 sm:inline">
+                Bạn {shipsLeft(mine)} tàu · Đối thủ {shipsLeft(enemy)} tàu
+              </span>
+            )}
+          </TurnBanner>
+          <MainBoard state={state} board={enemy} active={myTurn} onCell={(cell) => send({ type: "shoot", cell })} />
+        </>
+      }
+      right={<OwnBoard state={state} priv={priv} title="Hạm đội của bạn" />}
+      side={side}
+    />
   );
 }
 
 // ---------- Hỗn chiến / Đồng đội: simultaneous rounds ----------
 
-function RoundBattle({ state, priv, self, send }: BattlePanelProps) {
+function RoundBattle({ state, priv, self, send, side }: BattlePanelProps) {
   const mode = state.config.mode;
   const myBoard = state.boards.find((board) => board.id === priv?.myBoardId);
   const alive = !!myBoard?.alive;
@@ -108,103 +167,108 @@ function RoundBattle({ state, priv, self, send }: BattlePanelProps) {
   if (target && priv?.aimBoardId === target.id) aims.push({ cells: priv.aimCells, color: MY_AIM, kind: "mine" });
   if (mode === "team") for (const teammate of priv?.teamAims ?? []) aims.push({ cells: teammate.cells, color: TEAM_AIM, kind: "team" });
 
-  // Knocked out of hỗn chiến: watch every fleet.
-  if (mode === "ffa" && !alive) return <SpectatorView state={state} priv={priv} />;
+  if (mode === "ffa" && !alive) return <SpectatorView state={state} priv={priv} side={side} />;
 
   return (
-    <div className="space-y-3">
-      <TurnBanner active={canAim}>
-        {revealing
-          ? `💥 Kết quả vòng ${state.round}`
-          : locked
-            ? `✓ Đã khai hỏa — chờ mọi người (${state.lockedPlayerIds.length}/${shooters.length})`
-            : `🎯 Vòng ${state.round} — ${mode === "team" ? `bạn có ${priv?.shotsAllowed ?? 0} phát, chọn ô trên lưới đội địch` : "chọn một đối thủ và một ô"}`}
-      </TurnBanner>
+    <Layout
+      main={
+        <>
+          <TurnBanner active={canAim}>
+            <span>
+              {revealing
+                ? `💥 Kết quả vòng ${state.round}`
+                : locked
+                  ? `✓ Đã khai hỏa — chờ mọi người (${state.lockedPlayerIds.length}/${shooters.length})`
+                  : `🎯 Vòng ${state.round} — ${mode === "team" ? `bạn có ${priv?.shotsAllowed ?? 0} phát, chọn ô trên lưới đội địch` : "chọn một đối thủ và một ô"}`}
+            </span>
+          </TurnBanner>
 
-      {mode === "ffa" && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {targets.map((board) => {
-            const count = state.aimCounts[board.id] ?? 0;
-            const full = count >= state.aimCap && priv?.aimBoardId !== board.id;
-            return (
-              <button
-                key={board.id}
-                onClick={() => setTargetId(board.id)}
-                className={`shrink-0 rounded-md border px-3 py-2 text-left text-xs transition ${
-                  target?.id === board.id ? "border-amber-300 bg-amber-300/15 text-amber-100" : "border-white/10 text-sky-50 hover:bg-white/5"
-                }`}
-              >
-                <div className="max-w-[120px] truncate font-semibold">{boardOwnerLabel(state, board)}</div>
-                <div className="text-sky-100/60">
-                  {shipsLeft(board)} tàu · {full ? "đủ phát" : `${count}/${state.aimCap} ngắm`}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        {target && (
-          <section className={`${card} p-3 ${canAim ? "ring-2 ring-amber-300/70" : ""}`}>
-            <div className="mb-2 flex items-center justify-between text-sm text-sky-50">
-              <h3 className="font-semibold">Biển địch — {boardOwnerLabel(state, target)}</h3>
-              <span className="text-xs text-sky-100/60">còn {shipsLeft(target)}/{target.shipsTotal} tàu</span>
+          {mode === "ffa" && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {targets.map((board) => {
+                const count = state.aimCounts[board.id] ?? 0;
+                const full = count >= state.aimCap && priv?.aimBoardId !== board.id;
+                return (
+                  <button
+                    key={board.id}
+                    onClick={() => setTargetId(board.id)}
+                    className={`shrink-0 rounded-md border px-3 py-2 text-left text-xs transition ${
+                      target?.id === board.id ? "border-amber-300 bg-amber-300/15 text-amber-100" : "border-white/10 bg-slate-900/60 text-sky-50 hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="max-w-[130px] truncate font-semibold">{boardOwnerLabel(state, board)}</div>
+                    <div className="mt-1 flex items-center gap-2 text-sky-100/60">
+                      <FleetStatus board={board} />
+                      <span>{full ? "đủ phát" : `${count}/${state.aimCap}`}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <BoardCanvas
-              size={target.size}
-              boardId={target.id}
-              hits={target.hits}
-              misses={target.misses}
-              sunk={target.sunk}
+          )}
+
+          {target && (
+            <MainBoard
+              state={state}
+              board={target}
+              active={canAim}
               aims={aims}
-              flashes={state.lastShots}
-              interactive={canAim}
-              onCellClick={(cell) => send({ type: "aim", boardId: target.id, cell })}
+              onCell={(cell) => send({ type: "aim", boardId: target.id, cell })}
+              footer={
+                <>
+                  <button onClick={() => send({ type: "lock_aim" })} disabled={!canAim || aimed === 0} className={`${btnPrimary} mt-3 w-full py-3`}>
+                    {locked ? "✓ Đã khai hỏa" : `🔥 Khai hỏa${priv && priv.shotsAllowed > 1 ? ` (${aimed}/${priv.shotsAllowed})` : ""}`}
+                  </button>
+                  {mode === "team" && <p className="mt-2 text-center text-xs text-sky-100/50">Chấm xanh ngọc là ô đồng đội đang ngắm. Chạm lại ô đã chọn để bỏ.</p>}
+                </>
+              }
             />
-            <button onClick={() => send({ type: "lock_aim" })} disabled={!canAim || aimed === 0} className={`${btnPrimary} mt-3 w-full py-3`}>
-              {locked ? "✓ Đã khai hỏa" : `🔥 Khai hỏa${priv && priv.shotsAllowed > 1 ? ` (${aimed}/${priv.shotsAllowed})` : ""}`}
-            </button>
-            {mode === "team" && <p className="mt-2 text-xs text-sky-100/50">Chấm xanh ngọc là ô đồng đội đang ngắm. Chạm lại ô đã chọn để bỏ.</p>}
-          </section>
-        )}
-        <OwnBoard state={state} priv={priv} title={mode === "team" ? "Hạm đội của đội" : "Hạm đội của bạn"} />
-      </div>
-    </div>
+          )}
+        </>
+      }
+      right={<OwnBoard state={state} priv={priv} title={mode === "team" ? "Hạm đội của đội" : "Hạm đội của bạn"} />}
+      side={side}
+    />
   );
 }
 
-function SpectatorView({ state, priv }: { state: PublicBattleshipState; priv: PrivateBattleshipState | null }) {
+function SpectatorView({ state, priv, side }: { state: PublicBattleshipState; priv: PrivateBattleshipState | null; side: React.ReactNode }) {
   return (
-    <div className="space-y-3">
-      <TurnBanner active={false}>💀 Hạm đội của bạn đã chìm — bạn đang xem trận (thấy vị trí mọi tàu).</TurnBanner>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {state.boards.map((board) => (
-          <section key={board.id} className={`${card} p-2`}>
-            <div className="mb-1 flex justify-between text-xs text-sky-50">
-              <span className="truncate font-semibold">{boardOwnerLabel(state, board)}</span>
-              <span className="text-sky-100/60">{board.alive ? `${shipsLeft(board)} tàu` : "đã chìm"}</span>
-            </div>
-            <BoardCanvas
-              size={board.size}
-              boardId={board.id}
-              hits={board.hits}
-              misses={board.misses}
-              ships={priv?.spectatorFleets?.[board.id] ?? []}
-              sunk={board.sunk}
-              flashes={state.lastShots}
-              dimmed={!board.alive}
-            />
-          </section>
-        ))}
-      </div>
-    </div>
+    <Layout
+      main={
+        <>
+          <TurnBanner active={false}>💀 Hạm đội của bạn đã chìm — bạn đang xem trận (thấy vị trí mọi tàu).</TurnBanner>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {state.boards.map((board) => (
+              <section key={board.id} className={`${card} p-2`}>
+                <div className="mb-1 flex justify-between gap-2 text-xs text-sky-50">
+                  <span className="truncate font-semibold">{boardOwnerLabel(state, board)}</span>
+                  {board.alive ? <FleetStatus board={board} /> : <span className="text-rose-300">đã chìm</span>}
+                </div>
+                <BoardCanvas
+                  size={board.size}
+                  boardId={board.id}
+                  hits={board.hits}
+                  misses={board.misses}
+                  ships={priv?.spectatorFleets?.[board.id] ?? []}
+                  sunk={board.sunk}
+                  flashes={state.lastShots}
+                  dimmed={!board.alive}
+                />
+              </section>
+            ))}
+          </div>
+        </>
+      }
+      right={null}
+      side={side}
+    />
   );
 }
 
 function TurnBanner({ active, children }: { active: boolean; children: React.ReactNode }) {
   return (
-    <div className={`rounded-md border px-4 py-2.5 text-sm font-semibold ${active ? "border-amber-300/60 bg-amber-300/15 text-amber-100" : "border-white/10 bg-slate-900/60 text-sky-100"}`}>
+    <div className={`flex items-center justify-between gap-3 rounded-md border px-4 py-2.5 text-sm font-semibold ${active ? "border-amber-300/60 bg-amber-300/15 text-amber-100" : "border-white/10 bg-slate-900/60 text-sky-100"}`}>
       {children}
     </div>
   );

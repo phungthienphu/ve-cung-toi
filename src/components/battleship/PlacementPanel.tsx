@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   SHIP_LABEL,
   SHIP_SIZE,
@@ -15,13 +15,14 @@ import {
   type ShipPlacement,
 } from "@shared/battleshipTypes";
 import { BoardCanvas } from "./BoardCanvas";
-import { btnGhost, btnPrimary, card } from "./ui";
+import { MAIN_BOARD_STYLE, btnGhost, btnPrimary, card } from "./ui";
 
 interface PlacementPanelProps {
   state: PublicBattleshipState;
   priv: PrivateBattleshipState | null;
   self: BattleshipPlayer;
   send: (message: BattleshipClientMessage) => void;
+  side: React.ReactNode;
 }
 
 function clampShip(ship: ShipPlacement, size: number): ShipPlacement {
@@ -33,10 +34,11 @@ function clampShip(ship: ShipPlacement, size: number): ShipPlacement {
   };
 }
 
-// Tap a ship to pick it up, tap a cell to drop it there (its bow/top end),
-// "Xoay" turns it. Every valid change is sent straight to the server, which is
-// what teammates see too in đồng đội mode.
-export function PlacementPanel({ state, priv, self, send }: PlacementPanelProps) {
+// Drag a ship to move it (a green/red ghost shows whether it fits), tap a ship
+// to select it and tap it again — or press "Xoay" — to turn it. Tapping an
+// empty cell while a ship is selected also moves it there. Every valid change
+// is sent straight to the server, which is what teammates see in đồng đội mode.
+export function PlacementPanel({ state, priv, self, send, side }: PlacementPanelProps) {
   const size = boardSizeFor(state.config.mode);
   const [ships, setShips] = useState<ShipPlacement[]>(priv?.ships ?? []);
   const [selected, setSelected] = useState<number | null>(null);
@@ -62,18 +64,73 @@ export function PlacementPanel({ state, priv, self, send }: PlacementPanelProps)
     return true;
   };
 
-  const onCell = (cell: number) => {
+  // Drag state: which ship, which of its cells was grabbed, where it'd land.
+  const drag = useRef<{ index: number; grab: number; startCell: number; moved: boolean } | null>(null);
+  const [ghost, setGhostState] = useState<{ index: number; ship: ShipPlacement; valid: boolean } | null>(null);
+  // Mirrored in a ref: a fast drop can arrive before the re-render that would
+  // hand onUp the latest ghost.
+  const ghostRef = useRef(ghost);
+  const setGhost = (next: typeof ghost) => {
+    ghostRef.current = next;
+    setGhostState(next);
+  };
+
+  const candidateAt = (index: number, grab: number, cell: number): ShipPlacement => {
+    const ship = ships[index];
+    const { x, y } = cellXY(cell, size);
+    return clampShip({ ...ship, x: ship.vertical ? x : x - grab, y: ship.vertical ? y - grab : y }, size);
+  };
+
+  const onDown = (cell: number) => {
     if (self.ready) return;
-    const hitIndex = ships.findIndex((ship) => shipCells(ship, size).includes(cell));
-    if (selected === null || (hitIndex >= 0 && hitIndex !== selected)) {
-      setSelected(hitIndex >= 0 ? hitIndex : null);
-      setMessage(hitIndex >= 0 ? "Chạm vào ô trên biển để chuyển tàu tới đó." : "");
+    const index = ships.findIndex((ship) => shipCells(ship, size).includes(cell));
+    if (index < 0) return;
+    const grab = shipCells(ships[index], size).indexOf(cell);
+    drag.current = { index, grab, startCell: cell, moved: false };
+  };
+
+  const onMove = (cell: number | null) => {
+    const current = drag.current;
+    if (!current || cell === null) return;
+    if (cell !== current.startCell) current.moved = true;
+    if (!current.moved) return;
+    const candidate = candidateAt(current.index, current.grab, cell);
+    const others = ships.filter((_, i) => i !== current.index);
+    setGhost({ index: current.index, ship: candidate, valid: canPlace(candidate, others, size, state.config.noTouching) });
+  };
+
+  const onUp = (cell: number | null) => {
+    const current = drag.current;
+    drag.current = null;
+    const dropped = ghostRef.current;
+    setGhost(null);
+    if (self.ready) return;
+
+    if (current?.moved) {
+      if (dropped?.valid) {
+        setMessage("");
+        commit(ships.map((ship, i) => (i === current.index ? dropped.ship : ship)));
+        setSelected(current.index);
+      } else {
+        setMessage(state.config.noTouching ? "Không đặt được ở đó (chồng hoặc sát tàu khác)." : "Không đặt được ở đó (chồng tàu khác).");
+      }
       return;
     }
-    const { x, y } = cellXY(cell, size);
-    const ship = ships[selected];
-    if (tryPlace(selected, clampShip({ ...ship, x, y }, size), state.config.noTouching ? "Không đặt được ở đó (chồng hoặc sát tàu khác)." : "Không đặt được ở đó (chồng tàu khác).")) {
-      setSelected(null);
+    if (cell === null) return;
+
+    // A tap (no drag).
+    const index = ships.findIndex((ship) => shipCells(ship, size).includes(cell));
+    if (index >= 0) {
+      if (index === selected) rotate();
+      else {
+        setSelected(index);
+        setMessage("Kéo để di chuyển · chạm lần nữa để xoay.");
+      }
+      return;
+    }
+    if (selected !== null) {
+      const { x, y } = cellXY(cell, size);
+      if (tryPlace(selected, clampShip({ ...ships[selected], x, y }, size), "Không đặt được ở đó.")) setSelected(null);
     }
   };
 
@@ -87,20 +144,34 @@ export function PlacementPanel({ state, priv, self, send }: PlacementPanelProps)
   const readyCount = waiting.filter((player) => player.ready).length;
 
   return (
-    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_260px]">
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section className={`${card} p-3 sm:p-4`}>
         <div className="mb-2 flex items-center justify-between gap-2 text-sky-50">
           <h2 className="font-bold">Xếp hạm đội {state.config.mode === "team" ? "của đội" : "của bạn"}</h2>
           <span className="text-xs text-sky-100/60">Sẵn sàng {readyCount}/{waiting.length}</span>
         </div>
-        <BoardCanvas size={size} hits={[]} misses={[]} ships={ships} selectedShip={selected} interactive={!self.ready} onCellClick={onCell} />
-        <p className="mt-2 min-h-5 text-xs text-amber-200">{message}</p>
+        <div className="mx-auto" style={MAIN_BOARD_STYLE}>
+          <BoardCanvas
+            size={size}
+            hits={[]}
+            misses={[]}
+            ships={ships}
+            selectedShip={selected}
+            interactive={!self.ready}
+            onCellDown={onDown}
+            onCellMove={onMove}
+            onCellUp={onUp}
+            ghost={ghost}
+            hiddenShip={ghost?.index ?? null}
+          />
+        </div>
+        <p className="mt-2 min-h-5 text-center text-xs text-amber-200">{message || (selected === null && !self.ready ? "Kéo tàu để di chuyển · chạm tàu để chọn, chạm lần nữa để xoay." : "")}</p>
       </section>
 
       <aside className="space-y-3">
         <div className={`${card} p-3`}>
           <p className="mb-2 text-xs text-sky-100/60">Chọn tàu:</p>
-          <ul className="space-y-1.5">
+          <ul className="grid grid-cols-2 gap-1.5 lg:grid-cols-1">
             {ships.map((ship, index) => (
               <li key={`${ship.kind}-${index}`}>
                 <button
@@ -130,6 +201,7 @@ export function PlacementPanel({ state, priv, self, send }: PlacementPanelProps)
           {state.config.noTouching ? "Tàu không được đặt sát nhau (kể cả chéo). " : ""}
           Hết giờ thì giữ nguyên cách xếp hiện tại.
         </p>
+        {side}
       </aside>
     </div>
   );
