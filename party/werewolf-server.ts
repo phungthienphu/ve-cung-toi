@@ -813,13 +813,14 @@ export default class WerewolfRoom implements Party.Server {
       .catch(() => {});
   }
 
+  // Every open connection for this player (a refresh can leave the old socket
+  // open briefly — sending only to it left the new tab without its role).
   private sendPrivate(id: string) {
-    const connection = [...this.party.getConnections()].find((candidate) => candidate.id === id);
-    if (!connection) return;
-    connection.send(JSON.stringify({
+    const message = JSON.stringify({
       type: "private_state",
       state: this.privateState(id),
-    } satisfies WerewolfServerMessage));
+    } satisfies WerewolfServerMessage);
+    for (const connection of this.party.getConnections()) if (connection.id === id) connection.send(message);
   }
 
   private sendAllPrivate() {

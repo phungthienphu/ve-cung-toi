@@ -14,6 +14,14 @@ interface BattlePanelProps {
 }
 
 const MY_AIM = "#fde047";
+
+/** Your board id straight from the public state (your player id, or your
+ * team's board). Never fall back to "some other board": if this were unknown
+ * the enemy view could end up showing your own fleet. */
+export function myBoardIdOf(state: PublicBattleshipState, self: BattleshipPlayer): string | null {
+  if (state.config.mode === "team") return self.team ? `team-${self.team}` : null;
+  return self.id;
+}
 const TEAM_AIM = "#67e8f9";
 
 // Layout for every battle view: one big board you act on (left, sized to fit
@@ -46,8 +54,8 @@ function FleetStatus({ board }: { board: PublicBoard }) {
   );
 }
 
-function OwnBoard({ state, priv, title }: { state: PublicBattleshipState; priv: PrivateBattleshipState | null; title: string }) {
-  const board = state.boards.find((candidate) => candidate.id === priv?.myBoardId);
+function OwnBoard({ state, priv, self, title }: { state: PublicBattleshipState; priv: PrivateBattleshipState | null; self: BattleshipPlayer; title: string }) {
+  const board = state.boards.find((candidate) => candidate.id === myBoardIdOf(state, self));
   if (!board) return null;
   return (
     <section className={`${card} p-3`}>
@@ -111,8 +119,9 @@ function MainBoard({
 // ---------- Solo: alternating turns ----------
 
 function SoloBattle({ state, priv, self, send, side }: BattlePanelProps) {
-  const enemy = state.boards.find((board) => board.id !== priv?.myBoardId);
-  const mine = state.boards.find((board) => board.id === priv?.myBoardId);
+  const myId = myBoardIdOf(state, self);
+  const enemy = state.boards.find((board) => board.id !== myId);
+  const mine = state.boards.find((board) => board.id === myId);
   const myTurn = state.turnPlayerId === self.id;
   if (!enemy) return null;
 
@@ -131,7 +140,7 @@ function SoloBattle({ state, priv, self, send, side }: BattlePanelProps) {
           <MainBoard state={state} board={enemy} active={myTurn} onCell={(cell) => send({ type: "shoot", cell })} />
         </>
       }
-      right={<OwnBoard state={state} priv={priv} title="Hạm đội của bạn" />}
+      right={<OwnBoard state={state} priv={priv} self={self} title="Hạm đội của bạn" />}
       side={side}
     />
   );
@@ -141,11 +150,12 @@ function SoloBattle({ state, priv, self, send, side }: BattlePanelProps) {
 
 function RoundBattle({ state, priv, self, send, side }: BattlePanelProps) {
   const mode = state.config.mode;
-  const myBoard = state.boards.find((board) => board.id === priv?.myBoardId);
+  const myId = myBoardIdOf(state, self);
+  const myBoard = state.boards.find((board) => board.id === myId);
   const alive = !!myBoard?.alive;
   const targets: PublicBoard[] = mode === "team"
     ? state.boards.filter((board) => board.team && board.team !== self.team)
-    : state.boards.filter((board) => board.id !== priv?.myBoardId && board.alive);
+    : state.boards.filter((board) => board.id !== myId && board.alive);
   const [targetId, setTargetId] = useState<string | null>(null);
 
   // Follow your own aim; otherwise stay on the chosen tab while it's alive.
@@ -226,7 +236,7 @@ function RoundBattle({ state, priv, self, send, side }: BattlePanelProps) {
           )}
         </>
       }
-      right={<OwnBoard state={state} priv={priv} title={mode === "team" ? "Hạm đội của đội" : "Hạm đội của bạn"} />}
+      right={<OwnBoard state={state} priv={priv} self={self} title={mode === "team" ? "Hạm đội của đội" : "Hạm đội của bạn"} />}
       side={side}
     />
   );

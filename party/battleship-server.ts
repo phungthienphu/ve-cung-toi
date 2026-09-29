@@ -970,10 +970,13 @@ export default class BattleshipRoom implements Party.Server {
     this.reportToDirectory();
   }
 
+  // Every open connection for this player, not just the first: after a page
+  // refresh the old socket can still be open, and sending only to it left the
+  // new tab without its private state (it then couldn't tell which board was
+  // its own).
   private sendPrivate(id: string) {
-    const connection = [...this.party.getConnections()].find((candidate) => candidate.id === id);
-    if (!connection) return;
-    connection.send(JSON.stringify({ type: "private_state", state: this.privateState(id) } satisfies BattleshipServerMessage));
+    const message = JSON.stringify({ type: "private_state", state: this.privateState(id) } satisfies BattleshipServerMessage);
+    for (const connection of this.party.getConnections()) if (connection.id === id) connection.send(message);
   }
 
   private sendAllPrivate() {
