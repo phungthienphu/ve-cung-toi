@@ -249,11 +249,6 @@ body {
   min-height: 100dvh;
 }
 
-.h-canvas-mobile {
-  height: 50vh;
-  height: 50dvh;
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

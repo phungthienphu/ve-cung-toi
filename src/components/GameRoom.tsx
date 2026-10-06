@@ -202,7 +202,10 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
       </button>
 
       <div className="grid min-w-0 flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-stretch">
-        <div className="order-2 flex h-56 min-w-0 flex-col gap-2 md:order-1 md:h-[600px]">
+        {/* The middle column (board + toolbar) sets the row height; the side
+            columns are size-contained so they just stretch to match it and
+            scroll inside, instead of leaving a gap under a shorter board. */}
+        <div className="order-2 flex h-56 min-w-0 flex-col gap-2 md:order-1 md:h-auto md:min-h-[360px] md:[contain:size]">
           <PlayerList players={state.players} drawerId={state.drawerId} selfId={playerId} onKick={isHost ? (id) => send({ type: "kick_player", playerId: id }) : undefined} />
           <button
             onClick={() => {
@@ -217,8 +220,8 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           </button>
         </div>
 
-        <div className="order-1 flex h-canvas-mobile min-w-0 flex-col gap-2 md:order-2 md:h-[600px]">
-          <div className="min-h-0 min-w-0 flex-1">
+        <div className="order-1 flex min-w-0 flex-col gap-2 md:order-2">
+          <div className="min-w-0">
             <DrawingCanvas
               ref={canvasRef}
               isDrawer={isDrawer}
@@ -233,7 +236,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
           )}
         </div>
 
-        <div className="order-3 hidden min-w-0 md:block md:h-[600px]">
+        <div className="order-3 hidden min-w-0 md:block md:min-h-[360px] md:[contain:size]">
           <Chat
             entries={chat}
             selfId={playerId}

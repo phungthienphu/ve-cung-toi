@@ -408,12 +408,13 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
   const previewDot = Math.max(4, Math.min(26, tool === "eraser" ? size * 3 : size));
 
   return (
-    <div className="flex h-full min-w-0 flex-col gap-2">
-      <div
-        className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-white p-1.5 shadow-xl"
-        style={{ background: "linear-gradient(180deg, #a9764c, #8a5c38)" }}
-      >
-        <div className="relative h-full w-full overflow-hidden rounded-xl bg-white">
+    <div className="flex min-w-0 flex-col gap-2">
+      {/* Full column width at the canvas's real 900×560 ratio. It used to be
+          stretched to fill a fixed-height box, so a square on the drawer's
+          screen (shorter box, toolbar below) showed up as a tall rectangle
+          for everyone else. */}
+      <div className="min-w-0 rounded-2xl p-1.5 shadow-xl" style={{ background: "linear-gradient(180deg, #a9764c, #8a5c38)" }}>
+        <div className="relative w-full overflow-hidden rounded-xl bg-white" style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}` }}>
           <canvas
             ref={canvasRef}
             width={CANVAS_W}
