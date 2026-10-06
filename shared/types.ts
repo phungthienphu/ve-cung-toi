@@ -26,12 +26,18 @@ export interface StrokePoint {
   y: number;
 }
 
+export type DrawTool = "pen" | "eraser" | "rect" | "circle" | "triangle" | "star";
+export const SHAPE_TOOLS: DrawTool[] = ["rect", "circle", "triangle", "star"];
+
 export interface StrokeSegment {
   strokeId: string;
   color: string;
   size: number;
-  tool: "pen" | "eraser";
+  tool: DrawTool;
+  /** Freehand tools: the path. Shapes: exactly [dragStart, dragEnd]. */
   points: StrokePoint[];
+  /** Shapes only: solid fill instead of an outline. */
+  filled?: boolean;
 }
 
 export interface RoomConfig {
@@ -91,6 +97,7 @@ export type ClientMessage =
   | { type: "stroke_point"; strokeId: string; point: StrokePoint }
   | { type: "stroke_end"; strokeId: string }
   | { type: "clear_canvas" }
+  | { type: "undo_stroke" }
   | { type: "chat"; text: string }
   | { type: "play_again" }
   | { type: "kick_player"; playerId: string }
@@ -117,6 +124,7 @@ export type ServerMessage =
   | { type: "stroke"; segment: StrokeSegment }
   | { type: "stroke_point"; strokeId: string; point: StrokePoint }
   | { type: "stroke_end"; strokeId: string }
+  | { type: "stroke_undo"; strokeId: string }
   | { type: "clear_canvas" }
   | { type: "round_result"; word: string; scores: { playerId: string; delta: number }[] }
   | { type: "game_result"; players: Player[] }

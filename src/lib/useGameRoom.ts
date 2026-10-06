@@ -24,7 +24,7 @@ export interface GameRoomHandle {
   kicked: boolean;
   finalPlayers: Player[] | null;
   lastRoundResult: { word: string; scores: { playerId: string; delta: number }[] } | null;
-  strokeEvents: { kind: "stroke" | "point" | "end" | "clear"; segment?: StrokeSegment; strokeId?: string; point?: StrokePoint }[];
+  strokeEvents: { kind: "stroke" | "point" | "end" | "clear" | "undo"; segment?: StrokeSegment; strokeId?: string; point?: StrokePoint }[];
   send: (msg: ClientMessage) => void;
   clearStrokeEvents: () => void;
 }
@@ -82,6 +82,9 @@ export function useGameRoom(roomId: string, playerId: string, name: string): Gam
           break;
         case "clear_canvas":
           setStrokeEvents((prev) => [...prev, { kind: "clear" }]);
+          break;
+        case "stroke_undo":
+          setStrokeEvents((prev) => [...prev, { kind: "undo", strokeId: msg.strokeId }]);
           break;
         case "round_result":
           setLastRoundResult({ word: msg.word, scores: msg.scores });

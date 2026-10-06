@@ -163,6 +163,8 @@ export default class GameRoom implements Party.Server {
         return this.handleStrokeEnd(msg.strokeId, sender);
       case "clear_canvas":
         return this.handleClearCanvas(sender);
+      case "undo_stroke":
+        return this.handleUndoStroke(sender);
       case "chat":
         return this.handleChat(msg.text, sender);
       case "play_again":
@@ -309,6 +311,14 @@ export default class GameRoom implements Party.Server {
     if (this.status !== "playing" || sender.id !== this.drawerId) return;
     this.strokes = [];
     this.broadcast({ type: "clear_canvas" }, [sender.id]);
+  }
+
+  /** Removes the drawer's most recent stroke for everyone (sender included,
+   * so every canvas redraws from the same history). */
+  private handleUndoStroke(sender: Party.Connection) {
+    if (this.status !== "playing" || sender.id !== this.drawerId) return;
+    const last = this.strokes.pop();
+    if (last) this.broadcast({ type: "stroke_undo", strokeId: last.strokeId });
   }
 
   private handleRevealLetter(index: number, sender: Party.Connection) {
