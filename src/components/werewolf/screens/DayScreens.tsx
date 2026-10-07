@@ -9,12 +9,32 @@ import { NightSuspicionResult } from "../NightSuspicionResult";
 import { ExecutionRiskSummary } from "../ExecutionRiskSummary";
 import { DeathAnnouncement } from "../DeathAnnouncement";
 import { VoteReveal } from "../VoteReveal";
+import { SeerResultBanner, seerResultForDay } from "../SeerResultBanner";
 
-export function DawnScreen({ state }: { state: PublicWerewolfState }) {
+interface DawnScreenProps {
+  state: PublicWerewolfState;
+  role: WerewolfRole | null;
+  privateState: PrivateWerewolfState | null;
+  self: WerewolfPlayer;
+}
+
+export function DawnScreen({ state, role, privateState, self }: DawnScreenProps) {
   const deathNames = state.nightDeaths.map((id) => playerName(id, state.players));
+  const seerResult = seerResultForDay(role, privateState, state.day);
 
   return (
     <div>
+      {/* Private, so it goes first: dawn is short and the death banner below
+          can push it off a phone screen. */}
+      {seerResult ? (
+        <div className="mb-4">
+          <SeerResultBanner result={seerResult} players={state.players} />
+        </div>
+      ) : role === "seer" && self.alive ? (
+        <p className="mb-4 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2 text-center text-sm text-[var(--ww-text-muted)]">
+          🔮 Đêm qua bạn chưa soi ai nên không có kết quả.
+        </p>
+      ) : null}
       {state.nightDeaths.length > 0 ? (
         <DeathAnnouncement players={state.players} playerIds={state.nightDeaths} cause="night" />
       ) : (
@@ -37,16 +57,16 @@ interface DiscussionScreenProps {
   state: PublicWerewolfState;
   role: WerewolfRole | null;
   privateState: PrivateWerewolfState | null;
-  isHost: boolean;
   self: WerewolfPlayer;
   send: (message: WerewolfClientMessage) => void;
 }
 
 type DiscussionTab = "chat" | "notebook";
 
-export function DiscussionScreen({ state, role, privateState, isHost, self, send }: DiscussionScreenProps) {
+export function DiscussionScreen({ state, role, privateState, self, send }: DiscussionScreenProps) {
   const content = GAME_CONTENT.discussion;
   const [tab, setTab] = useState<DiscussionTab>("chat");
+  const seerResult = seerResultForDay(role, privateState, state.day);
 
   const notebook = (
     <PersonalNotebook state={state} role={role} privateState={privateState} />
@@ -67,6 +87,12 @@ export function DiscussionScreen({ state, role, privateState, isHost, self, send
 
       <div className="mt-2 flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {seerResult && (
+            <div className="mb-3 shrink-0">
+              <SeerResultBanner result={seerResult} players={state.players} compact />
+            </div>
+          )}
+
           {/* Below lg there's no room for a side column: the village-wide
               suspicion result stays pinned (it's the headline everyone must
               see) and the private notebook moves behind a tab. */}
@@ -103,12 +129,49 @@ export function DiscussionScreen({ state, role, privateState, isHost, self, send
         </aside>
       </div>
 
-      {isHost && (
+      <ReadyToVoteBar state={state} self={self} send={send} />
+    </div>
+  );
+}
+
+// Everyone gets the same button: voting starts early only when every living,
+// connected human is ready (bots never hold it up), otherwise when time's up.
+// Who is ready is public — it's a nudge, not a secret.
+function ReadyToVoteBar({ state, self, send }: { state: PublicWerewolfState; self: WerewolfPlayer; send: (message: WerewolfClientMessage) => void }) {
+  const content = GAME_CONTENT.discussion;
+  const waiting = state.players.filter((player) => player.alive && player.connected && !player.isBot);
+  const readyCount = waiting.filter((player) => state.readyToVoteIds.includes(player.id)).length;
+  const holdouts = waiting.filter((player) => !state.readyToVoteIds.includes(player.id) && player.id !== self.id);
+  const ready = state.readyToVoteIds.includes(self.id);
+  const percent = waiting.length ? Math.round((readyCount / waiting.length) * 100) : 0;
+
+  return (
+    <div className="mt-2 flex shrink-0 items-center gap-3 rounded-md border border-[var(--ww-border)] bg-[var(--ww-surface-soft)] px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--ww-text)]">
+          <span className="whitespace-nowrap">{readyCount}/{waiting.length} sẵn sàng bỏ phiếu</span>
+          <span className="h-1.5 min-w-8 flex-1 overflow-hidden rounded-full bg-[var(--ww-surface-soft-hover)]">
+            <span className="block h-full rounded-full bg-[var(--ww-accent)] transition-all duration-300" style={{ width: `${percent}%` }} />
+          </span>
+        </div>
+        <p className="mt-0.5 truncate text-[11px] text-[var(--ww-text-faint)]">
+          {ready && holdouts.length
+            ? `Đang chờ: ${holdouts.map((player) => player.name).join(", ")}`
+            : "Tự chuyển khi mọi người sẵn sàng hoặc hết giờ"}
+        </p>
+      </div>
+      {self.alive && (
         <button
-          onClick={() => send({ type: "end_discussion" })}
-          className="mt-2 w-full shrink-0 rounded-sm bg-[var(--ww-accent-strong)] px-4 py-2 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 hover:font-extrabold"
+          onClick={() => send({ type: "ready_to_vote", ready: !ready })}
+          aria-pressed={ready}
+          title={ready ? "Bấm lại để hủy" : undefined}
+          className={`shrink-0 rounded-md px-4 py-2 text-sm font-bold transition ${
+            ready
+              ? "border border-[var(--ww-accent)] bg-[var(--ww-accent-soft)] text-[var(--ww-accent)] hover:opacity-80"
+              : "bg-[var(--ww-accent-strong)] text-[var(--ww-accent-ink)] hover:opacity-90"
+          }`}
         >
-          {content.endButton}
+          {ready ? content.unreadyButton : content.readyButton}
         </button>
       )}
     </div>
@@ -155,13 +218,13 @@ interface VotingScreenProps {
   self: WerewolfPlayer;
   selected: string | null;
   initialReason: string;
+  skipped: boolean;
   votedIds: string[];
-  isHost: boolean;
   teammateIds?: string[];
   send: (message: WerewolfClientMessage) => void;
 }
 
-export function VotingScreen({ players, self, selected, initialReason, votedIds, isHost, teammateIds, send }: VotingScreenProps) {
+export function VotingScreen({ players, self, selected, initialReason, skipped, votedIds, teammateIds, send }: VotingScreenProps) {
   const content = GAME_CONTENT.voting;
   const [reason, setReason] = useState(initialReason);
   const reasonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -188,6 +251,13 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
   // Clicking your current pick again withdraws it (= bỏ phiếu trắng).
   const pick = (targetId: string) => send({ type: "cast_vote", targetId: targetId === selected ? null : targetId, reason });
 
+  // Explicit blank ballot. Drop any pending reason autosave first — it would
+  // re-send the old pick and silently undo the skip.
+  const skip = () => {
+    if (reasonTimer.current) clearTimeout(reasonTimer.current);
+    send({ type: "skip_vote" });
+  };
+
   // Editing the reason after picking re-sends the same ballot (debounced) so
   // the server always holds the latest text without a separate "save" step.
   const editReason = (value: string) => {
@@ -199,14 +269,6 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
 
   return (
     <div>
-      {isHost && (
-        <button
-          onClick={() => send({ type: "back_to_discussion" })}
-          className="mb-3 rounded-md border border-[var(--ww-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ww-text-muted)] transition hover:text-[var(--ww-text)]"
-        >
-          ← Quay lại thảo luận
-        </button>
-      )}
       <h2 className="text-center font-ww-display text-2xl font-bold text-[var(--ww-text)]">{content.title}</h2>
       <p className="mt-1 text-center text-sm text-[var(--ww-text-muted)]">{content.description}</p>
       <p className="mb-5 mt-1 text-center text-xs text-[var(--ww-text-faint)]">
@@ -235,17 +297,32 @@ export function VotingScreen({ players, self, selected, initialReason, votedIds,
             />
             <span className="mt-1 block text-right text-[11px] text-[var(--ww-text-faint)]">{reason.length}/{MAX_VOTE_REASON_LENGTH}</span>
           </label>
-          <button
-            onClick={confirm}
-            disabled={!selected || confirmed}
-            className="mt-3 w-full rounded-md bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50"
-          >
-            {!selected ? "Chọn một người để bỏ phiếu" : confirmed ? `✓ Đã gửi phiếu bầu ${selectedName ?? ""}` : `Xác nhận bầu ${selectedName ?? ""}`}
-          </button>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <button
+              onClick={confirm}
+              disabled={!selected || confirmed}
+              className="flex-1 rounded-md bg-[var(--ww-accent-strong)] px-6 py-3 font-bold text-[var(--ww-accent-ink)] transition hover:opacity-90 disabled:opacity-50"
+            >
+              {!selected ? "Chọn một người để bỏ phiếu" : confirmed ? `✓ Đã gửi phiếu bầu ${selectedName ?? ""}` : `Xác nhận bầu ${selectedName ?? ""}`}
+            </button>
+            <button
+              onClick={skip}
+              disabled={skipped}
+              className={`rounded-md border px-5 py-3 font-semibold transition sm:w-auto ${
+                skipped
+                  ? "border-[var(--ww-accent)] bg-[var(--ww-accent-soft)] text-[var(--ww-accent)]"
+                  : "border-[var(--ww-border)] text-[var(--ww-text-muted)] hover:bg-[var(--ww-surface-soft)] hover:text-[var(--ww-text)]"
+              }`}
+            >
+              {skipped ? "✓ Đã bỏ qua" : "Bỏ qua, không bầu ai"}
+            </button>
+          </div>
           <p className="mt-2 text-center text-xs text-[var(--ww-text-faint)]">
             {selected
               ? "Phiếu đã được ghi nhận — bạn vẫn đổi được đến hết giờ. Bấm lại tên đã chọn để rút phiếu."
-              : "Không chọn ai = bỏ phiếu trắng."}
+              : skipped
+                ? "Bạn đã bỏ phiếu trắng — vẫn có thể chọn một người đến hết giờ."
+                : "Chưa muốn bầu ai? Bấm “Bỏ qua” để bỏ phiếu trắng."}
           </p>
         </>
       ) : (

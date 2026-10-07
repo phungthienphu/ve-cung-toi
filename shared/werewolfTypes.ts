@@ -143,6 +143,9 @@ export interface PublicWerewolfState {
   /** Players who tapped "continue" on the vote-result screen; once every
    * living connected player has, the phase skips its remaining time. */
   resultAckedIds: string[];
+  /** Living players who tapped "sẵn sàng bỏ phiếu" during discussion; once
+   * every living, connected human has, the talk ends early. */
+  readyToVoteIds: string[];
   chat: WerewolfChatEntry[];
   events: WerewolfGameEvent[];
   suspicionStats: SuspicionStatistic[];
@@ -177,12 +180,16 @@ export interface PrivateWerewolfState {
   healAvailable: boolean;
   poisonAvailable: boolean;
   witchDecision: "heal" | "poison" | "skip" | null;
+  /** Who the witch's chosen poison will hit (only set with decision "poison"). */
+  witchPoisonTargetId: string | null;
   seerHistory: SeerResult[];
   suspicionHistory: SuspicionEntry[];
   lastGuardedPlayerId: string | null;
   suspicionTargetId: string | null;
   voteTargetId: string | null;
   voteReason: string;
+  /** Explicitly chose "bỏ qua" (blank ballot) this vote — counts as voted. */
+  voteSkipped: boolean;
   /** Only sent to dead players (spectators): every player's true role. */
   allRoles: Record<string, WerewolfRole> | null;
   /** Tapped "xong" for the current night step (see ack_night). */
@@ -200,9 +207,9 @@ export type WerewolfClientMessage =
   | { type: "set_suspicion"; targetId: string }
   | { type: "witch_decision"; decision: "heal" | "poison" | "skip"; targetId?: string }
   | { type: "cast_vote"; targetId: string | null; reason?: string }
+  | { type: "skip_vote" }
   | { type: "chat"; text: string }
-  | { type: "end_discussion" }
-  | { type: "back_to_discussion" }
+  | { type: "ready_to_vote"; ready: boolean }
   | { type: "ack_night" }
   | { type: "ack_result" }
   | { type: "play_again" }

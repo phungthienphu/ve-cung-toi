@@ -7,6 +7,7 @@ export interface SecretPlayerState {
   suspicionTargetId: string | null;
   voteTargetId: string | null;
   voteReason: string;
+  voteSkipped: boolean;
   nightDone: boolean;
   roleAcknowledged: boolean;
   healAvailable: boolean;
@@ -35,6 +36,7 @@ export function createSecretPlayerState(role: WerewolfRole): SecretPlayerState {
     suspicionTargetId: null,
     voteTargetId: null,
     voteReason: "",
+    voteSkipped: false,
     nightDone: false,
     roleAcknowledged: false,
     healAvailable: true,

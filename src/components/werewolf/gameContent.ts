@@ -129,14 +129,36 @@ export const GAME_CONTENT = {
     witch: {
       victim: (name: string) => `${name} đang bị Sói tấn công`,
       noVictim: "Đêm nay bầy Sói không chọn được nạn nhân",
-      healButton: "Cứu nạn nhân",
-      poisonButton: "Đầu độc người đã chọn",
-      skipButton: "Không làm gì",
+      healTitle: "Bình cứu",
+      poisonTitle: "Bình độc",
+      healButton: (name: string) => `Cứu ${name}`,
+      poisonButton: (name: string) => `Đầu độc ${name}`,
+      skipButton: "Không dùng bình nào đêm nay",
     },
-    lockButton: "Chốt lựa chọn",
-    wolfLockButton: "Khóa mục tiêu",
+    /** The three night steps, in order (nightExplore → wolfLock → nightResolve). */
+    steps: ["Suy nghĩ", "Chốt lựa chọn", "Quyết định cuối"],
+    // What tapping a player card does right now — see pickModeFor in NightScreen.
+    gridLabel: {
+      hunt: "Chọn con mồi cho bầy",
+      see: "Chọn người bạn muốn soi",
+      guard: "Chọn người bạn muốn che chở",
+      suspect: "Ghi chú người bạn đang nghi",
+      poison: "Chọn người nhận bình độc (nếu dùng)",
+    },
+    pickLabel: {
+      hunt: "Đang nhắm",
+      see: "Định soi",
+      guard: "Định bảo vệ",
+      suspect: "Đang nghi",
+      poison: "Mục tiêu độc",
+    },
+    lockedLabel: "Đã chốt",
+    lockButton: "Chốt",
+    wolfLockButton: "Khóa",
     wolfChoicesTitle: "Lựa chọn của bầy",
     wolfThinking: "Đang nghĩ…",
+    ghostTitle: "Bạn đã là hồn ma",
+    ghostDescription: "Ngôi làng đang ngủ. Bạn chỉ có thể dõi theo — đừng tiết lộ điều gì nhé.",
   },
 
   dawn: {
@@ -155,7 +177,8 @@ export const GAME_CONTENT = {
     seerHistoryTitle: "Kết quả soi riêng của bạn",
     wolfResult: "Thuộc phe Sói",
     safeResult: "Không thuộc phe Sói",
-    endButton: "Chuyển sang bỏ phiếu",
+    readyButton: "Sẵn sàng bỏ phiếu",
+    unreadyButton: "✓ Đã sẵn sàng",
   },
 
   voting: {

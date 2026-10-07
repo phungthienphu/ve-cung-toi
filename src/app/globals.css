@@ -158,6 +158,59 @@ body {
   color-scheme: light;
 }
 
+/* ---------- Ma Sói night screen ----------
+   Each role gets its own accent (--ww-role, set via data-role on .ww-night)
+   so the night screen reads as *your* role at a glance. Tints go through
+   color-mix because Tailwind 3 silently drops `/NN` opacity modifiers on
+   var() colors. Night is always the dark theme, so plain hex is fine. */
+.ww-night { --ww-role: #a78bfa; }
+.ww-night[data-role="wolf"] { --ww-role: #fb7185; }
+.ww-night[data-role="guardian"] { --ww-role: #38bdf8; }
+.ww-night[data-role="witch"] { --ww-role: #e879f9; }
+.ww-night[data-role="villager"] { --ww-role: #fbbf24; }
+.ww-night[data-role="ghost"] { --ww-role: #94a3b8; }
+
+.ww-role-text { color: var(--ww-role); }
+.ww-role-border { border-color: color-mix(in srgb, var(--ww-role) 50%, transparent); }
+.ww-role-soft { background-color: color-mix(in srgb, var(--ww-role) 15%, transparent); }
+.ww-role-solid { background-color: var(--ww-role); color: #0b1020; }
+.ww-role-glow { box-shadow: 0 0 0 1px var(--ww-role), 0 0 26px -6px var(--ww-role); }
+
+.ww-night-hero {
+  background:
+    radial-gradient(circle at 92% -20%, color-mix(in srgb, var(--ww-role) 34%, transparent), transparent 58%),
+    radial-gradient(circle 1.5px at 14% 24%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(circle 1px at 31% 70%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(circle 1.5px at 47% 14%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(circle 1px at 63% 58%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(circle 1px at 72% 30%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(circle 1.5px at 86% 82%, rgba(255, 255, 255, 0.5), transparent),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.97));
+}
+
+@keyframes ww-moon-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(254, 240, 138, 0.3)); }
+  50% { filter: drop-shadow(0 0 16px rgba(254, 240, 138, 0.65)); }
+}
+.ww-moon { animation: ww-moon-glow 4s ease-in-out infinite; }
+
+/* Phase countdown bar: duration/delay are set inline from the server's
+   phase timestamps, so it drains in sync with the header's seconds. */
+@keyframes ww-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.ww-drain {
+  transform-origin: left;
+  animation-name: ww-drain;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ww-moon { animation: none; }
+}
+
 /* Brawler weapon-showcase loops (CharacterPreview.tsx's `animate` prop) — one
    per weapon (WEAPON_ANIM_CLASS there), not per BrawlerAttackType: sword is
    the only one that actually reads as a swung weapon, spear/pencil/rod are

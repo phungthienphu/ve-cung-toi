@@ -223,13 +223,13 @@ function PreviewPhase(props: PreviewPhaseProps) {
     case "nightExplore":
     case "wolfLock":
     case "nightResolve":
-      return <NightScreen phase={state.phase} role={role} selfId={self.id} players={state.players} privateState={privateState} send={send} />;
+      return <NightScreen state={state} phase={state.phase} role={role} selfId={self.id} privateState={privateState} send={send} />;
     case "dawn":
-      return <DawnScreen state={state} />;
+      return <DawnScreen state={state} role={role} privateState={privateState} self={self} />;
     case "discussion":
-      return <DiscussionScreen state={state} role={role} privateState={privateState} isHost self={self} send={send} />;
+      return <DiscussionScreen state={state} role={role} privateState={privateState} self={self} send={send} />;
     case "voting":
-      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} initialReason={privateState.voteReason} votedIds={state.votedPlayerIds} isHost teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
+      return <VotingScreen players={state.players} self={self} selected={privateState.voteTargetId} initialReason={privateState.voteReason} skipped={privateState.voteSkipped} votedIds={state.votedPlayerIds} teammateIds={role === "wolf" ? privateState.teammates : undefined} send={send} />;
     case "voteResult":
       return <VoteResultScreen state={state} self={self} send={send} />;
     case "gameEnd":
@@ -282,6 +282,7 @@ function createPublicState(phase: WerewolfPhase, winner: WerewolfTeam): PublicWe
     ],
     votedPlayerIds: ["p1", "p2", "p3", "p5"],
     resultAckedIds: ["p2", "p3"],
+    readyToVoteIds: ["p2", "p4"],
     chat: [
       { id: "c1", playerId: "p2", playerName: "Bình", text: "Tôi thấy Hạnh đổi lời khai từ đầu ngày.", sentAt: Date.now() - 60_000 },
       { id: "c2", playerId: "p1", playerName: "Bạn · An", text: "Tối qua mình cũng đang nghi Hạnh.", sentAt: Date.now() - 40_000 },
@@ -348,6 +349,7 @@ function createPrivateState(role: WerewolfRole): PrivateWerewolfState {
     healAvailable: true,
     poisonAvailable: true,
     witchDecision: null,
+    witchPoisonTargetId: null,
     seerHistory: [
       { night: 1, targetId: "p2", isWolf: true },
       { night: 2, targetId: "p6", isWolf: false },
@@ -361,6 +363,7 @@ function createPrivateState(role: WerewolfRole): PrivateWerewolfState {
     suspicionTargetId: "p6",
     voteTargetId: "p5",
     voteReason: "Đổi lời khai từ đầu ngày, nghe không ổn.",
+    voteSkipped: false,
     allRoles: null,
     nightDone: false,
   };

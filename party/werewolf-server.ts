@@ -42,7 +42,7 @@ export default class WerewolfRoom implements Party.Server {
   lastVotes: WerewolfBallot[] = [];
   resultAcks = new Set<string>();
   botTimers = new Map<ReturnType<typeof setTimeout>, () => void>();
-  discussionResumeMs = 0;
+  discussionReady = new Set<string>();
   phaseStartedAt: number | null = null;
   narrationSeed = 0;
   botClaimed = new Set<string>();
@@ -113,6 +113,8 @@ export default class WerewolfRoom implements Party.Server {
     } else if (this.phase === "voteResult") {
       const voters = connected.filter((player) => player.alive);
       if (voters.length > 0 && voters.every((player) => this.resultAcks.has(player.id))) this.startNight();
+    } else if (this.phase === "discussion" && this.everyoneReadyToVote()) {
+      this.enterPhase("voting", this.config.votingSeconds * 1000);
     }
   }
 
@@ -134,9 +136,9 @@ export default class WerewolfRoom implements Party.Server {
       case "set_suspicion": return this.setSuspicion(sender.id, msg.targetId);
       case "witch_decision": return this.witchDecision(sender.id, msg.decision, msg.targetId);
       case "cast_vote": return this.castVote(sender.id, msg.targetId, msg.reason);
+      case "skip_vote": return this.skipVote(sender.id);
       case "chat": return this.sendChat(sender.id, msg.text);
-      case "end_discussion": return this.endDiscussion(sender);
-      case "back_to_discussion": return this.backToDiscussion(sender);
+      case "ready_to_vote": return this.setReadyToVote(sender.id, msg.ready);
       case "ack_night": return this.ackNight(sender.id);
       case "ack_result": return this.ackResult(sender.id);
       case "play_again": return this.playAgain(sender);
@@ -359,8 +361,24 @@ export default class WerewolfRoom implements Party.Server {
     if (!player?.alive || !secret || targetId === id || (targetId && !this.isLivingTarget(targetId))) return;
     secret.voteTargetId = targetId;
     secret.voteReason = typeof rawReason === "string" ? rawReason.trim().replace(/\s+/g, " ").slice(0, MAX_VOTE_REASON_LENGTH) : "";
+    // Picking someone (or withdrawing) replaces an earlier "bỏ qua".
+    secret.voteSkipped = false;
     this.sendPrivate(id);
     // Public progress ("n/m đã bỏ phiếu") — who has voted, never for whom.
+    this.broadcastState();
+  }
+
+  // A deliberate blank ballot: same outcome as not picking anyone, but it
+  // shows up as "đã bỏ phiếu" so the table isn't left waiting on you.
+  private skipVote(id: string) {
+    if (this.phase !== "voting") return;
+    const player = this.players.get(id);
+    const secret = this.secrets.get(id);
+    if (!player?.alive || !secret) return;
+    secret.voteTargetId = null;
+    secret.voteReason = "";
+    secret.voteSkipped = true;
+    this.sendPrivate(id);
     this.broadcastState();
   }
 
@@ -400,19 +418,20 @@ export default class WerewolfRoom implements Party.Server {
     else this.broadcastState();
   }
 
-  private endDiscussion(sender: Party.Connection) {
-    if (sender.id !== this.hostId || this.phase !== "discussion") return;
-    // Remember what was left so a mis-click can be undone (see backToDiscussion).
-    this.discussionResumeMs = Math.max(0, (this.phaseEndsAt ?? Date.now()) - Date.now());
-    this.enterPhase("voting", this.config.votingSeconds * 1000);
+  // Talk ends early only once every living, connected human has tapped
+  // "sẵn sàng bỏ phiếu" — no single player (host included) can cut the others
+  // off mid-argument. Bots don't hold the table up; the timer still ends it.
+  private setReadyToVote(id: string, ready: boolean) {
+    if (this.phase !== "discussion" || !this.players.get(id)?.alive) return;
+    if (ready) this.discussionReady.add(id);
+    else this.discussionReady.delete(id);
+    if (this.everyoneReadyToVote()) this.enterPhase("voting", this.config.votingSeconds * 1000);
+    else this.broadcastState();
   }
 
-  // Host pressed "chuyển sang bỏ phiếu" by accident: go back to the talk with
-  // the time that was left (at least 30s so it's actually usable). Ballots
-  // already cast are kept.
-  private backToDiscussion(sender: Party.Connection) {
-    if (sender.id !== this.hostId || this.phase !== "voting") return;
-    this.enterPhase("discussion", Math.max(30_000, this.discussionResumeMs));
+  private everyoneReadyToVote() {
+    const waiting = [...this.players.values()].filter((player) => player.alive && player.connected && !player.isBot);
+    return waiting.length > 0 && waiting.every((player) => this.discussionReady.has(player.id));
   }
 
   // Night is long and there's nothing to do for most roles, so everyone can
@@ -442,6 +461,7 @@ export default class WerewolfRoom implements Party.Server {
       secret.witchPoisonTargetId = null;
       secret.voteTargetId = null;
       secret.voteReason = "";
+      secret.voteSkipped = false;
       secret.suspicionTargetId = null;
     }
     this.enterPhase("nightExplore", PHASE_DURATION_MS.nightExplore);
@@ -612,7 +632,7 @@ export default class WerewolfRoom implements Party.Server {
       lock: (id, target) => this.lockTarget(id, target),
       suspect: (id, target) => this.setSuspicion(id, target),
       witch: (id, decision, target) => this.witchDecision(id, decision, target),
-      vote: (id, target, reason) => this.castVote(id, target, reason),
+      vote: (id, target, reason) => (target ? this.castVote(id, target, reason) : this.skipVote(id)),
       ackResult: (id) => this.ackResult(id),
       say: (id, text) => this.botSay(id, text),
       later: (delayMs, fn) => {
@@ -659,6 +679,7 @@ export default class WerewolfRoom implements Party.Server {
     this.phaseStartedAt = Date.now();
     this.narrationSeed = Math.floor(Math.random() * 1_000_000);
     for (const secret of this.secrets.values()) secret.nightDone = false;
+    if (phase === "discussion") this.discussionReady.clear();
     if (this.timer) clearTimeout(this.timer);
     this.phase = phase;
     this.phaseEndsAt = durationMs > 0 ? Date.now() + durationMs : null;
@@ -740,12 +761,14 @@ export default class WerewolfRoom implements Party.Server {
       healAvailable: secret.healAvailable,
       poisonAvailable: secret.poisonAvailable,
       witchDecision: secret.witchDecision,
+      witchPoisonTargetId: secret.witchPoisonTargetId,
       seerHistory: secret.seerHistory,
       suspicionHistory: secret.suspicionHistory,
       lastGuardedPlayerId: secret.lastGuardedPlayerId,
       suspicionTargetId: secret.suspicionTargetId,
       voteTargetId: secret.voteTargetId,
       voteReason: secret.voteReason,
+      voteSkipped: secret.voteSkipped,
       nightDone: secret.nightDone,
       // Ghosts watch the rest of the game knowing who's who — living players
       // never receive this.
@@ -770,9 +793,12 @@ export default class WerewolfRoom implements Party.Server {
       lastVoteResult: this.lastVoteResult,
       lastVotes: this.lastVotes,
       votedPlayerIds: this.phase === "voting"
-        ? [...this.secrets].filter(([id, secret]) => this.players.get(id)?.alive && secret.voteTargetId).map(([id]) => id)
+        ? [...this.secrets].filter(([id, secret]) => this.players.get(id)?.alive && (secret.voteTargetId || secret.voteSkipped)).map(([id]) => id)
         : [],
       resultAckedIds: this.phase === "voteResult" ? [...this.resultAcks] : [],
+      readyToVoteIds: this.phase === "discussion"
+        ? [...this.discussionReady].filter((id) => this.players.get(id)?.alive)
+        : [],
       chat: this.chat,
       events: this.events,
       suspicionStats: this.suspicionStats,
@@ -938,12 +964,14 @@ function emptyPrivateState(): PrivateWerewolfState {
     healAvailable: true,
     poisonAvailable: true,
     witchDecision: null,
+    witchPoisonTargetId: null,
     seerHistory: [],
     suspicionHistory: [],
     lastGuardedPlayerId: null,
     suspicionTargetId: null,
     voteTargetId: null,
     voteReason: "",
+    voteSkipped: false,
     allRoles: null,
     nightDone: false,
   };

@@ -159,23 +159,22 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
       if (!room.privateState?.role) return null;
       return (
         <NightScreen
+          state={state}
           phase={state.phase}
           role={room.privateState.role}
           selfId={playerId}
-          players={state.players}
           privateState={room.privateState}
           send={room.send}
         />
       );
     case "dawn":
-      return <DawnScreen state={state} />;
+      return <DawnScreen state={state} role={room.privateState?.role ?? null} privateState={room.privateState} self={self} />;
     case "discussion":
       return (
         <DiscussionScreen
           state={state}
           role={room.privateState?.role ?? null}
           privateState={room.privateState}
-          isHost={self.isHost}
           self={self}
           send={room.send}
         />
@@ -187,8 +186,8 @@ function PhaseScreen({ playerId, self, room, showingRole, setShowingRole }: Phas
           self={self}
           selected={room.privateState?.voteTargetId ?? null}
           initialReason={room.privateState?.voteReason ?? ""}
+          skipped={room.privateState?.voteSkipped ?? false}
           votedIds={state.votedPlayerIds}
-          isHost={self.isHost}
           teammateIds={room.privateState?.role === "wolf" ? room.privateState.teammates : undefined}
           send={room.send}
         />
