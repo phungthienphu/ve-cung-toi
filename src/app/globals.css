@@ -159,15 +159,12 @@ body {
 }
 
 /* ---------- Ma Sói night screen ----------
-   Each role gets its own accent (--ww-role, set via data-role on .ww-night)
-   so the night screen reads as *your* role at a glance. Tints go through
+   One accent (--ww-role) for every living role, on purpose: a per-role
+   colour would give roles away to anyone glancing at a neighbour's screen.
+   Only ghosts differ, and being dead is public anyway. Tints go through
    color-mix because Tailwind 3 silently drops `/NN` opacity modifiers on
    var() colors. Night is always the dark theme, so plain hex is fine. */
 .ww-night { --ww-role: #a78bfa; }
-.ww-night[data-role="wolf"] { --ww-role: #fb7185; }
-.ww-night[data-role="guardian"] { --ww-role: #38bdf8; }
-.ww-night[data-role="witch"] { --ww-role: #e879f9; }
-.ww-night[data-role="villager"] { --ww-role: #fbbf24; }
 .ww-night[data-role="ghost"] { --ww-role: #94a3b8; }
 
 .ww-role-text { color: var(--ww-role); }

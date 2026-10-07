@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { ROLE_LABELS, type PrivateWerewolfState, type PublicWerewolfState, type WerewolfClientMessage, type WerewolfPhase, type WerewolfPlayer, type WerewolfRole } from "@shared/werewolfTypes";
+import type { PrivateWerewolfState, PublicWerewolfState, WerewolfClientMessage, WerewolfPhase, WerewolfPlayer, WerewolfRole } from "@shared/werewolfTypes";
 import { GAME_CONTENT } from "../gameContent";
-import { PlayerAvatar, RoleArtwork } from "../ui";
+import { PlayerAvatar } from "../ui";
 
 type NightPhase = Extract<WerewolfPhase, "nightExplore" | "wolfLock" | "nightResolve">;
 const NIGHT_STEPS: NightPhase[] = ["nightExplore", "wolfLock", "nightResolve"];
@@ -37,9 +37,9 @@ export function NightScreen({ state, phase, role, selfId, privateState, send }: 
   );
 
   return (
-    <div className="ww-night flex flex-col" data-role={role}>
+    <div className="ww-night flex flex-col">
       <NightHero
-        role={role}
+        ghost={false}
         day={state.day}
         phase={phase}
         title={title}
@@ -69,7 +69,7 @@ export function NightScreen({ state, phase, role, selfId, privateState, send }: 
         onPick={pick}
       />
 
-      {(role === "seer" || role === "guardian") && phase === "nightResolve" && (
+      {phase === "nightResolve" && (
         <SuspicionChips players={state.players} selfId={selfId} selected={privateState.suspicionTargetId} send={send} />
       )}
 
@@ -95,8 +95,11 @@ function pickModeFor(role: WerewolfRole, phase: NightPhase, privateState: Privat
 
 // ---------- Header ----------
 
-function NightHero({ role, day, phase, title, description, startedAt, endsAt }: {
-  role: WerewolfRole | "ghost";
+// Deliberately identical for every role — no role art, no per-role colour.
+// People sitting next to each other (or sharing a screen) can read a colour
+// or a card picture from across the room; text at least needs a close look.
+function NightHero({ ghost, day, phase, title, description, startedAt, endsAt }: {
+  ghost: boolean;
   day: number;
   phase: NightPhase;
   title: string;
@@ -106,18 +109,12 @@ function NightHero({ role, day, phase, title, description, startedAt, endsAt }: 
 }) {
   return (
     <header className="ww-night-hero ww-role-border relative overflow-hidden rounded-xl border p-4 sm:p-5">
-      <span className="ww-moon pointer-events-none absolute right-4 top-3 text-2xl sm:text-3xl" aria-hidden>🌙</span>
       <div className="flex items-start gap-4">
-        {role === "ghost" ? (
-          <span className="ww-role-border flex h-24 w-[4.25rem] shrink-0 items-center justify-center rounded-lg border bg-[var(--ww-surface-soft)] text-4xl sm:h-28 sm:w-20" aria-hidden>👻</span>
-        ) : (
-          <RoleArtwork role={role} className="ww-role-glow h-24 w-[4.25rem] shrink-0 rounded-lg object-cover object-top sm:h-28 sm:w-20" />
-        )}
-        <div className="min-w-0 flex-1 pr-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em]">
-            <span className="ww-role-text">{role === "ghost" ? "Hồn ma" : ROLE_LABELS[role]}</span>
-            <span className="text-[var(--ww-text-faint)]"> · Đêm {day}</span>
-          </p>
+        <span className="ww-role-border flex h-14 w-14 shrink-0 items-center justify-center rounded-full border bg-[var(--ww-surface-soft)] text-3xl sm:h-16 sm:w-16" aria-hidden>
+          <span className={ghost ? "" : "ww-moon"}>{ghost ? "👻" : "🌙"}</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="ww-role-text text-[11px] font-bold uppercase tracking-[0.2em]">Đêm {day}</p>
           <h2 className="mt-1.5 font-ww-display text-xl font-bold leading-snug text-[var(--ww-text)] sm:text-2xl">{title}</h2>
           <p className="mt-1 text-sm leading-relaxed text-[var(--ww-text-muted)]">{description}</p>
         </div>
@@ -339,7 +336,7 @@ function WitchPanel({ players, selfId, privateState, canSelfSave, send }: {
       <PotionCard
         icon="🧪"
         title={content.healTitle}
-        color="var(--ww-safe)"
+        color="var(--ww-role)"
         available={privateState.healAvailable}
         chosen={decision === "heal"}
         player={victim}
@@ -352,7 +349,7 @@ function WitchPanel({ players, selfId, privateState, canSelfSave, send }: {
       <PotionCard
         icon="☠️"
         title={content.poisonTitle}
-        color="var(--ww-danger)"
+        color="var(--ww-role)"
         available={privateState.poisonAvailable}
         chosen={decision === "poison"}
         player={poisoned ?? picked}
@@ -446,8 +443,9 @@ function witchTitle(victimId: string | null, players: WerewolfPlayer[]): string 
 
 // ---------- Seer / guardian suspicion note ----------
 
-// The seer's and guardian's taps are spent on their ability, so their private
-// "who do I suspect" note gets its own row on the last step.
+// Shown to every role on the last step, even those whose grid already sets
+// the note — if only the seer and guardian had this row, its presence alone
+// would narrow down who they are.
 function SuspicionChips({ players, selfId, selected, send }: { players: WerewolfPlayer[]; selfId: string; selected: string | null; send: Send }) {
   return (
     <section className="mt-5 rounded-lg border border-[var(--ww-border)] bg-[var(--ww-warn-soft)] p-3">
@@ -618,7 +616,7 @@ function GhostNight({ state, phase }: { state: PublicWerewolfState; phase: Night
   return (
     <div className="ww-night" data-role="ghost">
       <NightHero
-        role="ghost"
+        ghost
         day={state.day}
         phase={phase}
         title={GAME_CONTENT.night.ghostTitle}

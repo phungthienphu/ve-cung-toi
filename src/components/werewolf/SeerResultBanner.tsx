@@ -17,18 +17,14 @@ export function SeerResultBanner({ result, players, compact = false }: { result:
   const target = players.find((player) => player.id === result.targetId);
   const targetName = target?.name ?? "Một người chơi";
   const verdict = result.isWolf ? content.wolfResult : content.safeResult;
-  // Tailwind 3 drops `/NN` opacity on var() colors, so tint via color-mix.
-  const color = result.isWolf ? "var(--ww-danger)" : "var(--ww-safe)";
-  const tone = {
-    borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
-    backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
-    boxShadow: result.isWolf ? `0 0 24px -8px ${color}` : undefined,
-  };
+  // The box itself stays neutral: a big red/green panel would tell anyone
+  // glancing over that this player is the seer (and what they found).
+  const tone = "border-[var(--ww-border-strong)] bg-[var(--ww-accent-soft)]";
   const verdictColor = result.isWolf ? "text-[var(--ww-danger)]" : "text-[var(--ww-safe)]";
 
   if (compact) {
     return (
-      <section style={tone} className="flex items-center gap-2.5 rounded-md border px-3 py-2 text-left">
+      <section className={`flex items-center gap-2.5 rounded-md border px-3 py-2 text-left ${tone}`}>
         <span aria-hidden>🔮</span>
         {target && <PlayerAvatar player={target} size="sm" />}
         <p className="min-w-0 flex-1 text-sm text-[var(--ww-text)]">
@@ -42,7 +38,7 @@ export function SeerResultBanner({ result, players, compact = false }: { result:
   }
 
   return (
-    <section style={tone} className="animate-death-banner rounded-xl border p-5 text-center sm:p-6">
+    <section className={`animate-death-banner rounded-xl border p-5 text-center sm:p-6 ${tone}`}>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--ww-accent)]">
         🔮 Kết quả soi đêm {result.night} · chỉ mình bạn thấy
       </p>
