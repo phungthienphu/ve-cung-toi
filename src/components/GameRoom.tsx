@@ -168,7 +168,7 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
 
   return (
     <div className={`${drawFontClass} bg-game-scene min-h-app`}>
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-4 md:px-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4 px-3 py-4 md:px-6">
       {state.topic && (
         <div className="-mb-2 flex items-center justify-center gap-1.5 text-xs text-ink/50">
           <span className="font-semibold uppercase tracking-wide text-ink/40">Chủ đề đêm nay:</span>
@@ -201,7 +201,13 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
         )}
       </button>
 
-      <div className="grid min-w-0 flex-1 gap-4 md:grid-cols-[220px_1fr_260px] md:items-stretch">
+      {/* Guessers get a slimmer player list so the board (and with it the
+          whole row) can be bigger; the drawer keeps the roomier one. */}
+      <div
+        className={`grid min-w-0 flex-1 gap-4 md:items-stretch ${
+          isDrawerRole ? "md:grid-cols-[220px_1fr_260px]" : "md:grid-cols-[170px_1fr_260px]"
+        }`}
+      >
         {/* The middle column (board + toolbar) sets the row height; the side
             columns are size-contained so they just stretch to match it and
             scroll inside, instead of leaving a gap under a shorter board. */}

@@ -12,7 +12,9 @@ import { SHAPE_TOOLS, type ClientMessage, type DrawTool, type StrokePoint, type 
 import type { GameRoomHandle } from "@/lib/useGameRoom";
 
 const CANVAS_W = 900;
-const CANVAS_H = 560;
+// 4:3 — taller than the old 900×560 so the board doesn't look squat in the
+// middle column. Coordinates are absolute, so old strokes still land right.
+const CANVAS_H = 675;
 const SEND_THROTTLE_MS = 40;
 const SETTINGS_KEY = "vct_draw_tools";
 const MIN_SIZE = 2;
@@ -409,7 +411,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, Props>(function DrawingCan
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      {/* Full column width at the canvas's real 900×560 ratio. It used to be
+      {/* Full column width at the canvas's real 4:3 ratio. It used to be
           stretched to fill a fixed-height box, so a square on the drawer's
           screen (shorter box, toolbar below) showed up as a tall rectangle
           for everyone else. */}
