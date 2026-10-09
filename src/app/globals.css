@@ -208,6 +208,181 @@ body {
   .ww-moon { animation: none; }
 }
 
+/* ---------- Quái Máy Tính (math boss) ----------
+   Arena backdrop for the tutor's shared screen and the students' phones,
+   plus the boss's moods. The boss itself is plain HTML/CSS (no sprites). */
+.bg-mathboss {
+  background-color: #140f2e;
+  background-image:
+    radial-gradient(ellipse at 50% -10%, rgba(168, 85, 247, 0.35), transparent 55%),
+    radial-gradient(ellipse at 8% 110%, rgba(34, 211, 238, 0.18), transparent 60%),
+    linear-gradient(180deg, #1b1442 0%, #140f2e 60%, #0d0a20 100%);
+  background-attachment: fixed;
+}
+
+@keyframes mb-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.mb-float { animation: mb-float 3s ease-in-out infinite; }
+
+@keyframes mb-hit {
+  0% { transform: translateX(0); filter: brightness(1); }
+  15% { transform: translateX(-14px) rotate(-4deg); filter: brightness(1.8) saturate(0.4); }
+  35% { transform: translateX(12px) rotate(3deg); }
+  55% { transform: translateX(-8px) rotate(-1deg); filter: brightness(1.2); }
+  75% { transform: translateX(5px); }
+  100% { transform: translateX(0); filter: brightness(1); }
+}
+.mb-hit { animation: mb-hit 0.55s ease-out; }
+
+@keyframes mb-taunt {
+  0%, 100% { transform: scale(1) rotate(0); }
+  30% { transform: scale(1.06) rotate(-3deg); }
+  60% { transform: scale(1.06) rotate(3deg); }
+}
+.mb-taunt { animation: mb-taunt 0.6s ease-in-out 2; }
+
+@keyframes mb-defeat {
+  0% { transform: rotate(0) translateY(0); opacity: 1; }
+  30% { transform: rotate(6deg) translateY(-10px); opacity: 1; }
+  100% { transform: rotate(-20deg) translateY(50px) scale(0.85); opacity: 0.35; filter: grayscale(1); }
+}
+.mb-defeat { animation: mb-defeat 1.4s ease-in forwards; }
+
+@keyframes mb-damage {
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  15% { transform: translate(-50%, -8px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+}
+.mb-damage { animation: mb-damage 1.8s ease-out forwards; }
+
+@keyframes mb-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+.mb-blink { animation: mb-blink 4s infinite; transform-origin: center; }
+
+@keyframes mb-cursor { 50% { opacity: 0; } }
+.mb-cursor { animation: mb-cursor 0.8s steps(1) infinite; }
+
+/* Side-on battle: heroes on the left, shots fly right. Positions are set
+   inline as --from / --to (percent of the arena) and --dur. */
+@keyframes mb-hero-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.mb-hero-idle { animation: mb-hero-idle 1.6s ease-in-out infinite; }
+
+@keyframes mb-hero-cheer {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-22px); }
+  60% { transform: translateY(-22px) rotate(-4deg); }
+}
+.mb-hero-cheer { animation: mb-hero-cheer 0.9s ease-in-out infinite; }
+
+@keyframes mb-shot-hit {
+  0% { left: var(--from); opacity: 1; }
+  92% { left: var(--to); opacity: 1; }
+  100% { left: var(--to); opacity: 0; }
+}
+.mb-shot-hit { animation: mb-shot-hit var(--dur) linear forwards; }
+
+@keyframes mb-shot-miss {
+  0% { left: var(--from); transform: translateY(0) rotate(0); opacity: 1; }
+  65% { left: var(--to); transform: translateY(6px) rotate(10deg); opacity: 1; }
+  100% { left: var(--to); transform: translateY(80px) rotate(75deg); opacity: 0; }
+}
+.mb-shot-miss { animation: mb-shot-miss var(--dur) ease-in forwards; }
+
+/* ---------- Battle scene v2: cartoon mobile-game look ---------- */
+@keyframes mb2-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-140px); }
+}
+.mb2-drift-slow { animation: mb2-drift 60s linear infinite alternate; }
+.mb2-drift-fast { animation: mb2-drift 38s linear infinite alternate-reverse; }
+
+@keyframes mb2-spin { to { transform: rotate(360deg); } }
+.mb2-sun-rays { transform-box: fill-box; transform-origin: center; animation: mb2-spin 40s linear infinite; }
+
+/* Monster walk cycle: legs swing from the hip, body bobs. */
+@keyframes mb2-leg {
+  0%, 100% { transform: rotate(14deg); }
+  50% { transform: rotate(-14deg); }
+}
+.mb2-leg-a, .mb2-leg-b { transform-box: fill-box; transform-origin: 50% 0%; }
+.mb2-walking .mb2-leg-a { animation: mb2-leg 0.7s ease-in-out infinite; }
+.mb2-walking .mb2-leg-b { animation: mb2-leg 0.7s ease-in-out infinite reverse; }
+@keyframes mb2-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.mb2-walking .mb2-body { animation: mb2-bob 0.35s ease-in-out infinite; }
+@keyframes mb2-arm {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(10deg); }
+}
+.mb2-arm { transform-box: fill-box; transform-origin: 85% 50%; }
+.mb2-walking .mb2-arm { animation: mb2-arm 0.7s ease-in-out infinite; }
+
+@keyframes mb2-faint {
+  0% { transform: rotate(0) translateY(0); }
+  25% { transform: rotate(8deg) translateY(-16px); }
+  100% { transform: rotate(-80deg) translateY(20px); }
+}
+.mb2-faint { animation: mb2-faint 1.3s cubic-bezier(0.5, 0, 0.7, 1) forwards; transform-origin: 30% 100%; }
+
+@keyframes mb2-burst {
+  0% { transform: translate(-50%, 50%) scale(0.2) rotate(0); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(-50%, 50%) scale(1.35) rotate(25deg); opacity: 0; }
+}
+.mb2-burst { animation: mb2-burst 0.5s ease-out forwards; }
+
+@keyframes mb2-spark {
+  0% { transform: translate(-50%, 50%) translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, 50%) translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+}
+.mb2-spark { animation: mb2-spark 0.65s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+
+@keyframes mb2-pop {
+  0% { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
+  18% { transform: translate(-50%, -14px) scale(1.25); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+}
+.mb2-pop { animation: mb2-pop 1.3s ease-out forwards; }
+
+.mb2-outline-text {
+  -webkit-text-stroke: 7px #2b1d3a;
+  paint-order: stroke fill;
+}
+
+@keyframes mb2-combo {
+  0% { transform: translate(-50%, -50%) translateX(-120%) skewX(-18deg) scale(0.8); opacity: 0; }
+  20% { transform: translate(-50%, -50%) translateX(0) skewX(-8deg) scale(1.1); opacity: 1; }
+  75% { transform: translate(-50%, -50%) translateX(0) skewX(-8deg) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translateX(120%) skewX(-18deg) scale(0.9); opacity: 0; }
+}
+.mb2-combo { animation: mb2-combo 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+@keyframes mb2-orb {
+  0% { left: var(--from); transform: translate(-50%, 50%) scale(0.4); }
+  25% { transform: translate(-50%, 50%) scale(1.2); }
+  100% { left: var(--to); transform: translate(-50%, 50%) scale(1); }
+}
+.mb2-orb { animation: mb2-orb 0.6s cubic-bezier(0.5, 0, 0.9, 0.6) forwards; }
+
+@keyframes mb2-stars { to { transform: rotate(360deg); } }
+.mb2-dizzy { animation: mb2-stars 1.4s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mb-float, .mb-taunt, .mb-blink, .mb-hit, .mb-hero-idle, .mb-hero-cheer,
+  .mb2-drift-slow, .mb2-drift-fast, .mb2-sun-rays, .mb2-dizzy { animation: none; }
+  .mb2-walking .mb2-leg-a, .mb2-walking .mb2-leg-b, .mb2-walking .mb2-body, .mb2-walking .mb2-arm { animation: none; }
+}
+
 /* Brawler weapon-showcase loops (CharacterPreview.tsx's `animate` prop) — one
    per weapon (WEAPON_ANIM_CLASS there), not per BrawlerAttackType: sword is
    the only one that actually reads as a swung weapon, spear/pencil/rod are

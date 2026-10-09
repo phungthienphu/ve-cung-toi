@@ -12,7 +12,8 @@
     "werewolf": "party/werewolf-server.ts",
     "werewolflobby": "party/werewolf-directory.ts",
     "battleship": "party/battleship-server.ts",
-    "battleshiplobby": "party/battleship-directory.ts"
+    "battleshiplobby": "party/battleship-directory.ts",
+    "mathboss": "party/mathboss-server.ts"
   },
   "compatibilityDate": "2024-11-01"
 }

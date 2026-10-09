@@ -69,6 +69,17 @@ const GAMES: GameCard[] = [
     border: "border-cyan-300",
     button: "from-sky-600 to-cyan-500",
   },
+  {
+    href: "/math-quest",
+    emoji: "🧮",
+    title: "Math Quest",
+    description: "Lớp học toán 8–9: sổ tay bài học, luyện tập và cùng nhau hạ Quái Máy Tính.",
+    tag: "Học toán",
+    players: "Lớp của gia sư",
+    gradient: "from-fuchsia-500 via-violet-600 to-indigo-700",
+    border: "border-fuchsia-300",
+    button: "from-violet-600 to-fuchsia-500",
+  },
 ];
 
 export default function GamePickerPage() {
