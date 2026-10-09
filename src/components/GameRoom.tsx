@@ -236,10 +236,6 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
               send={send}
             />
           </div>
-
-          {state.status === "roundEnd" && (
-            <RoundEndPanel word={state.revealedWord} snapshot={snapshot} />
-          )}
         </div>
 
         <div className="order-3 hidden min-w-0 md:block md:min-h-[360px] md:[contain:size]">
@@ -275,6 +271,10 @@ export default function GameRoom({ roomId, playerId, name }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {state.status === "roundEnd" && (
+        <RoundEndPopup key={state.round} word={state.revealedWord} snapshot={snapshot} nextAt={state.phaseEndsAt} />
       )}
 
       {isDrawerRole && wordChoices && (
@@ -416,7 +416,14 @@ function WordChoiceModal({ choices, deadline, onChoose }: { choices: string[]; d
   );
 }
 
-function RoundEndPanel({ word, snapshot }: { word: string | null; snapshot: string | null }) {
+// A popup over everything rather than a panel under the board: the board
+// column sets the whole row's height, so a panel below it pushed the room
+// down every round. Keyed by round in the caller, so closing it only lasts
+// for this reveal.
+function RoundEndPopup({ word, snapshot, nextAt }: { word: string | null; snapshot: string | null; nextAt: number | null }) {
+  const [open, setOpen] = useState(true);
+  const seconds = Math.ceil(useCountdown(nextAt) / 1000);
+
   async function handleCopy() {
     if (!snapshot) return;
     try {
@@ -428,32 +435,55 @@ function RoundEndPanel({ word, snapshot }: { word: string | null; snapshot: stri
     }
   }
 
+  if (!open) return null;
+
   return (
-    <div className={`${drawFontClass} mt-3 flex flex-col items-center gap-3 rounded-xl border border-cream-200 bg-white p-4 text-center shadow-xl`}>
-      <p className="text-lg text-ink/80">
-        Đáp án là: <span className="font-draw-display font-semibold text-clay-600">{word}</span>
-      </p>
-      {snapshot && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={snapshot} alt="Tranh vừa vẽ" className="max-h-40 rounded-lg border border-cream-200" />
-          <div className="flex flex-wrap justify-center gap-2">
-            <a
-              href={snapshot}
-              download={`ve-cung-toi-${Date.now()}.png`}
-              className="rounded-lg bg-clay-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm shadow-clay-500/30 transition hover:bg-clay-600"
-            >
-              Tải về
-            </a>
-            <button
-              onClick={handleCopy}
-              className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm font-medium text-ink/70 transition hover:border-clay-500 hover:text-clay-600"
-            >
-              Sao chép
-            </button>
-          </div>
-        </>
-      )}
+    <div className={`${drawFontClass} fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4`} onClick={() => setOpen(false)}>
+      <div
+        className="animate-bounce-in relative flex w-full max-w-sm flex-col items-center gap-3 rounded-xl border border-cream-200 bg-white p-5 text-center shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          onClick={() => setOpen(false)}
+          aria-label="Đóng"
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg text-ink/40 transition hover:bg-cream-50 hover:text-ink"
+        >
+          ✕
+        </button>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">⏰ Hết lượt!</p>
+        {word ? (
+          <p className="text-ink/70">
+            Đáp án là
+            <span className="mt-1 block font-draw-display text-3xl font-bold text-clay-600">{word}</span>
+          </p>
+        ) : (
+          <p className="font-draw-display text-lg font-semibold text-ink/70">Chưa có từ nào được chọn</p>
+        )}
+        {/* Only with a word: a turn that timed out while choosing never
+            refreshes the snapshot, so it would still be last round's drawing. */}
+        {snapshot && word && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={snapshot} alt="Tranh vừa vẽ" className="max-h-48 w-full rounded-lg border border-cream-200 object-contain" />
+            <div className="flex gap-2">
+              <a
+                href={snapshot}
+                download={`ve-cung-toi-${Date.now()}.png`}
+                className="rounded-lg bg-clay-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm shadow-clay-500/30 transition hover:bg-clay-600"
+              >
+                Tải về
+              </a>
+              <button
+                onClick={handleCopy}
+                className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm font-medium text-ink/70 transition hover:border-clay-500 hover:text-clay-600"
+              >
+                Sao chép
+              </button>
+            </div>
+          </>
+        )}
+        {seconds > 0 && <p className="text-xs text-ink/40">Lượt tiếp theo sau {seconds}s</p>}
+      </div>
     </div>
   );
 }
