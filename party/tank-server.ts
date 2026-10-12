@@ -1,4 +1,5 @@
-import type * as Party from "partykit/server";
+import { Server, getServerByName, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   AMMO_MAX_ROUNDS,
   BULLET_SIZE,
@@ -81,7 +82,7 @@ import {
 } from "./tank/skills";
 import type { InputState } from "./tank/types";
 
-export default class TankRoom implements Party.Server {
+export class TankRoom extends Server<Env> {
   players = new Map<string, TankPlayer>();
   inputs = new Map<string, InputState>();
   lastShotAt = new Map<string, number>();
@@ -129,13 +130,11 @@ export default class TankRoom implements Party.Server {
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   static readonly DISCONNECT_GRACE_MS = 8000;
 
-  constructor(readonly party: Party.Party) {}
-
   private get map(): TankMapDef {
     return getMap(this.mapId);
   }
 
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     // Roster first: a brand-new connection has no locally-cached
     // name/color/team for anyone yet, and the per-tick state that follows no
     // longer carries them (see PublicTankPlayer).
@@ -143,7 +142,7 @@ export default class TankRoom implements Party.Server {
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
     player.connected = false;
@@ -172,7 +171,7 @@ export default class TankRoom implements Party.Server {
     this.broadcastState();
   }
 
-  onMessage(message: string, sender: Party.Connection) {
+  onMessage(sender: Connection, message: string) {
     let msg: TankClientMessage;
     try {
       msg = JSON.parse(message);
@@ -219,7 +218,7 @@ export default class TankRoom implements Party.Server {
     return a <= b ? "A" : "B";
   }
 
-  private handleChooseTeam(team: Team, sender: Party.Connection) {
+  private handleChooseTeam(team: Team, sender: Connection) {
     if (this.status !== "lobby") return;
     const player = this.players.get(sender.id);
     if (!player) return;
@@ -231,7 +230,7 @@ export default class TankRoom implements Party.Server {
   /** Re-picking a tank mid-lobby — same "no duplicates enforced" rule as the
    * initial join color already had, so this doesn't need any new collision
    * handling either. Lobby-only, like choosing a team. */
-  private handleChooseColor(color: string, sender: Party.Connection) {
+  private handleChooseColor(color: string, sender: Connection) {
     if (this.status !== "lobby") return;
     if (!TANK_COLORS.includes(color)) return;
     const player = this.players.get(sender.id);
@@ -241,14 +240,14 @@ export default class TankRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleSetMode(mode: TankRoomMode, sender: Party.Connection) {
+  private handleSetMode(mode: TankRoomMode, sender: Connection) {
     if (this.status !== "lobby" || sender.id !== this.hostId) return;
     this.mode = mode;
     this.broadcastState();
     this.reportToDirectory();
   }
 
-  private handleJoin(playerId: string, name: string, color: string, sender: Party.Connection) {
+  private handleJoin(playerId: string, name: string, color: string, sender: Connection) {
     const cleanName = name.trim().slice(0, 20) || "Người chơi";
     let player = this.players.get(playerId);
 
@@ -337,7 +336,7 @@ export default class TankRoom implements Party.Server {
     this.reportToDirectory();
   }
 
-  private handleStartGame(mapId: string, sender: Party.Connection) {
+  private handleStartGame(mapId: string, sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status === "playing") return;
     const connected = [...this.players.values()].filter((p) => p.connected);
@@ -435,7 +434,7 @@ export default class TankRoom implements Party.Server {
     this.reportToDirectory();
   }
 
-  private handleEndGame(sender: Party.Connection) {
+  private handleEndGame(sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status !== "playing" || this.mode !== "practice") return;
     this.status = "lobby";
@@ -459,7 +458,7 @@ export default class TankRoom implements Party.Server {
     this.reportToDirectory();
   }
 
-  private handlePlayAgain(sender: Party.Connection) {
+  private handlePlayAgain(sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status !== "ended") return;
     this.status = "lobby";
@@ -485,7 +484,7 @@ export default class TankRoom implements Party.Server {
 
   private handleInput(
     msg: { up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number },
-    sender: Party.Connection
+    sender: Connection
   ) {
     const player = this.players.get(sender.id);
     if (!player) return;
@@ -514,7 +513,7 @@ export default class TankRoom implements Party.Server {
     return player.weaponJammedUntil !== null && player.weaponJammedUntil > Date.now();
   }
 
-  private handleShoot(sender: Party.Connection, big: boolean) {
+  private handleShoot(sender: Connection, big: boolean) {
     const player = this.players.get(sender.id);
     if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const skin = skinForColor(player.color);
@@ -613,7 +612,7 @@ export default class TankRoom implements Party.Server {
    * by a normal "shoot" message). A single tap, no holding required. The
    * client is expected to only send this for a charge-mode skin, but this
    * re-checks server-side to be safe. */
-  private handleChargeUltimate(sender: Party.Connection) {
+  private handleChargeUltimate(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const skin = skinForColor(player.color);
@@ -627,7 +626,7 @@ export default class TankRoom implements Party.Server {
    * world point the client picked entirely on its own — there's no prior
    * "start targeting" message for this mode (see ULTIMATE_ACTIVATION_MODE),
    * so this is the only place server-side that skin's skill is triggered. */
-  private handleThrowBomb(x: number, y: number, sender: Party.Connection) {
+  private handleThrowBomb(x: number, y: number, sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const skin = skinForColor(player.color);
@@ -636,7 +635,7 @@ export default class TankRoom implements Party.Server {
     this.redBarrages.push(throwRedBomb(player, x, y, Date.now()));
   }
 
-  private handleUseItem(kind: ItemKind, sender: Party.Connection) {
+  private handleUseItem(kind: ItemKind, sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player || !player.alive || this.status !== "playing" || this.isStunned(player) || this.isWeaponJammed(player)) return;
     const slot = player.items.indexOf(kind);
@@ -683,7 +682,7 @@ export default class TankRoom implements Party.Server {
     player.items = player.items.filter((_, i) => i !== slot);
   }
 
-  private handleLeaveRoom(sender: Party.Connection) {
+  private handleLeaveRoom(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
     this.players.delete(sender.id);
@@ -774,7 +773,7 @@ export default class TankRoom implements Party.Server {
 
   private publicState(): TankPublicState {
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       status: this.status,
       mode: this.mode,
       hostId: this.hostId,
@@ -801,7 +800,7 @@ export default class TankRoom implements Party.Server {
 
   private broadcastState() {
     const state = this.publicState();
-    this.party.broadcast(JSON.stringify({ type: "state", state } satisfies TankServerMessage));
+    this.broadcast(JSON.stringify({ type: "state", state } satisfies TankServerMessage));
     // Every connected client now has exactly this — the next delta tick can
     // diff against it directly.
     this.lastSentPlayers = new Map(state.players.map((p) => [p.id, p]));
@@ -855,7 +854,7 @@ export default class TankRoom implements Party.Server {
       matchEndsAt: this.matchEndsAt,
       serverNow: Date.now(),
     };
-    this.party.broadcast(JSON.stringify({ type: "state_delta", delta } satisfies TankServerMessage));
+    this.broadcast(JSON.stringify({ type: "state_delta", delta } satisfies TankServerMessage));
     this.lastSentPlayers = new Map(players.map((p) => [p.id, p]));
     this.lastSentMonsters = new Map(monsters.map((m) => [m.id, m]));
   }
@@ -874,7 +873,7 @@ export default class TankRoom implements Party.Server {
    * color, or team (join, choose_team, choose_color, leave) — never from the
    * per-tick loop, unlike broadcastState. See PublicTankPlayer's doc. */
   private broadcastRoster() {
-    this.party.broadcast(JSON.stringify(this.rosterMessage()));
+    this.broadcast(JSON.stringify(this.rosterMessage()));
   }
 
   /** Pushes this room's current listing-relevant state (player count, mode,
@@ -885,14 +884,13 @@ export default class TankRoom implements Party.Server {
    * shown; the directory itself filters that on read. */
   private reportToDirectory() {
     const listing: TankRoomListing = {
-      roomId: this.party.id,
+      roomId: this.name,
       playerCount: [...this.players.values()].filter((p) => p.connected).length,
       mode: this.mode,
       status: this.status,
     };
-    this.party.context.parties["tanklobby"]
-      .get("main")
-      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
+    getServerByName(this.env.Tanklobby, "main")
+      .then((lobby) => lobby.fetch("https://lobby/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) }))
       .catch(() => {});
   }
 
@@ -902,7 +900,7 @@ export default class TankRoom implements Party.Server {
    * matchEndsAt, so this is only ever reached for a real ffa/team match. */
   private async saveGameHistory() {
     try {
-      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      const base = this.env.NEXT_APP_URL;
       if (!base) return;
       const players = [...this.players.values()];
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
@@ -910,7 +908,7 @@ export default class TankRoom implements Party.Server {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           gameType: "tank",
-          roomId: this.party.id,
+          roomId: this.name,
           players: players.map((p) => ({ name: p.name, score: p.score })),
           mode: this.mode,
           winnerName: this.winnerId ? (this.players.get(this.winnerId)?.name ?? null) : null,

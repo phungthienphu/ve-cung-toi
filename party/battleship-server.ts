@@ -1,4 +1,5 @@
-import type * as Party from "partykit/server";
+import { Server, getServerByName, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   DEFAULT_BATTLESHIP_CONFIG,
   MAX_BATTLESHIP_PLAYERS,
@@ -57,7 +58,7 @@ const cellName = (cell: number, size: number) => {
   return `${COLS[x]}${y + 1}`;
 };
 
-export default class BattleshipRoom implements Party.Server {
+export class BattleshipRoom extends Server<Env> {
   players = new Map<string, BattleshipPlayer>();
   hostId: string | null = null;
   config: BattleshipConfig = { ...DEFAULT_BATTLESHIP_CONFIG };
@@ -83,19 +84,17 @@ export default class BattleshipRoom implements Party.Server {
   historyReported = false;
   lastListingKey = "";
 
-  constructor(readonly party: Party.Party) {}
-
   // ---------- connection ----------
 
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
     // A refresh opens the new socket before the old one closes — not a leave.
-    if ([...this.party.getConnections()].some((other) => other.id === connection.id)) return;
+    if ([...this.getConnections()].some((other) => other.id === connection.id)) return;
     player.connected = false;
     player.disconnectedUntil = Date.now() + RECONNECT_GRACE_MS;
     const old = this.disconnectTimers.get(player.id);
@@ -106,7 +105,7 @@ export default class BattleshipRoom implements Party.Server {
     this.recheckProgress();
   }
 
-  onMessage(raw: string, sender: Party.Connection) {
+  onMessage(sender: Connection, raw: string) {
     let msg: BattleshipClientMessage;
     try {
       msg = JSON.parse(raw);
@@ -131,7 +130,7 @@ export default class BattleshipRoom implements Party.Server {
     }
   }
 
-  private join(playerId: string, name: string, sender: Party.Connection) {
+  private join(playerId: string, name: string, sender: Connection) {
     if (sender.id !== playerId) return this.sendError(sender, "Phiên người chơi không hợp lệ.");
     const cleanName = String(name ?? "").trim().slice(0, 20) || "Thuyền trưởng";
     let player = this.players.get(playerId);
@@ -238,7 +237,7 @@ export default class BattleshipRoom implements Party.Server {
     }
   }
 
-  private updateConfig(sender: Party.Connection, incoming: BattleshipConfig) {
+  private updateConfig(sender: Connection, incoming: BattleshipConfig) {
     if (sender.id !== this.hostId || this.phase !== "lobby") return;
     const mode = incoming.mode === "ffa" || incoming.mode === "team" ? incoming.mode : "solo";
     this.config = {
@@ -261,14 +260,14 @@ export default class BattleshipRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private shuffleTeams(sender: Party.Connection) {
+  private shuffleTeams(sender: Connection) {
     if (sender.id !== this.hostId || this.phase !== "lobby") return;
     const humans = shuffled(this.humans());
     humans.forEach((player, index) => { player.team = index % 2 === 0 ? "A" : "B"; });
     this.broadcastState();
   }
 
-  private startGame(sender: Party.Connection) {
+  private startGame(sender: Connection) {
     if (sender.id !== this.hostId || this.phase !== "lobby") return;
     const mode = this.config.mode;
     const humans = this.humans().filter((player) => player.connected);
@@ -700,7 +699,7 @@ export default class BattleshipRoom implements Party.Server {
     return rows;
   }
 
-  private playAgain(sender: Party.Connection) {
+  private playAgain(sender: Connection) {
     if (sender.id !== this.hostId || this.phase !== "gameEnd") return;
     this.resetMatchState();
     this.removeBots();
@@ -742,7 +741,7 @@ export default class BattleshipRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private leave(sender: Party.Connection) {
+  private leave(sender: Connection) {
     const player = this.players.get(sender.id);
     if (player && this.phase === "lobby") {
       this.players.delete(sender.id);
@@ -913,7 +912,7 @@ export default class BattleshipRoom implements Party.Server {
     const aimCounts: Record<string, number> = {};
     if (this.config.mode === "ffa") for (const board of this.boards.values()) aimCounts[board.id] = this.aimCount(board.id);
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       phase: this.phase,
       config: this.config,
       hostId: this.hostId,
@@ -966,7 +965,7 @@ export default class BattleshipRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.party.broadcast(JSON.stringify(this.stateMessage()));
+    this.broadcast(JSON.stringify(this.stateMessage()));
     this.reportToDirectory();
   }
 
@@ -976,7 +975,7 @@ export default class BattleshipRoom implements Party.Server {
   // its own).
   private sendPrivate(id: string) {
     const message = JSON.stringify({ type: "private_state", state: this.privateState(id) } satisfies BattleshipServerMessage);
-    for (const connection of this.party.getConnections()) if (connection.id === id) connection.send(message);
+    for (const connection of this.getConnections()) if (connection.id === id) connection.send(message);
   }
 
   private sendAllPrivate() {
@@ -997,12 +996,12 @@ export default class BattleshipRoom implements Party.Server {
     } else this.sendPrivate(id);
   }
 
-  private sendError(connection: Party.Connection, message: string) {
+  private sendError(connection: Connection, message: string) {
     connection.send(JSON.stringify({ type: "error", message } satisfies BattleshipServerMessage));
   }
 
   private sendErrorTo(id: string, message: string) {
-    const connection = [...this.party.getConnections()].find((candidate) => candidate.id === id);
+    const connection = [...this.getConnections()].find((candidate) => candidate.id === id);
     if (connection) this.sendError(connection, message);
   }
 
@@ -1010,7 +1009,7 @@ export default class BattleshipRoom implements Party.Server {
     const humans = this.humans().filter((player) => player.connected);
     const host = this.hostId ? this.players.get(this.hostId) : undefined;
     const listing: BattleshipRoomListing = {
-      roomId: this.party.id,
+      roomId: this.name,
       hostName: host?.name ?? "",
       playerCount: humans.length,
       maxPlayers: MAX_BATTLESHIP_PLAYERS,
@@ -1020,9 +1019,8 @@ export default class BattleshipRoom implements Party.Server {
     const key = JSON.stringify(listing);
     if (key === this.lastListingKey) return;
     this.lastListingKey = key;
-    this.party.context.parties["battleshiplobby"]
-      .get("main")
-      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: key })
+    getServerByName(this.env.Battleshiplobby, "main")
+      .then((lobby) => lobby.fetch("https://lobby/", { method: "POST", headers: { "content-type": "application/json" }, body: key }))
       .catch(() => {});
   }
 
@@ -1031,7 +1029,7 @@ export default class BattleshipRoom implements Party.Server {
     this.historyReported = true;
     if ([...this.players.values()].some((player) => player.isBot)) return; // bot games are practice
     try {
-      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      const base = this.env.NEXT_APP_URL;
       if (!base) return;
       const players = [...this.players.values()];
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
@@ -1039,7 +1037,7 @@ export default class BattleshipRoom implements Party.Server {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           gameType: "battleship",
-          roomId: this.party.id,
+          roomId: this.name,
           players: players.map((player) => ({ name: player.name, score: player.sinks })),
           mode: this.config.mode,
           winnerName: this.winnerTeam ? null : this.winnerIds.map((id) => this.players.get(id)?.name).join(", ") || null,

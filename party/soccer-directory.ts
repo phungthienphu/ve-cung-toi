@@ -3,7 +3,8 @@
 // list joinable rooms without a room code. See that file's doc for the full
 // reasoning (not gameplay-critical, safe to lose on hibernation).
 
-import type * as Party from "partykit/server";
+import { Server, type Connection } from "partyserver";
+import type { Env } from "./env";
 import type { SoccerRoomListing } from "../shared/soccerTypes";
 
 const STALE_MS = 10 * 60 * 1000;
@@ -12,12 +13,10 @@ interface StoredEntry extends SoccerRoomListing {
   updatedAt: number;
 }
 
-export default class SoccerDirectory implements Party.Server {
+export class SoccerDirectory extends Server<Env> {
   rooms = new Map<string, StoredEntry>();
 
-  constructor(readonly party: Party.Party) {}
-
-  async onRequest(req: Party.Request): Promise<Response> {
+  async onRequest(req: Request): Promise<Response> {
     if (req.method === "POST") {
       const body = (await req.json()) as Partial<SoccerRoomListing> & { roomId?: string };
       if (!body.roomId) return new Response("missing roomId", { status: 400 });

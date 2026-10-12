@@ -1,4 +1,5 @@
-import type * as Party from "partykit/server";
+import { Server, getServerByName, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   DEFAULT_WEREWOLF_CONFIG,
   MAX_VOTE_REASON_LENGTH,
@@ -29,7 +30,7 @@ import {
   type SecretPlayerState,
 } from "./werewolf/domain";
 
-export default class WerewolfRoom implements Party.Server {
+export class WerewolfRoom extends Server<Env> {
   players = new Map<string, WerewolfPlayer>();
   secrets = new Map<string, SecretPlayerState>();
   hostId: string | null = null;
@@ -59,18 +60,16 @@ export default class WerewolfRoom implements Party.Server {
   matchStartedAt: number | null = null;
   historyReported = false;
 
-  constructor(readonly party: Party.Party) {}
-
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
     // A refresh opens the new socket before the old one's close arrives —
     // that's not a disconnect, so don't start a countdown for it.
-    if ([...this.party.getConnections()].some((other) => other.id === connection.id)) return;
+    if ([...this.getConnections()].some((other) => other.id === connection.id)) return;
     player.connected = false;
     player.disconnectedUntil = Date.now() + RECONNECT_GRACE_MS;
     const old = this.disconnectTimers.get(player.id);
@@ -118,7 +117,7 @@ export default class WerewolfRoom implements Party.Server {
     }
   }
 
-  onMessage(raw: string, sender: Party.Connection) {
+  onMessage(sender: Connection, raw: string) {
     let msg: WerewolfClientMessage;
     try {
       msg = JSON.parse(raw);
@@ -146,11 +145,11 @@ export default class WerewolfRoom implements Party.Server {
     }
   }
 
-  private sendError(conn: Party.Connection, message: string) {
+  private sendError(conn: Connection, message: string) {
     conn.send(JSON.stringify({ type: "error", message } satisfies WerewolfServerMessage));
   }
 
-  private join(playerId: string, name: string, sender: Party.Connection) {
+  private join(playerId: string, name: string, sender: Connection) {
     if (sender.id !== playerId) return this.sendError(sender, "Phiên người chơi không hợp lệ.");
     let player = this.players.get(playerId);
     if (!player) {
@@ -227,7 +226,7 @@ export default class WerewolfRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private updateConfig(sender: Party.Connection, incoming: WerewolfConfig) {
+  private updateConfig(sender: Connection, incoming: WerewolfConfig) {
     if (sender.id !== this.hostId || this.phase !== "lobby") return;
     this.config = {
       discussionSeconds: Math.min(300, Math.max(60, Math.round(incoming.discussionSeconds) || 120)),
@@ -239,7 +238,7 @@ export default class WerewolfRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private startGame(sender: Party.Connection) {
+  private startGame(sender: Connection) {
     if (sender.id !== this.hostId || this.phase !== "lobby") return;
     const humans = [...this.players.values()].filter(p => p.connected && !p.isBot);
     const botTotal = Math.max(0, Math.min(this.config.botCount, MAX_WEREWOLF_PLAYERS - humans.length));
@@ -690,7 +689,7 @@ export default class WerewolfRoom implements Party.Server {
     scheduleBotPhase(this.botHost(), this.botActions(), phase, durationMs);
   }
 
-  private playAgain(sender: Party.Connection) {
+  private playAgain(sender: Connection) {
     if (sender.id !== this.hostId || this.phase !== "gameEnd") return;
     this.phase = "lobby";
     this.day = 0;
@@ -716,7 +715,7 @@ export default class WerewolfRoom implements Party.Server {
     this.sendAllPrivate();
   }
 
-  private leave(sender: Party.Connection) {
+  private leave(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
     if (this.phase === "lobby") {
@@ -780,7 +779,7 @@ export default class WerewolfRoom implements Party.Server {
 
   private publicState(): PublicWerewolfState {
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       phase: this.phase,
       day: this.day,
       hostId: this.hostId,
@@ -812,7 +811,7 @@ export default class WerewolfRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.party.broadcast(JSON.stringify(this.stateMessage()));
+    this.broadcast(JSON.stringify(this.stateMessage()));
     this.reportToDirectory();
   }
 
@@ -824,7 +823,7 @@ export default class WerewolfRoom implements Party.Server {
     const connected = [...this.players.values()].filter((player) => player.connected && !player.isBot);
     const host = this.hostId ? this.players.get(this.hostId) : undefined;
     const listing = {
-      roomId: this.party.id,
+      roomId: this.name,
       hostName: host?.name ?? "",
       playerCount: connected.length,
       maxPlayers: MAX_WEREWOLF_PLAYERS,
@@ -833,9 +832,8 @@ export default class WerewolfRoom implements Party.Server {
     const key = JSON.stringify(listing);
     if (key === this.lastListingKey) return;
     this.lastListingKey = key;
-    this.party.context.parties["werewolflobby"]
-      .get("main")
-      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: key })
+    getServerByName(this.env.Werewolflobby, "main")
+      .then((lobby) => lobby.fetch("https://lobby/", { method: "POST", headers: { "content-type": "application/json" }, body: key }))
       .catch(() => {});
   }
 
@@ -846,7 +844,7 @@ export default class WerewolfRoom implements Party.Server {
       type: "private_state",
       state: this.privateState(id),
     } satisfies WerewolfServerMessage);
-    for (const connection of this.party.getConnections()) if (connection.id === id) connection.send(message);
+    for (const connection of this.getConnections()) if (connection.id === id) connection.send(message);
   }
 
   private sendAllPrivate() {
@@ -866,7 +864,7 @@ export default class WerewolfRoom implements Party.Server {
     if ([...this.players.values()].some((player) => player.isBot)) return;
 
     try {
-      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      const base = this.env.NEXT_APP_URL;
       if (!base) return;
       const winningRole = this.winner;
       const detail = [...this.players.values()].map((player) => {
@@ -887,7 +885,7 @@ export default class WerewolfRoom implements Party.Server {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           gameType: "werewolf",
-          roomId: this.party.id,
+          roomId: this.name,
           players: detail.map((player) => ({ name: player.name, score: player.won ? 1 : 0 })),
           mode: `${detail.length} người · ${this.day} ngày`,
           winningTeam: this.winner,

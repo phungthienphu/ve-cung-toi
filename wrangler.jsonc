@@ -1,0 +1,37 @@
+// Realtime rooms on Cloudflare Workers + Durable Objects (PartyServer).
+// Replaces partykit.json. Binding names are the party names clients use in
+// /parties/:party/:room — keep them stable. Adding, renaming or removing a
+// room class needs a new entry in "migrations".
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ve-cung-toi",
+  "main": "party/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "Main", "class_name": "GameRoom" },
+      { "name": "Drawlobby", "class_name": "DrawDirectory" },
+      { "name": "Tanks", "class_name": "TankRoom" },
+      { "name": "Tanklobby", "class_name": "TankDirectory" },
+      { "name": "Brawler", "class_name": "BrawlerRoom" },
+      { "name": "Soccer", "class_name": "SoccerRoom" },
+      { "name": "Soccerlobby", "class_name": "SoccerDirectory" },
+      { "name": "Werewolf", "class_name": "WerewolfRoom" },
+      { "name": "Werewolflobby", "class_name": "WerewolfDirectory" },
+      { "name": "Battleship", "class_name": "BattleshipRoom" },
+      { "name": "Battleshiplobby", "class_name": "BattleshipDirectory" },
+      { "name": "Mathboss", "class_name": "MathBossRoom" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "GameRoom", "DrawDirectory", "TankRoom", "TankDirectory", "BrawlerRoom", "SoccerRoom",
+        "SoccerDirectory", "WerewolfRoom", "WerewolfDirectory", "BattleshipRoom", "BattleshipDirectory", "MathBossRoom"
+      ]
+    }
+  ],
+  "observability": { "enabled": true }
+}

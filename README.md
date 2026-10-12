@@ -44,25 +44,34 @@ scripts/seed.ts          # Seed bộ từ mặc định vào MongoDB
 
    Lưu ý: PartyKit dùng bộ từ mặc định được bundle sẵn trong `shared/wordlists.ts` để chơi (không phụ thuộc DB lúc realtime), nên **không seed vẫn chơi được** — bước này chỉ để lưu bản ghi vào MongoDB.
 
-4. Chạy song song cả Next.js dev server và PartyKit dev server:
+4. Chạy song song cả Next.js dev server và server realtime (PartyServer):
 
    ```bash
    npm run dev
    ```
 
-   Lệnh này chạy đồng thời `next dev` (http://localhost:3000) và `partykit dev` (ws://127.0.0.1:1999). Mở http://localhost:3000, tạo phòng, mở thêm 1-2 tab/trình duyệt khác để test đồng bộ vẽ + đoán chữ theo thời gian thực.
+   Lệnh này chạy đồng thời `next dev` (http://localhost:3000) và `wrangler dev` (ws://127.0.0.1:1999). Mở http://localhost:3000, tạo phòng, mở thêm 1-2 tab/trình duyệt khác để test đồng bộ vẽ + đoán chữ theo thời gian thực.
 
    Nếu muốn chạy riêng từng server: `npm run dev:next` và `npm run dev:party`.
 
 ## Deploy
 
-### PartyKit
+### Server realtime (PartyServer trên Cloudflare Workers)
+
+Các phòng chơi realtime chạy bằng [PartyServer](https://github.com/cloudflare/partykit) trên Cloudflare Workers + Durable Objects, gói miễn phí là đủ. Nền tảng PartyKit hosted (`*.partykit.dev`) đóng cửa ngày 23/10/2026. Cấu hình nằm trong `wrangler.jsonc`, điểm vào là `party/index.ts`.
 
 ```bash
-npm run party:deploy
+npx wrangler login        # lần đầu: đăng nhập tài khoản Cloudflare
+npm run party:deploy      # = wrangler deploy
 ```
 
-Lệnh này (chạy `partykit deploy`) sẽ hỏi đăng nhập PartyKit (Cloudflare) lần đầu, sau đó deploy `party/server.ts` lên `https://ve-cung-toi.<username>.partykit.dev`. Nếu bạn muốn PartyKit tự lưu lịch sử ván đấu vào MongoDB qua API `/api/game-history` của app đã deploy, set biến môi trường `NEXT_APP_URL` cho PartyKit project (qua PartyKit dashboard hoặc `partykit env add`) trỏ tới domain Vercel của bạn.
+Lệnh deploy in ra địa chỉ dạng `ve-cung-toi.<subdomain>.workers.dev`. Để server tự lưu lịch sử ván đấu vào MongoDB qua `/api/game-history`, đặt `NEXT_APP_URL` trỏ tới domain Vercel:
+
+```bash
+npx wrangler secret put NEXT_APP_URL
+```
+
+Lưu ý: `postinstall` chạy `patch-package` để áp bản vá trong `patches/` cho `partyserver` (giữ kết nối mới khi người chơi tải lại trang). Nâng phiên bản `partyserver` thì phải làm lại bản vá.
 
 ### Next.js (Vercel)
 
@@ -70,12 +79,12 @@ Lệnh này (chạy `partykit deploy`) sẽ hỏi đăng nhập PartyKit (Cloudf
 2. Thêm biến môi trường:
    - `MONGODB_URI` — connection string MongoDB Atlas.
    - `MONGODB_DB_NAME` — chỉ cần nếu connection string không có tên database sẵn trong path.
-   - `NEXT_PUBLIC_PARTYKIT_HOST` — domain PartyKit đã deploy ở trên (không có `https://`, ví dụ `ve-cung-toi.<username>.partykit.dev`).
+   - `NEXT_PUBLIC_PARTYKIT_HOST` — domain server realtime đã deploy ở trên (không có `https://`, ví dụ `ve-cung-toi.<subdomain>.workers.dev`).
 3. Deploy.
 
 ### MongoDB Atlas
 
-Tạo cluster free tier, tạo database user, whitelist IP `0.0.0.0/0` (hoặc IP cụ thể của Vercel/PartyKit nếu muốn chặt hơn), lấy connection string dán vào `MONGODB_URI`.
+Tạo cluster free tier, tạo database user, whitelist IP `0.0.0.0/0` (hoặc IP cụ thể của Vercel nếu muốn chặt hơn), lấy connection string dán vào `MONGODB_URI`.
 
 ## Luồng chơi
 

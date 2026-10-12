@@ -1,0 +1,13 @@
+diff --git a/node_modules/partyserver/dist/index.js b/node_modules/partyserver/dist/index.js
+index d2fd914..ca88ff9 100644
+--- a/node_modules/partyserver/dist/index.js
++++ b/node_modules/partyserver/dist/index.js
+@@ -206,7 +206,7 @@ var InMemoryConnectionManager = class {
+ 			configurable: true
+ 		});
+ 		const removeConnection = () => {
+-			this.#connections.delete(connection.id);
++			if (this.#connections.get(connection.id) === connection) this.#connections.delete(connection.id);
+ 			connection.removeEventListener("close", removeConnection);
+ 			connection.removeEventListener("error", removeConnection);
+ 		};

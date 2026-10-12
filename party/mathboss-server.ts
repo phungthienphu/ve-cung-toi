@@ -1,4 +1,5 @@
-import type * as Party from "partykit/server";
+import { Server, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   COMBO_BONUS,
   DAMAGE_PER_CORRECT,
@@ -45,7 +46,7 @@ const SHOT_FLIGHT_MS = 900;
 // starts each wave after going over the formulas, and settles the final vote.
 // Inside a wave, rounds run on their own timers. Each round every student
 // gets their own question from their own grade.
-export default class MathBossRoom implements Party.Server {
+export class MathBossRoom extends Server<Env> {
   players = new Map<string, MathBossPlayer>();
   hostId: string | null = null;
   phase: MathBossPhase = "lobby";
@@ -75,15 +76,13 @@ export default class MathBossRoom implements Party.Server {
   chosenTeamName: string | null = null;
   timer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(readonly party: Party.Party) {}
-
   // ---------- connection ----------
 
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     // A refresh opens the new socket before the old one closes — not a leave.
     if (this.isOnline(connection.id)) return;
     if (connection.id === this.hostId) return;
@@ -97,7 +96,7 @@ export default class MathBossRoom implements Party.Server {
     this.maybeEndRoundEarly();
   }
 
-  onMessage(raw: string, sender: Party.Connection) {
+  onMessage(sender: Connection, raw: string) {
     let msg: MathBossClientMessage;
     try {
       msg = JSON.parse(raw);
@@ -124,7 +123,7 @@ export default class MathBossRoom implements Party.Server {
     }
   }
 
-  private join(playerId: string, rawName: string, grade: Grade, role: "host" | "player", sender: Party.Connection) {
+  private join(playerId: string, rawName: string, grade: Grade, role: "host" | "player", sender: Connection) {
     if (sender.id !== playerId) return this.sendError(sender, "Phiên kết nối không hợp lệ.");
 
     if (role === "host") {
@@ -189,7 +188,7 @@ export default class MathBossRoom implements Party.Server {
   // ---------- host flow ----------
 
   /** The tutor's choice of dạng (per grade, in wave order), questions per wave and opening show. */
-  private configure(sender: Party.Connection, raw: MathBossConfig) {
+  private configure(sender: Connection, raw: MathBossConfig) {
     if (this.phase !== "lobby" && this.phase !== "pick") return this.sendError(sender, "Chỉ đổi nội dung trận được trước khi bắt đầu.");
     const topics = {} as Record<Grade, TopicId[]>;
     for (const grade of GRADES) {
@@ -206,7 +205,7 @@ export default class MathBossRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private next(sender: Party.Connection) {
+  private next(sender: Connection) {
     switch (this.phase) {
       case "lobby":
         if (this.players.size === 0) return this.sendError(sender, "Chưa có học sinh nào vào phòng.");
@@ -415,7 +414,7 @@ export default class MathBossRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private finishVote(sender: Party.Connection) {
+  private finishVote(sender: Connection) {
     if (!this.chosenTheme) {
       const tally = new Map<ThemeId, number>();
       for (const theme of this.themeVotes.values()) tally.set(theme, (tally.get(theme) ?? 0) + 1);
@@ -457,7 +456,7 @@ export default class MathBossRoom implements Party.Server {
   // ---------- helpers ----------
 
   private isOnline(id: string) {
-    return [...this.party.getConnections()].some((connection) => connection.id === id);
+    return [...this.getConnections()].some((connection) => connection.id === id);
   }
 
   private clearTimer() {
@@ -465,7 +464,7 @@ export default class MathBossRoom implements Party.Server {
     this.timer = null;
   }
 
-  private sendError(connection: Party.Connection, message: string) {
+  private sendError(connection: Connection, message: string) {
     connection.send(JSON.stringify({ type: "error", message } satisfies MathBossServerMessage));
   }
 
@@ -486,7 +485,7 @@ export default class MathBossRoom implements Party.Server {
       }
     }
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       phase: this.phase,
       players: [...this.players.values()],
       config: this.config,
@@ -517,6 +516,6 @@ export default class MathBossRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.party.broadcast(JSON.stringify(this.stateMessage()));
+    this.broadcast(JSON.stringify(this.stateMessage()));
   }
 }

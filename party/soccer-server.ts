@@ -1,4 +1,5 @@
-import type * as Party from "partykit/server";
+import { Server, getServerByName, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   SOCCER_BOOST_MAX_ENERGY,
   SOCCER_FIELD_H,
@@ -55,7 +56,7 @@ const EMPTY_BALL = (): SoccerBall => ({
 // for kickoff — stepReferee takes over from there, trailing the ball.
 const START_REFEREE = (): SoccerReferee => ({ x: SOCCER_FIELD_W / 2, y: SOCCER_FIELD_H / 2 - 60, angle: Math.PI / 2, moving: false });
 
-export default class SoccerRoom implements Party.Server {
+export class SoccerRoom extends Server<Env> {
   players = new Map<string, SoccerPlayer>();
   inputs = new Map<string, InputState>();
   ball: SoccerBall = EMPTY_BALL();
@@ -80,13 +81,11 @@ export default class SoccerRoom implements Party.Server {
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   static readonly DISCONNECT_GRACE_MS = 8000;
 
-  constructor(readonly party: Party.Party) {}
-
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
     player.connected = false;
@@ -125,7 +124,7 @@ export default class SoccerRoom implements Party.Server {
     }
   }
 
-  onMessage(message: string, sender: Party.Connection) {
+  onMessage(sender: Connection, message: string) {
     let msg: SoccerClientMessage;
     try {
       msg = JSON.parse(message);
@@ -174,7 +173,7 @@ export default class SoccerRoom implements Party.Server {
     return null;
   }
 
-  private handleJoin(playerId: string, name: string, sender: Party.Connection) {
+  private handleJoin(playerId: string, name: string, sender: Connection) {
     const cleanName = name.trim().slice(0, 20) || "Người chơi";
     let player = this.players.get(playerId);
 
@@ -227,7 +226,7 @@ export default class SoccerRoom implements Party.Server {
     this.reportToDirectory();
   }
 
-  private handleChooseTeam(team: SoccerTeam, sender: Party.Connection) {
+  private handleChooseTeam(team: SoccerTeam, sender: Connection) {
     if (this.status !== "lobby") return;
     const player = this.players.get(sender.id);
     if (!player || player.team === team) return;
@@ -236,14 +235,14 @@ export default class SoccerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleSetTeamSize(teamSize: SoccerTeamSize, sender: Party.Connection) {
+  private handleSetTeamSize(teamSize: SoccerTeamSize, sender: Connection) {
     if (this.status !== "lobby" || sender.id !== this.hostId) return;
     this.teamSize = teamSize;
     this.broadcastState();
     this.reportToDirectory();
   }
 
-  private handleSetBotFill(enabled: boolean, difficulty: SoccerBotDifficulty, sender: Party.Connection) {
+  private handleSetBotFill(enabled: boolean, difficulty: SoccerBotDifficulty, sender: Connection) {
     if (this.status !== "lobby" || sender.id !== this.hostId) return;
     this.botFillEnabled = enabled;
     this.botDifficulty = difficulty;
@@ -292,7 +291,7 @@ export default class SoccerRoom implements Party.Server {
     this.kickoffUntil = Date.now() + SOCCER_KICKOFF_FREEZE_MS;
   }
 
-  private handleStartGame(sender: Party.Connection) {
+  private handleStartGame(sender: Connection) {
     if (sender.id !== this.hostId || this.status === "playing") return;
     const aCount = this.teamCount("A");
     const bCount = this.teamCount("B");
@@ -343,7 +342,7 @@ export default class SoccerRoom implements Party.Server {
     this.reportToDirectory();
   }
 
-  private handlePlayAgain(sender: Party.Connection) {
+  private handlePlayAgain(sender: Connection) {
     if (sender.id !== this.hostId || this.status !== "ended") return;
     this.status = "lobby";
     this.matchEndsAt = null;
@@ -362,7 +361,7 @@ export default class SoccerRoom implements Party.Server {
     this.reportToDirectory();
   }
 
-  private handleLeaveRoom(sender: Party.Connection) {
+  private handleLeaveRoom(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
     this.players.delete(sender.id);
@@ -381,7 +380,7 @@ export default class SoccerRoom implements Party.Server {
 
   private handleInput(
     msg: { up: boolean; down: boolean; left: boolean; right: boolean; boost: boolean; aimAngle?: number },
-    sender: Party.Connection
+    sender: Connection
   ) {
     if (!this.players.get(sender.id)) return;
     this.inputs.set(sender.id, {
@@ -401,14 +400,14 @@ export default class SoccerRoom implements Party.Server {
     return this.ball.controllerId === null && Math.hypot(this.ball.x - player.x, this.ball.y - player.y) <= SOCCER_DRIBBLE_RADIUS;
   }
 
-  private handleKickStart(sender: Party.Connection) {
+  private handleKickStart(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player || player.sentOff || this.status !== "playing" || this.isFrozen()) return;
     if (this.ball.controllerId !== player.id && !this.canVolley(player)) return;
     player.kickChargeStartedAt = Date.now();
   }
 
-  private handleKickRelease(sender: Party.Connection) {
+  private handleKickRelease(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player || player.kickChargeStartedAt === null) return;
     const chargedMs = Date.now() - player.kickChargeStartedAt;
@@ -426,7 +425,7 @@ export default class SoccerRoom implements Party.Server {
     applyKick(this, player, speed, Date.now());
   }
 
-  private handleTackle(sender: Party.Connection) {
+  private handleTackle(sender: Connection) {
     const tackler = this.players.get(sender.id);
     if (!tackler || tackler.sentOff || this.status !== "playing" || this.isFrozen()) return;
     const now = Date.now();
@@ -547,7 +546,7 @@ export default class SoccerRoom implements Party.Server {
 
   private publicState(): SoccerPublicState {
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       status: this.status,
       hostId: this.hostId,
       teamSize: this.teamSize,
@@ -574,21 +573,20 @@ export default class SoccerRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.party.broadcast(JSON.stringify(this.stateMessage()));
+    this.broadcast(JSON.stringify(this.stateMessage()));
   }
 
   /** Same nice-to-have listing pattern as tank-directory.ts — fire-and-forget,
    * nothing gameplay-critical depends on it. */
   private reportToDirectory() {
     const listing: SoccerRoomListing = {
-      roomId: this.party.id,
+      roomId: this.name,
       playerCount: [...this.players.values()].filter((p) => p.connected).length,
       teamSize: this.teamSize,
       status: this.status,
     };
-    this.party.context.parties["soccerlobby"]
-      .get("main")
-      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
+    getServerByName(this.env.Soccerlobby, "main")
+      .then((lobby) => lobby.fetch("https://lobby/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) }))
       .catch(() => {});
   }
 
@@ -598,7 +596,7 @@ export default class SoccerRoom implements Party.Server {
    * running out (tick()) and a forfeit (checkForfeit()). */
   private async saveGameHistory() {
     try {
-      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      const base = this.env.NEXT_APP_URL;
       if (!base) return;
       const players = [...this.players.values()];
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
@@ -606,7 +604,7 @@ export default class SoccerRoom implements Party.Server {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           gameType: "soccer",
-          roomId: this.party.id,
+          roomId: this.name,
           players: players.map((p) => ({ name: p.name, score: p.goals })),
           mode: `${this.teamSize}v${this.teamSize}`,
           winningTeam: this.winningTeam,

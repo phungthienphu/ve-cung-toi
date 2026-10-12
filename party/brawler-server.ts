@@ -8,7 +8,8 @@
 // →weapon→headgear→team→"start" flow can be built and tested end-to-end
 // against a real server before any of that lands.
 
-import type * as Party from "partykit/server";
+import { Server, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   BRAWLER_CHARACTERS,
   BRAWLER_HEADGEAR_OPTIONS,
@@ -36,7 +37,7 @@ function isValidHeadgear(v: string): v is BrawlerHeadgear {
   return (BRAWLER_HEADGEAR_OPTIONS as readonly string[]).includes(v);
 }
 
-export default class BrawlerRoom implements Party.Server {
+export class BrawlerRoom extends Server<Env> {
   players = new Map<string, BrawlerPlayer>();
   hostId: string | null = null;
   status: BrawlerRoomStatus = "lobby";
@@ -45,13 +46,11 @@ export default class BrawlerRoom implements Party.Server {
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   static readonly DISCONNECT_GRACE_MS = 8000;
 
-  constructor(readonly party: Party.Party) {}
-
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
     player.connected = false;
@@ -78,7 +77,7 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  onMessage(message: string, sender: Party.Connection) {
+  onMessage(sender: Connection, message: string) {
     let msg: BrawlerClientMessage;
     try {
       msg = JSON.parse(message);
@@ -117,7 +116,7 @@ export default class BrawlerRoom implements Party.Server {
     return a <= b ? "A" : "B";
   }
 
-  private handleJoin(playerId: string, name: string, sender: Party.Connection) {
+  private handleJoin(playerId: string, name: string, sender: Connection) {
     const cleanName = name.trim().slice(0, 20) || "Người chơi";
     let player = this.players.get(playerId);
 
@@ -160,7 +159,7 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleChooseCharacter(character: string, sender: Party.Connection) {
+  private handleChooseCharacter(character: string, sender: Connection) {
     if (this.status !== "lobby" || !isValidCharacter(character)) return;
     const player = this.players.get(sender.id);
     if (!player) return;
@@ -169,7 +168,7 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleChooseWeapon(weapon: string, sender: Party.Connection) {
+  private handleChooseWeapon(weapon: string, sender: Connection) {
     if (this.status !== "lobby" || !isValidWeapon(weapon)) return;
     const player = this.players.get(sender.id);
     if (!player) return;
@@ -178,7 +177,7 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleChooseHeadgear(headgear: string, sender: Party.Connection) {
+  private handleChooseHeadgear(headgear: string, sender: Connection) {
     if (this.status !== "lobby" || !isValidHeadgear(headgear)) return;
     const player = this.players.get(sender.id);
     if (!player) return;
@@ -186,7 +185,7 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleChooseTeam(team: BrawlerTeam, sender: Party.Connection) {
+  private handleChooseTeam(team: BrawlerTeam, sender: Connection) {
     if (this.status !== "lobby") return;
     const player = this.players.get(sender.id);
     if (!player) return;
@@ -194,13 +193,13 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleSetMode(mode: BrawlerRoomMode, sender: Party.Connection) {
+  private handleSetMode(mode: BrawlerRoomMode, sender: Connection) {
     if (this.status !== "lobby" || sender.id !== this.hostId) return;
     this.mode = mode;
     this.broadcastState();
   }
 
-  private handleStartGame(sender: Party.Connection) {
+  private handleStartGame(sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status === "playing") return;
     const connected = [...this.players.values()].filter((p) => p.connected);
@@ -221,14 +220,14 @@ export default class BrawlerRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handlePlayAgain(sender: Party.Connection) {
+  private handlePlayAgain(sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status !== "ended" && this.status !== "playing") return;
     this.status = "lobby";
     this.broadcastState();
   }
 
-  private handleLeaveRoom(sender: Party.Connection) {
+  private handleLeaveRoom(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
     this.players.delete(sender.id);
@@ -243,7 +242,7 @@ export default class BrawlerRoom implements Party.Server {
 
   private publicState(): BrawlerPublicState {
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       status: this.status,
       mode: this.mode,
       hostId: this.hostId,
@@ -256,6 +255,6 @@ export default class BrawlerRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.party.broadcast(JSON.stringify(this.stateMessage()));
+    this.broadcast(JSON.stringify(this.stateMessage()));
   }
 }

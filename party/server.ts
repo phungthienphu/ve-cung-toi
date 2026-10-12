@@ -1,4 +1,5 @@
-import type * as Party from "partykit/server";
+import { Server, getServerByName, type Connection } from "partyserver";
+import type { Env } from "./env";
 import {
   DEFAULT_ROOM_CONFIG,
   MAX_PLAYERS,
@@ -49,7 +50,7 @@ function makeId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export default class GameRoom implements Party.Server {
+export class GameRoom extends Server<Env> {
   players = new Map<string, Player>();
   hostId: string | null = null;
   status: RoomStatus = "lobby";
@@ -85,16 +86,14 @@ export default class GameRoom implements Party.Server {
   disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   static readonly DISCONNECT_GRACE_MS = 8000;
 
-  constructor(readonly party: Party.Party) {}
-
   // ---------- connection lifecycle ----------
 
-  onConnect(connection: Party.Connection) {
+  onConnect(connection: Connection) {
     // Player is registered on the "join" message so we know their name.
     connection.send(JSON.stringify(this.stateMessage()));
   }
 
-  onClose(connection: Party.Connection) {
+  onClose(connection: Connection) {
     const player = this.players.get(connection.id);
     if (!player) return;
     player.connected = false;
@@ -131,7 +130,7 @@ export default class GameRoom implements Party.Server {
     this.broadcastState();
   }
 
-  onMessage(message: string, sender: Party.Connection) {
+  onMessage(sender: Connection, message: string) {
     let parsed: ClientMessage;
     try {
       parsed = JSON.parse(message);
@@ -147,7 +146,7 @@ export default class GameRoom implements Party.Server {
 
   // ---------- message handling ----------
 
-  private handleMessage(msg: ClientMessage, sender: Party.Connection) {
+  private handleMessage(msg: ClientMessage, sender: Connection) {
     switch (msg.type) {
       case "join":
         return this.handleJoin(msg.playerId, msg.name, sender);
@@ -180,7 +179,7 @@ export default class GameRoom implements Party.Server {
     }
   }
 
-  private handleJoin(playerId: string, name: string, sender: Party.Connection) {
+  private handleJoin(playerId: string, name: string, sender: Connection) {
     const cleanName = name.trim().slice(0, 20) || "Người chơi";
     let player = this.players.get(playerId);
 
@@ -234,7 +233,7 @@ export default class GameRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleStartGame(config: RoomConfig, sender: Party.Connection) {
+  private handleStartGame(config: RoomConfig, sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status !== "lobby" && this.status !== "gameEnd") return;
     const connected = [...this.players.values()].filter((p) => p.connected);
@@ -283,45 +282,45 @@ export default class GameRoom implements Party.Server {
     this.ensureTicking();
   }
 
-  private handleChooseWord(word: string, sender: Party.Connection) {
+  private handleChooseWord(word: string, sender: Connection) {
     if (this.status !== "choosing" || sender.id !== this.drawerId) return;
     if (!this.wordChoices.includes(word)) return;
     this.beginDrawingPhase(word);
   }
 
-  private handleStroke(segment: StrokeSegment, sender: Party.Connection) {
+  private handleStroke(segment: StrokeSegment, sender: Connection) {
     if (this.status !== "playing" || sender.id !== this.drawerId) return;
     this.strokes.push(segment);
-    this.broadcast({ type: "stroke", segment }, [sender.id]);
+    this.broadcastMessage({ type: "stroke", segment }, [sender.id]);
   }
 
-  private handleStrokePoint(strokeId: string, point: { x: number; y: number }, sender: Party.Connection) {
+  private handleStrokePoint(strokeId: string, point: { x: number; y: number }, sender: Connection) {
     if (this.status !== "playing" || sender.id !== this.drawerId) return;
     const seg = this.strokes.find((s) => s.strokeId === strokeId);
     if (seg) seg.points.push(point);
-    this.broadcast({ type: "stroke_point", strokeId, point }, [sender.id]);
+    this.broadcastMessage({ type: "stroke_point", strokeId, point }, [sender.id]);
   }
 
-  private handleStrokeEnd(strokeId: string, sender: Party.Connection) {
+  private handleStrokeEnd(strokeId: string, sender: Connection) {
     if (this.status !== "playing" || sender.id !== this.drawerId) return;
-    this.broadcast({ type: "stroke_end", strokeId }, [sender.id]);
+    this.broadcastMessage({ type: "stroke_end", strokeId }, [sender.id]);
   }
 
-  private handleClearCanvas(sender: Party.Connection) {
+  private handleClearCanvas(sender: Connection) {
     if (this.status !== "playing" || sender.id !== this.drawerId) return;
     this.strokes = [];
-    this.broadcast({ type: "clear_canvas" }, [sender.id]);
+    this.broadcastMessage({ type: "clear_canvas" }, [sender.id]);
   }
 
   /** Removes the drawer's most recent stroke for everyone (sender included,
    * so every canvas redraws from the same history). */
-  private handleUndoStroke(sender: Party.Connection) {
+  private handleUndoStroke(sender: Connection) {
     if (this.status !== "playing" || sender.id !== this.drawerId) return;
     const last = this.strokes.pop();
-    if (last) this.broadcast({ type: "stroke_undo", strokeId: last.strokeId });
+    if (last) this.broadcastMessage({ type: "stroke_undo", strokeId: last.strokeId });
   }
 
-  private handleRevealLetter(index: number, sender: Party.Connection) {
+  private handleRevealLetter(index: number, sender: Connection) {
     if (this.status !== "playing" || sender.id !== this.drawerId || !this.word) return;
     if (index < 0 || index >= this.word.length || /\s/.test(this.word[index])) return;
     this.revealedIndices.add(index);
@@ -334,13 +333,13 @@ export default class GameRoom implements Party.Server {
    * actually get drawn. Broadcast immediately (unlike the rest of
    * RoomConfig, which is only sent to the server at start_game) since the
    * whole point is for guests to see it while still waiting in the lobby. */
-  private handleSetTopic(topic: string, sender: Party.Connection) {
+  private handleSetTopic(topic: string, sender: Connection) {
     if (sender.id !== this.hostId) return;
     this.topic = topic.trim().slice(0, 80);
     this.broadcastState();
   }
 
-  private handlePlayAgain(sender: Party.Connection) {
+  private handlePlayAgain(sender: Connection) {
     if (sender.id !== this.hostId) return;
     if (this.status !== "gameEnd") return;
     this.status = "lobby";
@@ -354,12 +353,12 @@ export default class GameRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleKickPlayer(targetId: string, sender: Party.Connection) {
+  private handleKickPlayer(targetId: string, sender: Connection) {
     if (sender.id !== this.hostId || targetId === sender.id) return;
     const target = this.players.get(targetId);
     if (!target) return;
 
-    const targetConn = [...this.party.getConnections()].find((c) => c.id === targetId);
+    const targetConn = [...this.getConnections()].find((c) => c.id === targetId);
     if (targetConn) {
       targetConn.send(JSON.stringify({ type: "kicked" } satisfies ServerMessage));
       targetConn.close();
@@ -373,7 +372,7 @@ export default class GameRoom implements Party.Server {
     this.broadcastState();
   }
 
-  private handleLeaveRoom(sender: Party.Connection) {
+  private handleLeaveRoom(sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
 
@@ -392,7 +391,7 @@ export default class GameRoom implements Party.Server {
     sender.close();
   }
 
-  private handleChat(text: string, sender: Party.Connection) {
+  private handleChat(text: string, sender: Connection) {
     const player = this.players.get(sender.id);
     if (!player) return;
     const trimmed = text.trim().slice(0, 200);
@@ -411,7 +410,7 @@ export default class GameRoom implements Party.Server {
     // people who already know the word.
     if (this.status === "playing" && (isDrawer || player.hasGuessedCorrectly)) {
       const entry: ChatEntry = { id: makeId(), type: "chat", playerId: player.id, name: player.name, text: trimmed, ts: Date.now() };
-      for (const conn of this.party.getConnections()) {
+      for (const conn of this.getConnections()) {
         const p = this.players.get(conn.id);
         if (p && (p.id === this.drawerId || p.hasGuessedCorrectly)) {
           conn.send(JSON.stringify({ type: "chat_message", entry } satisfies ServerMessage));
@@ -421,7 +420,7 @@ export default class GameRoom implements Party.Server {
     }
 
     const entry: ChatEntry = { id: makeId(), type: "chat", playerId: player.id, name: player.name, text: trimmed, ts: Date.now() };
-    this.broadcast({ type: "chat_message", entry });
+    this.broadcastMessage({ type: "chat_message", entry });
   }
 
   // ---------- game flow ----------
@@ -437,7 +436,7 @@ export default class GameRoom implements Party.Server {
     this.strokes = [];
     this.word = null;
     this.turnScoreDelta.clear();
-    this.broadcast({ type: "clear_canvas" });
+    this.broadcastMessage({ type: "clear_canvas" });
 
     // turnOrder is a fixed snapshot from game start, reused every round via
     // modulo — it's never shrunk when someone leaves/is kicked mid-game (on
@@ -464,7 +463,7 @@ export default class GameRoom implements Party.Server {
     this.phaseEndsAt = Date.now() + WORD_CHOICE_SECONDS * 1000;
     this.turnEndsAt = null;
 
-    const drawerConn = [...this.party.getConnections()].find((c) => c.id === this.drawerId);
+    const drawerConn = [...this.getConnections()].find((c) => c.id === this.drawerId);
     if (drawerConn) {
       drawerConn.send(JSON.stringify({ type: "word_choices", choices: this.wordChoices, deadline: this.phaseEndsAt } satisfies ServerMessage));
     }
@@ -482,7 +481,7 @@ export default class GameRoom implements Party.Server {
     this.broadcastState();
     const drawer = this.players.get(this.drawerId!);
     if (drawer) {
-      const conn = [...this.party.getConnections()].find((c) => c.id === drawer.id);
+      const conn = [...this.getConnections()].find((c) => c.id === drawer.id);
       conn?.send(JSON.stringify({ type: "your_word", word } satisfies ServerMessage));
     }
   }
@@ -505,9 +504,9 @@ export default class GameRoom implements Party.Server {
 
     const entry: ChatEntry = { id: makeId(), type: "correct", playerId: player.id, name: player.name, ts: Date.now() };
     this.chatLog.push(entry);
-    this.broadcast({ type: "chat_message", entry });
+    this.broadcastMessage({ type: "chat_message", entry });
     // Let the guesser (and anyone else who already knows the word) see what they typed.
-    for (const conn of this.party.getConnections()) {
+    for (const conn of this.getConnections()) {
       const p = this.players.get(conn.id);
       if (p && (p.id === player.id || p.id === this.drawerId || p.hasGuessedCorrectly)) {
         const confirm: ChatEntry = { id: makeId(), type: "chat", playerId: player.id, name: player.name, text: this.word ?? "", ts: Date.now() };
@@ -532,7 +531,7 @@ export default class GameRoom implements Party.Server {
 
     if (word) {
       this.systemMessage(`Đáp án là: ${word}`);
-      this.broadcast({
+      this.broadcastMessage({
         type: "round_result",
         word,
         scores: [...this.turnScoreDelta.entries()].map(([playerId, delta]) => ({ playerId, delta })),
@@ -549,20 +548,20 @@ export default class GameRoom implements Party.Server {
     this.turnEndsAt = null;
     this.phaseEndsAt = null;
     this.systemMessage("Ván chơi kết thúc! Cảm ơn mọi người đã chơi.");
-    this.broadcast({ type: "game_result", players: [...this.players.values()].sort((a, b) => b.score - a.score) });
+    this.broadcastMessage({ type: "game_result", players: [...this.players.values()].sort((a, b) => b.score - a.score) });
     this.broadcastState();
     this.saveGameHistory();
   }
 
   private async saveGameHistory() {
     try {
-      const base = this.party.env.NEXT_APP_URL as string | undefined;
+      const base = this.env.NEXT_APP_URL;
       if (!base) return;
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          roomId: this.party.id,
+          roomId: this.name,
           players: [...this.players.values()].map((p) => ({ name: p.name, score: p.score })),
           rounds: this.config.rounds,
           playedAt: new Date().toISOString(),
@@ -576,7 +575,7 @@ export default class GameRoom implements Party.Server {
   private systemMessage(text: string) {
     const entry: ChatEntry = { id: makeId(), type: "system", text, ts: Date.now() };
     this.chatLog.push(entry);
-    this.broadcast({ type: "chat_message", entry });
+    this.broadcastMessage({ type: "chat_message", entry });
   }
 
   // ---------- ticking ----------
@@ -627,7 +626,7 @@ export default class GameRoom implements Party.Server {
 
   private publicState(): PublicRoomState {
     return {
-      roomId: this.party.id,
+      roomId: this.name,
       status: this.status,
       players: [...this.players.values()],
       hostId: this.hostId,
@@ -646,7 +645,7 @@ export default class GameRoom implements Party.Server {
   }
 
   private broadcastState() {
-    this.broadcast(this.stateMessage());
+    this.broadcastMessage(this.stateMessage());
     this.reportToDirectory();
   }
 
@@ -660,17 +659,16 @@ export default class GameRoom implements Party.Server {
    * gameplay should wait on or fail over. */
   private reportToDirectory() {
     const listing: DrawRoomListing = {
-      roomId: this.party.id,
+      roomId: this.name,
       playerCount: [...this.players.values()].filter((p) => p.connected).length,
       status: this.status,
     };
-    this.party.context.parties["drawlobby"]
-      .get("main")
-      .fetch({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) })
+    getServerByName(this.env.Drawlobby, "main")
+      .then((lobby) => lobby.fetch("https://lobby/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(listing) }))
       .catch(() => {});
   }
 
-  private broadcast(message: ServerMessage, exclude: string[] = []) {
-    this.party.broadcast(JSON.stringify(message), exclude);
+  private broadcastMessage(message: ServerMessage, exclude: string[] = []) {
+    this.broadcast(JSON.stringify(message), exclude);
   }
 }

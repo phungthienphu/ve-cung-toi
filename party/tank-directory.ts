@@ -9,7 +9,8 @@
 // in-memory map, the list just goes temporarily empty until the next report
 // comes in — nothing about an actual match depends on it.
 
-import type * as Party from "partykit/server";
+import { Server, type Connection } from "partyserver";
+import type { Env } from "./env";
 import type { TankRoomListing } from "../shared/tankTypes";
 
 // Safety-net only — normal removal happens by a room reporting playerCount:
@@ -22,12 +23,10 @@ interface StoredEntry extends TankRoomListing {
   updatedAt: number;
 }
 
-export default class TankDirectory implements Party.Server {
+export class TankDirectory extends Server<Env> {
   rooms = new Map<string, StoredEntry>();
 
-  constructor(readonly party: Party.Party) {}
-
-  async onRequest(req: Party.Request): Promise<Response> {
+  async onRequest(req: Request): Promise<Response> {
     if (req.method === "POST") {
       const body = (await req.json()) as Partial<TankRoomListing> & { roomId?: string };
       if (!body.roomId) return new Response("missing roomId", { status: 400 });
