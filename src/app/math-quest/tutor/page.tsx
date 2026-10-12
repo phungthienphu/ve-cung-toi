@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CHAPTERS, LESSONS } from "@shared/mathQuestLessons";
-import { Paper, logout, relativeDay } from "@/components/mathquest/shared";
+import { HOME_CRUMB, LAST_HOST_ROOM_KEY, MATH_QUEST_CRUMB, Paper, TopBar, logout, relativeDay } from "@/components/mathquest/shared";
 
 interface Student {
   id: string;
@@ -64,29 +64,39 @@ export default function TutorPage() {
     return res.ok;
   };
 
-  if (state === "loading") return <Paper><p className="py-24 text-center text-ink/50">Đang tải…</p></Paper>;
+  if (state === "loading") {
+    return (
+      <Paper>
+        <TopBar back={{ href: "/math-quest", label: "Math Quest" }} trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Trang gia sư" }]} />
+        <p className="py-24 text-center text-ink/50">Đang tải…</p>
+      </Paper>
+    );
+  }
   if (state === "login" || !data) return <TutorLogin error={error} onDone={load} />;
 
   return (
     <Paper>
-      <Link href="/math-quest" className="text-sm font-semibold text-ink/50 hover:text-ink">← Math Quest</Link>
-      <header className="mt-3 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">🧑‍🏫 Trang gia sư</p>
-          <h1 className="mt-1 font-draw-display text-3xl font-extrabold">Math Quest</h1>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/math-quest" className="rounded-lg border border-cream-200 bg-white px-3 py-1.5 text-sm font-semibold">Xem trước sổ tay</Link>
-          <button
-            onClick={async () => {
-              await logout();
-              setState("login");
-            }}
-            className="rounded-lg border border-cream-200 px-3 py-1.5 text-sm text-ink/60"
-          >
-            Đăng xuất
-          </button>
-        </div>
+      <TopBar
+        back={{ href: "/math-quest", label: "Math Quest" }}
+        trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Trang gia sư" }]}
+        right={
+          <>
+            <Link href="/math-quest" className="rounded-lg border border-cream-200 bg-white px-3 py-1.5 text-sm font-semibold">📒 Xem trước sổ tay</Link>
+            <button
+              onClick={async () => {
+                await logout();
+                setState("login");
+              }}
+              className="rounded-lg px-2 py-1 text-sm font-semibold text-ink/50 hover:text-ink"
+            >
+              Đăng xuất
+            </button>
+          </>
+        }
+      />
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">🧑‍🏫 Trang gia sư</p>
+        <h1 className="mt-1 font-draw-display text-3xl font-extrabold">Math Quest</h1>
       </header>
       {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{error}</p>}
 
@@ -108,6 +118,14 @@ type Act = (payload: Record<string, unknown>) => Promise<boolean>;
 function QuickStart({ data }: { data: Overview }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [lastRoom, setLastRoom] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setLastRoom(window.localStorage.getItem(LAST_HOST_ROOM_KEY));
+    } catch {
+      // No storage (private mode): just no "reopen" shortcut.
+    }
+  }, []);
   const [link] = useState(() => (typeof window === "undefined" ? "/math-quest" : `${window.location.origin}/math-quest`));
   const approved = new Set(data.reviews.filter((review) => review.status === "approved").map((review) => review.lessonId));
   const pending = LESSONS.filter((lesson) => !approved.has(lesson.id)).length;
@@ -155,16 +173,29 @@ function QuickStart({ data }: { data: Overview }) {
           </button>
         </div>
       </div>
-      <button
-        onClick={() => router.push(`/math-boss/${Math.floor(10000 + Math.random() * 90000)}?host=1`)}
-        className="flex flex-col justify-between rounded-2xl bg-gradient-to-br from-[#2e1065] to-[#4c1d95] p-5 text-left text-white shadow-md transition hover:brightness-110"
-      >
+      <div className="flex flex-col justify-between rounded-2xl bg-gradient-to-br from-[#2e1065] to-[#4c1d95] p-5 text-white shadow-md">
         <span>
           <span className="block font-draw-display text-lg font-extrabold">⚔️ Quái Máy Tính</span>
           <span className="mt-1 block text-sm text-violet-200">Mở màn hình chiếu cho buổi học. Các bé vào bằng mã phòng trên điện thoại.</span>
         </span>
-        <span className="mt-4 inline-block self-start rounded-xl bg-amber-400 px-4 py-2 font-bold text-violet-950">🖥️ Mở màn hình chiếu ▸</span>
-      </button>
+        <span className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => router.push(`/math-boss/${Math.floor(10000 + Math.random() * 90000)}?host=1`)}
+            className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-violet-950 transition hover:brightness-105"
+          >
+            🖥️ Mở phòng mới ▸
+          </button>
+          {lastRoom && (
+            <button
+              onClick={() => router.push(`/math-boss/${lastRoom}?host=1`)}
+              className="rounded-xl border-2 border-white/25 px-4 py-1.5 font-bold text-violet-100 transition hover:bg-white/10"
+              title="Quay lại đúng phòng màn hình chiếu vừa mở — các bé không phải nhập mã lại"
+            >
+              🔁 Mở lại phòng {lastRoom}
+            </button>
+          )}
+        </span>
+      </div>
     </section>
   );
 }
@@ -315,8 +346,8 @@ function Reviews({ data, act }: { data: Overview; act: Act }) {
               </div>
               {review?.status === "changes" && review.note && <p className="mt-1.5 text-xs text-ink/60">Ghi chú: {review.note}</p>}
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <Link href={`/math-quest/lesson/${lesson.id}`} target="_blank" className="rounded-lg border border-cream-200 bg-white px-2.5 py-1 text-xs font-semibold">
-                  Xem bài ↗
+                <Link href={`/math-quest/lesson/${lesson.id}`} className="rounded-lg border border-cream-200 bg-white px-2.5 py-1 text-xs font-semibold">
+                  📖 Xem bài
                 </Link>
                 {review?.status !== "approved" && (
                   <button onClick={() => act({ action: "review", lessonId: lesson.id, status: "approved" })} className="rounded-lg bg-sage-500 px-2.5 py-1 text-xs font-semibold text-white">
@@ -379,7 +410,8 @@ function TutorLogin({ error, onDone }: { error: string; onDone: () => void }) {
   };
   return (
     <Paper>
-      <section className="mx-auto mt-10 max-w-sm rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-sm">
+      <TopBar back={{ href: "/math-quest", label: "Math Quest" }} trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Đăng nhập gia sư" }]} />
+      <section className="mx-auto mt-6 max-w-sm rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-sm">
         <div className="text-5xl">🧑‍🏫</div>
         <h1 className="mt-2 font-draw-display text-3xl font-extrabold">Trang gia sư</h1>
         <input
@@ -391,7 +423,10 @@ function TutorLogin({ error, onDone }: { error: string; onDone: () => void }) {
           className="mt-5 w-full rounded-xl border border-cream-200 px-4 py-3 outline-none focus:border-clay-500"
         />
         {message && <p className="mt-3 text-sm font-semibold text-red-500">{message}</p>}
-        <button onClick={submit} disabled={!password} className="mt-4 w-full rounded-xl bg-clay-500 py-3 font-bold text-white disabled:opacity-50">Đăng nhập</button>
+        <button onClick={submit} disabled={!password} className="mt-4 w-full rounded-xl bg-clay-500 py-3 font-bold text-white disabled:opacity-50">Đăng nhập ▸</button>
+        <p className="mt-4 text-xs text-ink/40">
+          Là học sinh? <Link href="/math-quest" className="underline hover:text-ink">Mở sổ tay của bạn</Link>
+        </p>
       </section>
     </Paper>
   );

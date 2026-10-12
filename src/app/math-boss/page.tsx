@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DarkBack } from "@/components/mathboss/DarkBack";
+import { LAST_HOST_ROOM_KEY } from "@/components/mathquest/shared";
 import { drawFontClass } from "@/lib/drawFonts";
 import { playClick } from "@/lib/sound";
 
@@ -12,13 +13,24 @@ const makeCode = () => String(Math.floor(10000 + Math.random() * 90000));
 export default function MathBossHomePage() {
   const router = useRouter();
   const [code, setCode] = useState("");
+  const [lastRoom, setLastRoom] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setLastRoom(window.localStorage.getItem(LAST_HOST_ROOM_KEY));
+    } catch {
+      // No storage: no "reopen" shortcut.
+    }
+  }, []);
   const join = () => {
     const value = code.trim();
     if (value) router.push(`/math-boss/${value}`);
   };
 
   return (
-    <main className={`${drawFontClass} bg-mathboss flex min-h-app items-center justify-center px-4 text-white`}>
+    <main className={`${drawFontClass} bg-mathboss relative flex min-h-app items-center justify-center px-4 pt-16 text-white`}>
+      <div className="absolute left-4 top-4">
+        <DarkBack href="/math-quest" label="Math Quest" />
+      </div>
       <section className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur">
         <div className="text-6xl">🧮</div>
         <h1 className="mt-2 font-draw-display text-4xl font-extrabold">Quái Máy Tính</h1>
@@ -49,7 +61,14 @@ export default function MathBossHomePage() {
         >
           🖥️ Tạo phòng (màn hình chiếu)
         </button>
-        <Link href="/math-quest" className="mt-5 block text-sm text-violet-300 hover:text-white">← Về Math Quest (sổ tay bài học)</Link>
+        {lastRoom && (
+          <button
+            onClick={() => router.push(`/math-boss/${lastRoom}?host=1`)}
+            className="mt-2 w-full rounded-xl px-4 py-2 text-sm font-semibold text-violet-200 transition hover:text-white"
+          >
+            🔁 Mở lại phòng {lastRoom}
+          </button>
+        )}
       </section>
     </main>
   );

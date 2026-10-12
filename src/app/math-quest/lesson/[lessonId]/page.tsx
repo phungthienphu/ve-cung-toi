@@ -5,7 +5,7 @@ import { use, useEffect, useRef, useState } from "react";
 import { CHAPTERS, findLesson, type Lesson, type LessonExample } from "@shared/mathQuestLessons";
 import { makeQuestion, type RevealedQuestion } from "@shared/mathBossTypes";
 import { MathText } from "@/components/mathboss/MathText";
-import { Loading, Paper, relativeDay, useMe } from "@/components/mathquest/shared";
+import { HOME_CRUMB, Loading, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, relativeDay, useMe } from "@/components/mathquest/shared";
 
 const PRACTICE_ROUND = 5;
 const LETTERS = ["A", "B", "C", "D"];
@@ -37,10 +37,16 @@ export default function LessonPage({ params }: { params: Promise<{ lessonId: str
   if (!lesson || !allowed || me.role === null) {
     return (
       <Paper>
-        <p className="py-20 text-center text-ink/60">
-          {!lesson ? "Không tìm thấy bài này." : me.role === null ? "Bạn cần đăng nhập để xem bài." : "Bài này chưa mở cho bạn."}
-        </p>
-        <Link href="/math-quest" className="block text-center font-semibold text-clay-600">← Về sổ tay</Link>
+        <TopBar back={{ href: "/math-quest", label: "Sổ tay" }} trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Bài học" }]} />
+        <div className="py-16 text-center">
+          <div className="text-5xl">{me.role === null ? "🔐" : "🔒"}</div>
+          <p className="mt-3 text-ink/70">
+            {!lesson ? "Không tìm thấy bài này." : me.role === null ? "Bạn cần đăng nhập để xem bài." : "Bài này chưa mở cho bạn — thầy/cô sẽ mở sau khi dạy trên lớp."}
+          </p>
+          <Link href="/math-quest" className="mt-5 inline-block rounded-xl bg-clay-500 px-5 py-2.5 font-bold text-white">
+            {me.role === null ? "Đăng nhập ▸" : "Về sổ tay ▸"}
+          </Link>
+        </div>
       </Paper>
     );
   }
@@ -51,7 +57,10 @@ export default function LessonPage({ params }: { params: Promise<{ lessonId: str
   const reachable = CHAPTERS.filter((candidate) => candidate.grade === lesson.grade)
     .flatMap((candidate) => candidate.lessons)
     .filter((candidate) => me.role === "tutor" || (me.approved.includes(candidate.id) && me.progress.some((entry) => entry.lessonId === candidate.id && entry.taughtAt)));
-  const nextLesson = reachable[reachable.findIndex((candidate) => candidate.id === lesson.id) + 1] ?? null;
+  const position = reachable.findIndex((candidate) => candidate.id === lesson.id);
+  const nextLesson = reachable[position + 1] ?? null;
+  const prevLesson = position > 0 ? reachable[position - 1] : null;
+  const tutorView = me.role === "tutor";
   const sections = [
     { id: "remember", label: "📌 Cần nhớ" },
     { id: "examples", label: "✍️ Ví dụ" },
@@ -61,14 +70,22 @@ export default function LessonPage({ params }: { params: Promise<{ lessonId: str
 
   return (
     <Paper>
-      <Link href="/math-quest" className="text-sm font-semibold text-clay-600">← Sổ tay</Link>
+      <TopBar
+        back={tutorView ? { href: "/math-quest/tutor", label: "Trang gia sư" } : { href: "/math-quest", label: "Sổ tay" }}
+        trail={[
+          HOME_CRUMB,
+          MATH_QUEST_CRUMB,
+          ...(tutorView ? [TUTOR_CRUMB, { href: "/math-quest", label: "Xem trước sổ tay" }] : [{ href: "/math-quest", label: "Sổ tay" }]),
+          { label: `Bài ${lesson.number}` },
+        ]}
+      />
       {me.role === "tutor" && (
         <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${approved ? "bg-sage-100 text-sage-600" : "bg-gold-100 text-gold-600"}`}>
           Xem trước · {approved ? "Bài đã duyệt, học sinh xem được khi đã học." : "Bài chưa duyệt — học sinh chưa thấy bài này."}
         </p>
       )}
 
-      <header className="mt-4">
+      <header className="mt-3">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">
           Lớp {lesson.grade} · Chương {chapter?.roman} · Bài {lesson.number}
         </p>
@@ -134,18 +151,27 @@ export default function LessonPage({ params }: { params: Promise<{ lessonId: str
           buttons clear of the site's floating sound toggles. */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-cream-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2.5 pr-28 sm:px-6 md:pr-6">
+          {prevLesson ? (
+            <Link href={`/math-quest/lesson/${prevLesson.id}`} className="rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60" title={prevLesson.title}>
+              ‹ Bài {prevLesson.number}
+            </Link>
+          ) : (
+            <Link href="/math-quest" className="rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60">
+              ‹ Sổ tay
+            </Link>
+          )}
           {lesson.practice.length > 0 && (
             <a href="#practice" className="rounded-xl bg-clay-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-clay-500/30">
               🎯 Luyện 5 câu
             </a>
           )}
           {nextLesson ? (
-            <Link href={`/math-quest/lesson/${nextLesson.id}`} className="rounded-xl border-2 border-clay-500 px-4 py-2 text-sm font-bold text-clay-600">
-              Bài {nextLesson.number} ▸
+            <Link href={`/math-quest/lesson/${nextLesson.id}`} className="rounded-xl border-2 border-clay-500 px-3 py-2 text-sm font-bold text-clay-600" title={nextLesson.title}>
+              Bài {nextLesson.number} ›
             </Link>
           ) : (
-            <Link href="/math-quest" className="rounded-xl border-2 border-cream-200 px-4 py-2 text-sm font-bold text-ink/60">
-              Về sổ tay
+            <Link href="/math-quest" className="rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60">
+              Sổ tay ›
             </Link>
           )}
         </div>

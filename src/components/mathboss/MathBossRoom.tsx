@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import type { Grade } from "@shared/mathBossTypes";
 import { drawFontClass } from "@/lib/drawFonts";
 import { useMathBossRoom } from "@/lib/useMathBossRoom";
+import { DarkBack } from "./DarkBack";
 import { HostView } from "./HostView";
 import { PlayerView } from "./PlayerView";
 
@@ -12,8 +12,11 @@ export default function MathBossRoom({ roomId, playerId, name, grade, role }: { 
 
   if (!room.state) {
     return (
-      <main className={`${drawFontClass} bg-mathboss flex min-h-app items-center justify-center text-violet-200`}>
-        {room.connected ? "Đang tải phòng…" : "Đang kết nối…"}
+      <main className={`${drawFontClass} bg-mathboss relative flex min-h-app flex-col items-center justify-center gap-4 text-violet-200`}>
+        <div className="absolute left-4 top-4">
+          {role === "host" ? <DarkBack href="/math-quest/tutor" label="Trang gia sư" /> : <DarkBack href="/math-boss" label="Thoát" />}
+        </div>
+        <p>{room.connected ? "Đang tải phòng…" : "Đang kết nối…"}</p>
       </main>
     );
   }
@@ -24,7 +27,7 @@ export default function MathBossRoom({ roomId, playerId, name, grade, role }: { 
       <main className={`${drawFontClass} bg-mathboss flex min-h-app flex-col items-center justify-center gap-4 px-6 text-center text-white`}>
         <div className="text-6xl">🖥️</div>
         <p className="max-w-sm text-lg">{room.error}</p>
-        <Link href="/math-boss" className="rounded-xl bg-amber-400 px-5 py-2.5 font-bold text-violet-950">Về trang đầu</Link>
+        <DarkBack href="/math-quest/tutor" label="Về trang gia sư" />
       </main>
     );
   }

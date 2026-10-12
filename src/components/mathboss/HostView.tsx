@@ -19,8 +19,10 @@ import {
 import { fireworks } from "@/lib/confetti";
 import { drawFontClass } from "@/lib/drawFonts";
 import { playMatchWin, playUltimateReady } from "@/lib/sound";
+import { LAST_HOST_ROOM_KEY } from "@/components/mathquest/shared";
 import { Arena } from "./Arena";
 import { BattleSetup } from "./BattleSetup";
+import { DarkBack } from "./DarkBack";
 import { Boss, HpBar, TimeBar, TypingScreen } from "./Boss";
 import { MathText } from "./MathText";
 import { TopicCard } from "./TopicCard";
@@ -45,6 +47,16 @@ export function HostView({ state, send }: { state: PublicMathBossState; send: Se
   // Opening the room starts on "what's in this fight"; the code for the kids
   // shows once that's saved. It can be reopened until the fight begins.
   const [setupOpen, setSetupOpen] = useState(state.phase === "lobby" && state.players.length === 0);
+
+  // Remember this room so the tutor page can offer "Mở lại phòng" if the tab closes.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(LAST_HOST_ROOM_KEY, state.roomId);
+    } catch {
+      // No storage: no reopen shortcut, nothing else breaks.
+    }
+  }, [state.roomId]);
+  const live = state.phase !== "lobby" && state.phase !== "done";
   const editable = state.phase === "lobby" || state.phase === "pick";
   const showSetup = setupOpen && editable;
 
@@ -81,7 +93,14 @@ export function HostView({ state, send }: { state: PublicMathBossState; send: Se
   return (
     <main className={`${drawFontClass} bg-mathboss flex min-h-app flex-col px-5 py-4 text-white sm:px-8`}>
       <header className="flex items-center justify-between gap-6">
-        <div className="shrink-0 font-draw-display text-2xl font-extrabold tracking-tight">🧮 Quái Máy Tính</div>
+        <div className="flex shrink-0 items-center gap-3">
+          <DarkBack
+            href="/math-quest/tutor"
+            label="Trang gia sư"
+            confirmText={live ? "Rời màn hình chiếu? Trận vẫn được giữ — mở lại bằng nút \"Mở lại phòng\" ở trang gia sư, các bạn không phải nhập mã lại." : null}
+          />
+          <div className="font-draw-display text-2xl font-extrabold tracking-tight">🧮 Quái Máy Tính</div>
+        </div>
         {FIGHT_PHASES.has(state.phase) && state.bossMaxHp > 0 && (
           <div className="w-full max-w-xl">
             <HpBar hp={state.bossHp} maxHp={state.bossMaxHp} />

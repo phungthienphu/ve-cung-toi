@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { Lesson } from "@shared/mathQuestLessons";
 import { drawFontClass } from "@/lib/drawFonts";
@@ -49,6 +50,51 @@ export function relativeDay(iso: string | null): string {
   return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
 }
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+export interface Crumb {
+  href?: string;
+  label: string;
+}
+
+export const HOME_CRUMB: Crumb = { href: "/", label: "Trang chủ" };
+export const MATH_QUEST_CRUMB: Crumb = { href: "/math-quest", label: "Math Quest" };
+export const TUTOR_CRUMB: Crumb = { href: "/math-quest/tutor", label: "Trang gia sư" };
+/** Where the tutor's projector last opened a fight, so a closed tab can find its way back. */
+export const LAST_HOST_ROOM_KEY = "vct_mathboss_host_room";
+
+/**
+ * The one navigation bar every Math Quest page uses: "‹ Parent" always goes
+ * to the page's logical parent (never browser history, so a link opened cold
+ * still has a way out), the trail says where you are, account actions sit on
+ * the right. Sticky, so the way back is never scrolled away.
+ */
+export function TopBar({ back, trail, right }: { back?: { href: string; label: string }; trail: Crumb[]; right?: React.ReactNode }) {
+  return (
+    <nav className="sticky top-0 z-30 -mx-4 mb-5 flex items-center gap-3 border-b border-cream-200 bg-cream-50/90 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+      {back && (
+        <Link
+          href={back.href}
+          className="flex shrink-0 items-center gap-1 rounded-full border border-cream-200 bg-white px-3 py-1.5 text-sm font-bold text-ink/70 shadow-sm transition hover:border-clay-500 hover:text-clay-600"
+        >
+          <span aria-hidden>‹</span> {back.label}
+        </Link>
+      )}
+      <ol className="hidden min-w-0 flex-1 items-center gap-1.5 text-sm text-ink/45 sm:flex" aria-label="Bạn đang ở">
+        {trail.map((crumb, index) => (
+          <li key={`${crumb.label}-${index}`} className="flex min-w-0 items-center gap-1.5">
+            {index > 0 && <span aria-hidden>/</span>}
+            {crumb.href && index < trail.length - 1 ? (
+              <Link href={crumb.href} className="truncate hover:text-clay-600">{crumb.label}</Link>
+            ) : (
+              <span className="truncate font-semibold text-ink/80">{crumb.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+      {right && <div className="ml-auto flex shrink-0 items-center gap-2">{right}</div>}
+    </nav>
+  );
+}
 
 /** Light "notebook paper" frame shared by the Math Quest pages. */
 export function Paper({ children }: { children: React.ReactNode }) {

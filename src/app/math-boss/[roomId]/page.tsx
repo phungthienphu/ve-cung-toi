@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import Link from "next/link";
+import { DarkBack } from "@/components/mathboss/DarkBack";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { drawFontClass } from "@/lib/drawFonts";
 import MathBossRoom from "@/components/mathboss/MathBossRoom";
@@ -40,7 +40,10 @@ export default function MathBossRoomPage({ params, searchParams }: { params: Pro
 
   if (!confirmed) {
     return (
-      <main className={`${drawFontClass} bg-mathboss flex min-h-app items-center justify-center px-4 text-white`}>
+      <main className={`${drawFontClass} bg-mathboss relative flex min-h-app items-center justify-center px-4 pt-16 text-white`}>
+        <div className="absolute left-4 top-4">
+          <DarkBack href="/math-boss" label="Đổi mã phòng" />
+        </div>
         <section className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur">
           <div className="text-5xl">⚔️</div>
           <h1 className="mt-2 font-draw-display text-3xl font-extrabold">Vào trận</h1>
@@ -72,7 +75,6 @@ export default function MathBossRoomPage({ params, searchParams }: { params: Pro
           <button onClick={enter} disabled={!name.trim()} className="mt-4 w-full rounded-xl bg-amber-400 py-3 font-draw-display text-xl font-extrabold text-violet-950 disabled:opacity-40">
             Vào trận ⚔️
           </button>
-          <Link href="/math-boss" className="mt-4 block text-xs text-violet-300 hover:text-white">← Nhập mã khác</Link>
         </section>
       </main>
     );

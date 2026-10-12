@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CHAPTERS, type Lesson } from "@shared/mathQuestLessons";
-import { Loading, Paper, logout, relativeDay, suggestNext, useMe, type ProgressEntry } from "@/components/mathquest/shared";
+import { HOME_CRUMB, Loading, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, logout, relativeDay, suggestNext, useMe, type ProgressEntry } from "@/components/mathquest/shared";
 
 // The lesson notebook's front page. It always leads with one obvious next
 // step ("Việc nên làm bây giờ"), then the chapters of the student's grade —
@@ -28,25 +28,27 @@ export default function MathQuestHome() {
 
   return (
     <Paper>
-      <Link href="/" className="text-sm font-semibold text-ink/50 hover:text-ink">← Trang chủ</Link>
-      <header className="mt-3 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">📒 Sổ tay bài học</p>
-          <h1 className="mt-1 font-draw-display text-3xl font-extrabold">
-            {tutor ? "Xem trước sổ tay" : `Chào ${me.student.name} 👋`}
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {!tutor && <span className="rounded-full bg-ink/10 px-3 py-1 text-sm font-bold">Lớp {me.student.grade}</span>}
-          <button onClick={signOut} className="rounded-lg px-2 py-1 text-sm text-ink/50 hover:text-ink">Đăng xuất</button>
-        </div>
+      <TopBar
+        back={tutor ? { href: "/math-quest/tutor", label: "Trang gia sư" } : { href: "/", label: "Trang chủ" }}
+        trail={tutor ? [HOME_CRUMB, MATH_QUEST_CRUMB, TUTOR_CRUMB, { label: "Xem trước sổ tay" }] : [HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Sổ tay" }]}
+        right={
+          <>
+            {!tutor && <span className="rounded-full bg-ink/10 px-3 py-1 text-sm font-bold">{me.student.name} · Lớp {me.student.grade}</span>}
+            <button onClick={signOut} className="rounded-lg px-2 py-1 text-sm font-semibold text-ink/50 hover:text-ink">Đăng xuất</button>
+          </>
+        }
+      />
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">📒 Sổ tay bài học</p>
+        <h1 className="mt-1 font-draw-display text-3xl font-extrabold">
+          {tutor ? "Xem trước sổ tay" : `Chào ${me.student.name} 👋`}
+        </h1>
       </header>
 
       {tutor ? (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-4 text-cream-50">
-          <p className="text-sm">Bạn đang xem với tư cách gia sư: thấy mọi bài, kể cả bài chưa duyệt.</p>
-          <Link href="/math-quest/tutor" className="rounded-xl bg-gold-500 px-4 py-2 font-bold text-white">Về trang gia sư ▸</Link>
-        </div>
+        <p className="mt-4 rounded-2xl bg-ink px-5 py-3 text-sm text-cream-50">
+          Bạn đang xem với tư cách gia sư: thấy mọi bài, kể cả bài chưa duyệt. Học sinh chỉ thấy bài đã duyệt và đã được dạy.
+        </p>
       ) : (
         <>
           <NextStep open={open} progress={progress} />
@@ -83,16 +85,11 @@ export default function MathQuestHome() {
         );
       })}
 
-      <Link
-        href="/math-boss"
-        className="mt-10 flex items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-[#2e1065] to-[#4c1d95] px-5 py-4 text-white shadow-md transition hover:brightness-110"
-      >
-        <span>
-          <span className="block font-draw-display text-lg font-extrabold">⚔️ Đánh Quái Máy Tính</span>
-          <span className="block text-sm text-violet-200">Có mã phòng trên màn hình lớn? Vào trận cùng cả lớp.</span>
-        </span>
-        <span className="shrink-0 rounded-xl bg-amber-400 px-4 py-2 font-bold text-violet-950">Vào trận ▸</span>
-      </Link>
+      {!tutor && (
+        <div className="mt-10">
+          <JoinFight />
+        </div>
+      )}
     </Paper>
   );
 }
@@ -220,8 +217,8 @@ function LessonCard({ lesson, progress, open, reviewBadge }: { lesson: Lesson; p
 function Landing({ error, onDone }: { error?: string; onDone: () => void }) {
   return (
     <Paper>
-      <Link href="/" className="text-sm font-semibold text-ink/50 hover:text-ink">← Trang chủ</Link>
-      <header className="mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-700 px-6 py-8 text-white shadow-xl sm:px-8">
+      <TopBar back={{ href: "/", label: "Trang chủ" }} trail={[HOME_CRUMB, { label: "Math Quest" }]} />
+      <header className="overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-700 px-6 py-8 text-white shadow-xl sm:px-8">
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">Lớp học toán 8 – 9</p>
         <h1 className="mt-1 font-draw-display text-4xl font-extrabold sm:text-5xl">🧮 Math Quest</h1>
         <p className="mt-2 max-w-lg text-white/85">Học bài trên lớp, về nhà ôn lại trong sổ tay, luyện vài câu mỗi ngày — và cùng nhau hạ Quái Máy Tính.</p>

@@ -23,6 +23,7 @@ import {
 import { drawFontClass } from "@/lib/drawFonts";
 import { playCorrect, playPop, playTypeTick } from "@/lib/sound";
 import { HpBar, TimeBar } from "./Boss";
+import { DarkBack } from "./DarkBack";
 import { MathText } from "./MathText";
 import { HERO_PALETTE, HeroSprite } from "./HeroSprite";
 import { TopicCard } from "./TopicCard";
@@ -43,7 +44,11 @@ export function PlayerView({ state, selfId, send }: { state: PublicMathBossState
   return (
     <main className={`${drawFontClass} bg-mathboss flex min-h-app flex-col px-4 pb-20 pt-4 text-white`}>
       <header className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-draw-display text-lg font-bold">🧮 Quái Máy Tính</span>
+        <DarkBack
+          href="/math-quest"
+          label="Rời phòng"
+          confirmText={state.phase !== "lobby" && state.phase !== "done" ? `Rời trận? Bạn vẫn vào lại được bằng mã phòng ${state.roomId}.` : null}
+        />
         <span className="truncate rounded-full bg-white/10 px-3 py-1 font-semibold text-violet-100">
           {self ? `${self.name} · Lớp ${self.grade}` : "…"}
         </span>

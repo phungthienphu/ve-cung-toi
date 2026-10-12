@@ -244,6 +244,11 @@ Chỗ để học sinh **xem lại những bài đã học**, theo từng bài c
   - **Trong bài:** mục lục nhảy nhanh, thanh hành động ghim ở đáy (Luyện 5 câu · Bài tiếp). Luyện xong: chưa đúng hết thì nút dẫn về Cần nhớ, đúng hết thì nút sang bài tiếp.
   - **Gia sư:** khối "🚀 Bắt đầu nhanh" (thêm học sinh → duyệt bài → tích bài đã dạy) đánh dấu bước cần làm tiếp, kèm nút "🖥️ Mở màn hình chiếu" Quái Máy Tính và nút sao chép link gửi học sinh.
   - **Hết trận Quái Máy Tính:** điện thoại có nút "📒 Ôn lại bài trong sổ tay", màn hình chiếu có nút "Về trang gia sư".
+- **Quy tắc điều hướng:**
+  - Mọi màn con có thanh trên cùng (sổ tay: `TopBar`; Quái Máy Tính: `DarkBack`). Nút **‹ Màn cha** luôn ở góc trái, đi tới màn cha cố định chứ không theo lịch sử trình duyệt. Thanh có đường dẫn vị trí, và tài khoản/đăng xuất ở góc phải.
+  - Rời phòng đang chơi phải xác nhận.
+  - Màn hình chiếu nhớ phòng vừa mở, để trang gia sư và trang Quái Máy Tính có nút "🔁 Mở lại phòng".
+  - Màn cha của từng màn: Trang chủ ← Math Quest ← {Sổ tay ← Bài học (gia sư: ← Trang gia sư) · Trang gia sư ← Màn hình chiếu · Quái Máy Tính ← Nhập tên ← Điện thoại trong phòng (→ Sổ tay)}.
 - **Bảo mật:** PIN băm bằng scrypt, cookie phiên ký HMAC, nhập sai PIN 5 lần thì khóa 10 phút.
 - **Lưu trữ (MongoDB):** `mq_students`, `mq_lesson_progress`, `mq_lesson_reviews`.
 
