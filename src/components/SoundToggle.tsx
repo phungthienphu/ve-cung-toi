@@ -9,7 +9,11 @@ export default function SoundToggle() {
   const [musicOn, setMusicOn] = useState(false);
   // Werewolf ships its own real soundtrack, so the generic synth-chime button
   // would only be a confusing second "music" control there.
-  const inWerewolf = usePathname().startsWith("/werewolf");
+  const pathname = usePathname();
+  const inWerewolf = pathname.startsWith("/werewolf");
+  // The tutor's admin pages have no game sounds; the floating buttons would
+  // only cover their content on a phone.
+  const inTutor = pathname.startsWith("/math-quest/tutor");
 
   useEffect(() => {
     setMutedState(isMuted());
@@ -27,6 +31,7 @@ export default function SoundToggle() {
     setMusicOn(toggleMusic());
   }
 
+  if (inTutor) return null;
   return (
     <div className="fixed bottom-4 right-4 z-40 flex gap-2">
       {!muted && !inWerewolf && (

@@ -21,17 +21,19 @@ export const STATUS_STYLE: Record<SessionStatus, { label: string; chip: string; 
 };
 export const EXPECTED_CHIP = "border border-dashed border-ink/30 text-ink/50";
 
-export function Card({ id, title, hint, right, children }: { id?: string; title: string; hint?: string; right?: React.ReactNode; children: React.ReactNode }) {
+export function Card({ id, title, hint, right, children }: { id?: string; title?: string; hint?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section id={id} className="mt-6 scroll-mt-20 rounded-2xl border border-cream-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex flex-wrap items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <h2 className="font-draw-display text-xl font-bold">{title}</h2>
-          {hint && <p className="text-sm text-ink/50">{hint}</p>}
+    <section id={id} className="mt-5 scroll-mt-16 rounded-2xl border border-cream-200 bg-white p-3 shadow-sm sm:mt-6 sm:p-5">
+      {title && (
+        <div className="mb-3 flex items-start gap-2 sm:mb-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-draw-display text-lg font-bold sm:text-xl">{title}</h2>
+            {hint && <p className="text-sm text-ink/50">{hint}</p>}
+          </div>
+          {right && <div className="shrink-0">{right}</div>}
         </div>
-        {right}
-      </div>
-      <div className="mt-4">{children}</div>
+      )}
+      {children}
     </section>
   );
 }
@@ -54,7 +56,7 @@ export function MoneyInput({ value, onChange, className = "" }: { value: number;
 
 export function WeekdayPicker({ value, onChange }: { value: number[]; onChange: (value: number[]) => void }) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="grid grid-cols-7 gap-1 sm:flex">
       {WEEK.map(({ day, short }) => {
         const on = value.includes(day);
         return (
@@ -62,7 +64,7 @@ export function WeekdayPicker({ value, onChange }: { value: number[]; onChange: 
             key={day}
             type="button"
             onClick={() => onChange(on ? value.filter((item) => item !== day) : [...value, day])}
-            className={`h-9 w-10 rounded-lg text-sm font-bold transition ${on ? "bg-clay-500 text-white" : "border border-cream-200 bg-white text-ink/50"}`}
+            className={`h-10 rounded-lg text-sm font-bold transition sm:w-10 ${on ? "bg-clay-500 text-white" : "border border-cream-200 bg-white text-ink/50"}`}
           >
             {short}
           </button>

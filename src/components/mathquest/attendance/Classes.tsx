@@ -67,7 +67,7 @@ function SessionTable({ sessions }: { sessions: TuitionSession[] }) {
               <td className="w-8 px-2 py-1.5 text-center text-xs text-ink/40">{index + 1}</td>
               <td className="whitespace-nowrap px-2 py-1.5">{dayLabel(session.date)}</td>
               <td className="px-2 py-1.5">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLE[session.status].chip}`}>
+                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLE[session.status].chip}`}>
                   {STATUS_STYLE[session.status].label}
                   {session.status === "off" && session.offReason ? ` · ${OFF_REASONS[session.offReason]}` : ""}
                 </span>
@@ -182,19 +182,21 @@ function InvoiceRow({ cls, invoice, data, act, latest }: { cls: TuitionClass; in
   const [open, setOpen] = useState(false);
   const sessions = data.sessions.filter((s) => s.invoiceId === invoice.id).sort((a, b) => a.date.localeCompare(b.date));
   return (
-    <li className="rounded-xl bg-cream-50 px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => setOpen(!open)} className="min-w-0 flex-1 text-left">
-          <span className="font-semibold">{invoice.title}</span>
-          <span className="ml-2 text-xs text-ink/50">
-            {shortDay(invoice.from)} → {shortDay(invoice.to)} {open ? "▴" : "▾"}
-          </span>
-        </button>
-        <span className="font-bold">{formatVnd(invoice.total)}</span>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${invoice.paidAt ? "bg-sage-100 text-sage-600" : "bg-gold-100 text-gold-600"}`}>
-          {invoice.paidAt ? `✓ Đã trả ${shortDay(dayKey(new Date(invoice.paidAt)))}` : "Chưa trả"}
+    <li className="rounded-xl bg-cream-50 px-2.5 py-2.5 sm:px-3">
+      <button onClick={() => setOpen(!open)} className="block w-full text-left">
+        <span className="flex items-baseline gap-2">
+          <span className="min-w-0 flex-1 font-semibold">{invoice.title}</span>
+          <span className="shrink-0 font-bold">{formatVnd(invoice.total)}</span>
         </span>
-      </div>
+        <span className="mt-0.5 flex items-center gap-2">
+          <span className="flex-1 text-xs text-ink/50">
+            {shortDay(invoice.from)} → {shortDay(invoice.to)} · {open ? "Ẩn chi tiết ▴" : "Xem chi tiết ▾"}
+          </span>
+          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${invoice.paidAt ? "bg-sage-100 text-sage-600" : "bg-gold-100 text-gold-600"}`}>
+            {invoice.paidAt ? `✓ Đã trả ${shortDay(dayKey(new Date(invoice.paidAt)))}` : "Chưa trả"}
+          </span>
+        </span>
+      </button>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <CopyMessage text={parentMessage(cls, invoice.title, sessions)} primary={!invoice.paidAt} />
         <button
@@ -233,7 +235,7 @@ function ClassSettings({ cls, act, today, onDone }: { cls: TuitionClass; act: Ac
   const [rateFee, setRateFee] = useState(0);
 
   return (
-    <div className="mb-5 space-y-4 rounded-xl border border-cream-200 bg-cream-50 p-3">
+    <div className="mb-5 space-y-4 rounded-xl border border-cream-200 bg-cream-50 p-2.5 sm:p-3">
       <ClassFields name={name} setName={setName} weekdays={weekdays} setWeekdays={setWeekdays} hours={hours} setHours={setHours} startDate={startDate} setStartDate={setStartDate} />
       <button
         onClick={async () => {
@@ -263,18 +265,18 @@ function ClassSettings({ cls, act, today, onDone }: { cls: TuitionClass; act: Ac
             </li>
           ))}
         </ul>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-ink/60">Mức mới từ</span>
-          <input type="date" value={rateFrom} onChange={(event) => setRateFrom(event.target.value)} className="rounded-lg border border-cream-200 bg-white px-2 py-1.5 text-sm" />
-          <MoneyInput value={rateFee} onChange={setRateFee} className="w-36" />
+        <p className="mt-3 text-sm text-ink/60">Thêm mức mới</p>
+        <div className="mt-1 grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <input type="date" value={rateFrom} onChange={(event) => setRateFrom(event.target.value)} className="min-w-0 rounded-lg border border-cream-200 bg-white px-2 py-2 text-sm" />
+          <MoneyInput value={rateFee} onChange={setRateFee} className="min-w-0 sm:w-40" />
           <button
             disabled={!rateFee || !rateFrom}
             onClick={async () => {
               if (await act({ action: "add_rate", classId: cls.id, from: rateFrom, fee: rateFee })) setRateFee(0);
             }}
-            className="rounded-lg bg-clay-500 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+            className="col-span-2 rounded-lg bg-clay-500 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
           >
-            Thêm
+            Thêm mức giá
           </button>
         </div>
       </div>

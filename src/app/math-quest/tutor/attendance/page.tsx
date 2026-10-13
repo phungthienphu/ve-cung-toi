@@ -83,7 +83,7 @@ export default function AttendancePage() {
       />
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">🧑‍🏫 Trang gia sư</p>
-        <h1 className="mt-1 font-draw-display text-3xl font-extrabold">Điểm danh & học phí</h1>
+        <h1 className="mt-1 font-draw-display text-2xl font-extrabold sm:text-3xl">Điểm danh & học phí</h1>
       </header>
       <TutorTabs active="attendance" />
       {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{error}</p>}

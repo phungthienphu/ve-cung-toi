@@ -64,24 +64,29 @@ export function AttendanceCalendar({
   };
 
   return (
-    <Card
-      id="calendar"
-      title={`🗓️ Tháng ${first.getMonth() + 1}/${first.getFullYear()}`}
-      right={
-        <div className="flex items-center gap-1">
-          <button onClick={() => shift(-1)} className="h-9 w-9 rounded-lg border border-cream-200 bg-white font-bold" aria-label="Tháng trước">‹</button>
-          <button onClick={() => onSelect(today)} className="h-9 rounded-lg border border-cream-200 bg-white px-3 text-sm font-semibold">Hôm nay</button>
-          <button onClick={() => shift(1)} className="h-9 w-9 rounded-lg border border-cream-200 bg-white font-bold" aria-label="Tháng sau">›</button>
-        </div>
-      }
-    >
+    <Card id="calendar">
+      {/* ‹ month › on one line at any width — the title used to wrap beside the buttons on phones. */}
+      <div className="mb-3 flex items-center gap-1.5">
+        <button onClick={() => shift(-1)} className="h-9 w-9 shrink-0 rounded-lg border border-cream-200 bg-white text-lg font-bold" aria-label="Tháng trước">‹</button>
+        <h2 className="min-w-0 flex-1 text-center font-draw-display text-lg font-extrabold sm:text-xl">
+          Tháng {first.getMonth() + 1}/{first.getFullYear()}
+        </h2>
+        <button onClick={() => shift(1)} className="h-9 w-9 shrink-0 rounded-lg border border-cream-200 bg-white text-lg font-bold" aria-label="Tháng sau">›</button>
+        <button
+          onClick={() => onSelect(today)}
+          disabled={selected === today}
+          className="h-9 shrink-0 rounded-lg border border-cream-200 bg-white px-2.5 text-sm font-semibold disabled:opacity-40"
+        >
+          Hôm nay
+        </button>
+      </div>
       {data.classes.length > 1 && (
-        <div className="-mt-1 mb-3 flex flex-wrap gap-1.5">
+        <div className="-mx-3 mb-3 flex gap-1.5 overflow-x-auto px-3 sm:mx-0 sm:flex-wrap sm:px-0">
           {[{ id: null, name: "Tất cả lớp" }, ...data.classes.filter((cls) => !cls.archived)].map((cls) => (
             <button
               key={cls.id ?? "all"}
               onClick={() => setFilter(cls.id)}
-              className={`rounded-full px-3 py-1 text-xs font-bold ${filter === cls.id ? "bg-ink text-white" : "bg-cream-100 text-ink/60"}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${filter === cls.id ? "bg-ink text-white" : "bg-cream-100 text-ink/60"}`}
             >
               {cls.name}
             </button>
@@ -94,7 +99,7 @@ export function AttendanceCalendar({
           <span key={short}>{short}</span>
         ))}
       </div>
-      <div className="mt-1 grid grid-cols-7 gap-1">
+      <div className="mt-1 grid grid-cols-7 gap-0.5 sm:gap-1">
         {Array.from({ length: lead }, (_, index) => (
           <span key={`lead-${index}`} />
         ))}
@@ -106,22 +111,22 @@ export function AttendanceCalendar({
             <button
               key={day}
               onClick={() => onSelect(day)}
-              className={`flex min-h-[3.25rem] flex-col items-stretch gap-0.5 rounded-lg p-1 text-left transition sm:min-h-[4.5rem] ${
+              className={`flex min-h-[3rem] flex-col items-center gap-1 rounded-lg p-1 transition sm:min-h-[4.5rem] sm:items-stretch sm:gap-0.5 sm:text-left ${
                 isSelected ? "bg-clay-500/10 ring-2 ring-clay-500" : "bg-cream-50 hover:bg-cream-100"
               }`}
             >
               <span
-                className={`self-start rounded-full px-1.5 text-xs font-bold ${day === today ? "bg-clay-500 text-white" : day < today ? "text-ink/60" : "text-ink/40"}`}
+                className={`rounded-full px-1.5 text-xs font-bold sm:self-start ${day === today ? "bg-clay-500 text-white" : day < today ? "text-ink/60" : "text-ink/40"}`}
               >
                 {Number(day.slice(8))}
               </span>
               {/* Phones: one dot per session; wider screens: a named chip. */}
-              <span className="flex flex-wrap gap-0.5 sm:hidden">
+              <span className="flex flex-wrap justify-center gap-0.5 sm:hidden">
                 {logged.map((session) => (
-                  <span key={session.classId} className={`h-2 w-2 rounded-full ${STATUS_STYLE[session.status].dot}`} />
+                  <span key={session.classId} className={`h-2.5 w-2.5 rounded-full ${STATUS_STYLE[session.status].dot}`} />
                 ))}
                 {expected.map((cls) => (
-                  <span key={cls.id} className={`h-2 w-2 rounded-full border ${day < today ? "border-red-400" : "border-ink/30"}`} />
+                  <span key={cls.id} className={`h-2.5 w-2.5 rounded-full border-2 ${day < today ? "border-red-400" : "border-ink/25"}`} />
                 ))}
               </span>
               <span className="hidden flex-col gap-0.5 sm:flex">
@@ -161,10 +166,10 @@ function Legend() {
         </span>
       ))}
       <span className="flex items-center gap-1">
-        <span className="h-2.5 w-2.5 rounded-full border border-ink/30" /> Theo lịch
+        <span className="h-2.5 w-2.5 rounded-full border-2 border-ink/25" /> Theo lịch
       </span>
       <span className="flex items-center gap-1">
-        <span className="h-2.5 w-2.5 rounded-full border border-red-400" /> Quên điểm danh?
+        <span className="h-2.5 w-2.5 rounded-full border-2 border-red-400" /> Quên tích
       </span>
     </p>
   );
@@ -178,7 +183,7 @@ function DayPanel({ data, act, day, today, settled }: { data: AttendanceData; ac
   const others = active.filter((cls) => !shown.includes(cls));
 
   return (
-    <div className="mt-5 rounded-xl border-2 border-clay-500/30 bg-cream-50 p-3 sm:p-4">
+    <div className="-mx-3 mt-4 border-y-2 border-clay-500/20 bg-cream-50 px-3 py-3 sm:mx-0 sm:mt-5 sm:rounded-xl sm:border-2 sm:p-4">
       <p className="font-draw-display text-lg font-extrabold">
         {longDay(day)}
         {day === today && <span className="ml-2 rounded-full bg-clay-500 px-2 py-0.5 align-middle text-xs text-white">Hôm nay</span>}
@@ -258,7 +263,7 @@ function DayRow({
   const fee = feeOn(cls.rates, day);
 
   return (
-    <li className="rounded-xl bg-white p-3 shadow-sm">
+    <li className="rounded-xl bg-white p-2.5 shadow-sm sm:p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-bold">{cls.name}</span>
         {session && (
@@ -269,17 +274,19 @@ function DayRow({
           </span>
         )}
         {session?.status === "taught" && <span className="text-sm text-ink/60">{formatVnd(session.amount)}</span>}
-        {locked && <span className="ml-auto text-xs font-semibold text-ink/50">🔒 Đã chốt{invoiceTitle ? ` vào đợt ${invoiceTitle}` : ""}</span>}
+        {locked && <span className="text-xs font-semibold text-ink/50 sm:ml-auto">🔒 Đã chốt{invoiceTitle ? ` vào đợt ${invoiceTitle}` : ""}</span>}
       </div>
 
       {!locked && !session && !choosingReason && (
-        <div className="mt-2 grid grid-cols-[2fr_1fr_1fr] gap-1.5">
-          <button onClick={() => mark("taught")} className="rounded-xl bg-[#3fa535] px-3 py-3 font-bold text-white shadow-sm transition hover:brightness-105">
-            ✓ Đã dạy
-            <span className="block text-xs font-semibold text-white/80">{fee ? formatVnd(fee) : "chưa đặt giá"}</span>
+        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-[2fr_1fr_1fr]">
+          <button
+            onClick={() => mark("taught")}
+            className="col-span-2 rounded-xl bg-[#3fa535] px-3 py-3 font-bold text-white shadow-sm transition hover:brightness-105 sm:col-span-1"
+          >
+            ✓ Đã dạy <span className="font-semibold text-white/80">· {fee ? formatVnd(fee) : "chưa đặt giá"}</span>
           </button>
-          <button onClick={() => setChoosingReason(true)} className="rounded-xl bg-[#fde0b8] px-2 py-3 font-bold text-[#8a4b05]">Nghỉ…</button>
-          <button onClick={() => mark("trial")} className="rounded-xl bg-[#f8c9c4] px-2 py-3 font-bold text-[#8a1f14]">Dạy thử</button>
+          <button onClick={() => setChoosingReason(true)} className="whitespace-nowrap rounded-xl bg-[#fde0b8] px-2 py-2.5 font-bold text-[#8a4b05]">Nghỉ…</button>
+          <button onClick={() => mark("trial")} className="whitespace-nowrap rounded-xl bg-[#f8c9c4] px-2 py-2.5 font-bold text-[#8a1f14]">Dạy thử</button>
         </div>
       )}
 
@@ -305,14 +312,14 @@ function DayRow({
       )}
 
       {choosingReason && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-sm text-ink/60">Nghỉ vì:</span>
+        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
+          <span className="col-span-2 text-sm text-ink/60">Nghỉ vì:</span>
           {(Object.keys(OFF_REASONS) as OffReason[]).map((reason) => (
-            <button key={reason} onClick={() => mark("off", reason)} className="rounded-lg bg-[#fde0b8] px-3 py-2 text-sm font-bold text-[#8a4b05]">
+            <button key={reason} onClick={() => mark("off", reason)} className="rounded-lg bg-[#fde0b8] px-3 py-2.5 text-sm font-bold text-[#8a4b05] sm:py-2">
               {OFF_REASONS[reason]}
             </button>
           ))}
-          <button onClick={() => setChoosingReason(false)} className="px-2 text-sm text-ink/50">Hủy</button>
+          <button onClick={() => setChoosingReason(false)} className="col-span-2 py-1 text-sm text-ink/50 sm:px-2">Hủy</button>
         </div>
       )}
 
@@ -353,7 +360,7 @@ function MonthStats({ data, month, classes }: { data: AttendanceData; month: str
   return (
     <div className="mt-5">
       <p className="text-sm font-bold text-ink/60">Thống kê tháng {Number(prefix.slice(5))}</p>
-      <div className="mt-2 overflow-hidden rounded-xl border border-cream-200">
+      <div className="mt-2 overflow-x-auto rounded-xl border border-cream-200">
         <table className="w-full text-sm">
           <thead className="bg-cream-50 text-xs text-ink/50">
             <tr>

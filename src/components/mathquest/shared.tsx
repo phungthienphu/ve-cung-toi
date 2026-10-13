@@ -100,7 +100,7 @@ export function TopBar({ back, trail, right }: { back?: { href: string; label: s
 export function TutorTabs({ active }: { active: "lessons" | "attendance" }) {
   const tabs = [
     { key: "lessons", href: "/math-quest/tutor", label: "📚 Bài học" },
-    { key: "attendance", href: "/math-quest/tutor/attendance", label: "🗓️ Điểm danh & học phí" },
+    { key: "attendance", href: "/math-quest/tutor/attendance", label: "🗓️ Điểm danh", more: " & học phí" },
   ] as const;
   return (
     <div className="mt-4 flex gap-1 rounded-xl border border-cream-200 bg-white p-1 shadow-sm" role="tablist">
@@ -110,11 +110,12 @@ export function TutorTabs({ active }: { active: "lessons" | "attendance" }) {
           href={tab.href}
           role="tab"
           aria-selected={tab.key === active}
-          className={`flex-1 rounded-lg px-3 py-2 text-center text-sm font-bold transition ${
+          className={`flex-1 whitespace-nowrap rounded-lg px-2 py-2 text-center text-sm font-bold transition ${
             tab.key === active ? "bg-clay-500 text-white shadow-sm" : "text-ink/60 hover:bg-cream-50 hover:text-ink"
           }`}
         >
           {tab.label}
+          {"more" in tab && <span className="hidden sm:inline">{tab.more}</span>}
         </Link>
       ))}
     </div>
