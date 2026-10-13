@@ -96,12 +96,74 @@ export function TopBar({ back, trail, right }: { back?: { href: string; label: s
   );
 }
 
+/** Switches between the tutor's two pages: lessons, and attendance & tuition. */
+export function TutorTabs({ active }: { active: "lessons" | "attendance" }) {
+  const tabs = [
+    { key: "lessons", href: "/math-quest/tutor", label: "📚 Bài học" },
+    { key: "attendance", href: "/math-quest/tutor/attendance", label: "🗓️ Điểm danh & học phí" },
+  ] as const;
+  return (
+    <div className="mt-4 flex gap-1 rounded-xl border border-cream-200 bg-white p-1 shadow-sm" role="tablist">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.key}
+          href={tab.href}
+          role="tab"
+          aria-selected={tab.key === active}
+          className={`flex-1 rounded-lg px-3 py-2 text-center text-sm font-bold transition ${
+            tab.key === active ? "bg-clay-500 text-white shadow-sm" : "text-ink/60 hover:bg-cream-50 hover:text-ink"
+          }`}
+        >
+          {tab.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** Light "notebook paper" frame shared by the Math Quest pages. */
 export function Paper({ children }: { children: React.ReactNode }) {
   return (
     <main className={`${drawFontClass} min-h-app bg-cream-50 px-4 pb-24 pt-6 text-ink sm:px-6`}>
       <div className="mx-auto w-full max-w-3xl">{children}</div>
     </main>
+  );
+}
+
+/** The tutor's password screen, shared by both tutor pages. */
+export function TutorLogin({ error, onDone }: { error: string; onDone: () => void }) {
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState(error);
+  const submit = async () => {
+    const res = await fetch("/api/math-quest/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "tutor", password }),
+    });
+    if (res.ok) return onDone();
+    setMessage(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Không đăng nhập được.");
+  };
+  return (
+    <Paper>
+      <TopBar back={{ href: "/math-quest", label: "Math Quest" }} trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Đăng nhập gia sư" }]} />
+      <section className="mx-auto mt-6 max-w-sm rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-sm">
+        <div className="text-5xl">🧑‍🏫</div>
+        <h1 className="mt-2 font-draw-display text-3xl font-extrabold">Trang gia sư</h1>
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && submit()}
+          placeholder="Mật khẩu gia sư"
+          className="mt-5 w-full rounded-xl border border-cream-200 px-4 py-3 outline-none focus:border-clay-500"
+        />
+        {message && <p className="mt-3 text-sm font-semibold text-red-500">{message}</p>}
+        <button onClick={submit} disabled={!password} className="mt-4 w-full rounded-xl bg-clay-500 py-3 font-bold text-white disabled:opacity-50">Đăng nhập ▸</button>
+        <p className="mt-4 text-xs text-ink/40">
+          Là học sinh? <Link href="/math-quest" className="underline hover:text-ink">Mở sổ tay của bạn</Link>
+        </p>
+      </section>
+    </Paper>
   );
 }
 

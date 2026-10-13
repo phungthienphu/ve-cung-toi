@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { dbConnect } from "@/lib/mongodb";
 import { MqLessonProgress, MqLessonReview, MqStudent } from "@/lib/models/MathQuest";
-import { NOT_CONFIGURED, PIN_PATTERN, hashPin, isConfigured, nameKey, readSession } from "@/lib/mathQuest/session";
+import { PIN_PATTERN, hashPin, nameKey } from "@/lib/mathQuest/session";
+import { isId, tutorGuard as guard } from "@/lib/mathQuest/tutorApi";
 import { findLesson } from "@shared/mathQuestLessons";
 
 // The tutor's dashboard API. GET: everything the dashboard shows.
 // POST { action, ... }: manage students, mark lessons taught, review drafts.
-
-async function guard() {
-  if (!isConfigured()) return NextResponse.json({ error: NOT_CONFIGURED }, { status: 503 });
-  if ((await readSession("tutor")) !== "tutor") return NextResponse.json({ error: "Cần đăng nhập gia sư." }, { status: 401 });
-  await dbConnect();
-  return null;
-}
-
-const isId = (value: unknown): value is string => typeof value === "string" && mongoose.isValidObjectId(value);
+// Classes, attendance and tuition live next door in ./attendance.
 
 export async function GET() {
   const denied = await guard();

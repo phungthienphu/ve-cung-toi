@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CHAPTERS, LESSONS } from "@shared/mathQuestLessons";
-import { HOME_CRUMB, LAST_HOST_ROOM_KEY, MATH_QUEST_CRUMB, Paper, TopBar, logout, relativeDay } from "@/components/mathquest/shared";
+import { HOME_CRUMB, LAST_HOST_ROOM_KEY, MATH_QUEST_CRUMB, Paper, TopBar, TutorLogin, TutorTabs, logout, relativeDay } from "@/components/mathquest/shared";
 
 interface Student {
   id: string;
@@ -98,6 +98,7 @@ export default function TutorPage() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-600">🧑‍🏫 Trang gia sư</p>
         <h1 className="mt-1 font-draw-display text-3xl font-extrabold">Math Quest</h1>
       </header>
+      <TutorTabs active="lessons" />
       {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{error}</p>}
 
       <QuickStart data={data} />
@@ -393,41 +394,5 @@ function Reviews({ data, act }: { data: Overview; act: Act }) {
         })}
       </ul>
     </Card>
-  );
-}
-
-function TutorLogin({ error, onDone }: { error: string; onDone: () => void }) {
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(error);
-  const submit = async () => {
-    const res = await fetch("/api/math-quest/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: "tutor", password }),
-    });
-    if (res.ok) return onDone();
-    setMessage(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Không đăng nhập được.");
-  };
-  return (
-    <Paper>
-      <TopBar back={{ href: "/math-quest", label: "Math Quest" }} trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Đăng nhập gia sư" }]} />
-      <section className="mx-auto mt-6 max-w-sm rounded-2xl border border-cream-200 bg-white p-6 text-center shadow-sm">
-        <div className="text-5xl">🧑‍🏫</div>
-        <h1 className="mt-2 font-draw-display text-3xl font-extrabold">Trang gia sư</h1>
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && submit()}
-          placeholder="Mật khẩu gia sư"
-          className="mt-5 w-full rounded-xl border border-cream-200 px-4 py-3 outline-none focus:border-clay-500"
-        />
-        {message && <p className="mt-3 text-sm font-semibold text-red-500">{message}</p>}
-        <button onClick={submit} disabled={!password} className="mt-4 w-full rounded-xl bg-clay-500 py-3 font-bold text-white disabled:opacity-50">Đăng nhập ▸</button>
-        <p className="mt-4 text-xs text-ink/40">
-          Là học sinh? <Link href="/math-quest" className="underline hover:text-ink">Mở sổ tay của bạn</Link>
-        </p>
-      </section>
-    </Paper>
   );
 }
