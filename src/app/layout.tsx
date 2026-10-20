@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SoundToggle from "@/components/SoundToggle";
+import CelebrationBanner from "@/components/CelebrationBanner";
 import { GAMES_SEO, SITE_NAME, SITE_URL, seoMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -28,6 +29,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-app text-slate-900 antialiased">
         {children}
         <SoundToggle />
+        {/* Occasion greeting: change the text and storageKey for the next holiday. */}
+        <CelebrationBanner
+          storageKey="celebration-2026-10-20"
+          emoji="💐"
+          title="Chúc mừng ngày Phụ nữ Việt Nam 20/10"
+          description="Chúc các bạn nữ, các cô, các mẹ luôn xinh đẹp, rạng rỡ và được yêu thương thật nhiều. Hôm nay vào chơi thật vui nhé!"
+          from="2026-10-19"
+          until="2026-10-21"
+        />
       </body>
     </html>
   );
