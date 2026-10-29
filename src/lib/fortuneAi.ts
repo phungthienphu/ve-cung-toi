@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { DECK_SIZE, cardInfo } from "@/components/cards/deck";
 import { AI_READINGS_PER_DAY, AI_READINGS_PER_HOUR, TOPICS, type Topic } from "@/components/cards/fortune";
+import { FortuneReading, type FortuneReadingDoc } from "@/lib/models/FortuneReading";
 import { FortuneUsage } from "@/lib/models/FortuneUsage";
 
 // Server side of the fortune teller's AI reading: request validation, the
@@ -70,9 +71,14 @@ export function fortuneUserMessage({ cards, topic, question, name }: FortuneRequ
   ].join("\n");
 }
 
-/** The visitor's IP as Vercel reports it (it overwrites these headers, so they can't be spoofed there). */
-export function clientIp(req: Request): string {
-  return req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+/**
+ * A stable id for the visitor: their IP (as Vercel reports it — it
+ * overwrites these headers, so they can't be spoofed there), hashed so the
+ * address itself is never stored. Shared by the rate limits and the history.
+ */
+export function visitorId(req: Request): string {
+  const ip = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  return createHash("sha256").update(`fortune:${ip}`).digest("hex").slice(0, 24);
 }
 
 async function bump(key: string, expiresAt: Date, retry = true): Promise<number> {
@@ -89,15 +95,56 @@ async function bump(key: string, expiresAt: Date, retry = true): Promise<number>
 const HOUR_MS = 60 * 60 * 1000;
 const VIETNAM_OFFSET_MS = 7 * HOUR_MS;
 
-/** Counts one reading against the visitor's hourly and the site's daily allowance. Needs dbConnect() first. */
-export async function takeReading(ip: string): Promise<{ ok: true; remaining: number } | { ok: false; reason: "hour" | "day" }> {
-  const now = Date.now();
-  // Windows follow Vietnam time, so "a day" resets at local midnight.
-  const local = new Date(now + VIETNAM_OFFSET_MS).toISOString();
-  const visitor = createHash("sha256").update(`fortune:${ip}`).digest("hex").slice(0, 24);
-  const hourCount = await bump(`ip:${visitor}:${local.slice(0, 13)}`, new Date(now + 2 * HOUR_MS));
-  if (hourCount > AI_READINGS_PER_HOUR) return { ok: false, reason: "hour" };
-  const dayCount = await bump(`day:${local.slice(0, 10)}`, new Date(now + 48 * HOUR_MS));
-  if (dayCount > AI_READINGS_PER_DAY) return { ok: false, reason: "day" };
-  return { ok: true, remaining: AI_READINGS_PER_HOUR - hourCount };
+/** Current hour / day in Vietnam time ("2026-10-29T21", "2026-10-29"), so a day resets at local midnight. */
+function windows() {
+  const local = new Date(Date.now() + VIETNAM_OFFSET_MS).toISOString();
+  return { hour: local.slice(0, 13), day: local.slice(0, 10) };
+}
+
+/**
+ * Counts one reading request against the visitor's hourly and the site's
+ * daily allowance. `count` is the visitor's requests this hour, including
+ * refused ones. Needs dbConnect() first.
+ */
+export async function takeReading(visitor: string): Promise<{ ok: true; remaining: number; count: number } | { ok: false; reason: "hour" | "day"; count: number }> {
+  const { hour, day } = windows();
+  const count = await bump(`ip:${visitor}:${hour}`, new Date(Date.now() + 2 * HOUR_MS));
+  if (count > AI_READINGS_PER_HOUR) return { ok: false, reason: "hour", count };
+  const dayCount = await bump(`day:${day}`, new Date(Date.now() + 48 * HOUR_MS));
+  if (dayCount > AI_READINGS_PER_DAY) return { ok: false, reason: "day", count };
+  return { ok: true, remaining: AI_READINGS_PER_HOUR - count, count };
+}
+
+const LOGIN_ATTEMPTS_PER_HOUR = 10;
+
+/** Counts a history password attempt; false once the visitor has tried too often this hour. Needs dbConnect() first. */
+export async function takeLoginAttempt(visitor: string): Promise<boolean> {
+  return (await bump(`login:${visitor}:${windows().hour}`, new Date(Date.now() + 2 * HOUR_MS))) <= LOGIN_ATTEMPTS_PER_HOUR;
+}
+
+/** Past this many requests in an hour from one visitor, readings aren't saved, so hammering the endpoint can't flood the history. */
+const SAVED_PER_HOUR = 20;
+
+/** Adds a reading to the admin's history. Never throws: losing a history entry mustn't break the reading. */
+export async function saveReading(
+  input: FortuneRequest,
+  entry: Pick<FortuneReadingDoc, "text" | "source" | "status" | "reason" | "model" | "visitor"> & { count: number },
+) {
+  if (entry.count > SAVED_PER_HOUR || !entry.text.trim()) return;
+  try {
+    await FortuneReading.create({
+      name: input.name,
+      question: input.question,
+      topic: input.topic,
+      cards: input.cards,
+      text: entry.text.slice(0, 6000),
+      source: entry.source,
+      status: entry.status,
+      reason: entry.reason,
+      model: entry.model,
+      visitor: entry.visitor,
+    });
+  } catch (error) {
+    console.error("[fortune] could not save reading", error);
+  }
 }

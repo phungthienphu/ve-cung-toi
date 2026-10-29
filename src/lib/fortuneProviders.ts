@@ -10,7 +10,14 @@ import { FORTUNE_SYSTEM_PROMPT, fortuneUserMessage, type FortuneRequest } from "
 //     OpenAI-compatible Responses API endpoint, e.g. a company AI router;
 //   ANTHROPIC_API_KEY — Claude via the Anthropic API.
 
-export type ReadingSource = (input: FortuneRequest, signal: AbortSignal) => AsyncGenerator<string>;
+export interface ReadingSource {
+  /** Shown in the admin's history. */
+  model: string;
+  read: (input: FortuneRequest, signal: AbortSignal) => AsyncGenerator<string>;
+}
+
+const routerModel = () => process.env.AI_ROUTER_MODEL || "gpt-6.1-sol";
+const CLAUDE_MODEL = "claude-opus-5-5";
 
 const MAX_OUTPUT_TOKENS = 2000;
 
@@ -21,7 +28,7 @@ async function* routerReading(input: FortuneRequest, signal: AbortSignal): Async
   router ??= new OpenAI({ apiKey: process.env.AI_ROUTER_API_KEY, baseURL: process.env.AI_ROUTER_BASE_URL });
   const stream = await router.responses.create(
     {
-      model: process.env.AI_ROUTER_MODEL || "gpt-6.1-sol",
+      model: routerModel(),
       instructions: FORTUNE_SYSTEM_PROMPT,
       input: fortuneUserMessage(input),
       reasoning: { effort: "low" },
@@ -43,7 +50,7 @@ async function* claudeReading(input: FortuneRequest, signal: AbortSignal): Async
   anthropic ??= new Anthropic();
   const stream = anthropic.beta.messages.stream(
     {
-      model: "claude-opus-5-5",
+      model: CLAUDE_MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
       output_config: { effort: "low" },
       // If a safety classifier declines, the API retries on its recommended fallback model.
@@ -65,7 +72,7 @@ async function* claudeReading(input: FortuneRequest, signal: AbortSignal): Async
 
 /** The configured source, or null when no AI credentials are set (the page then uses its offline reading). */
 export function readingSource(): ReadingSource | null {
-  if (process.env.AI_ROUTER_API_KEY && process.env.AI_ROUTER_BASE_URL) return routerReading;
-  if (process.env.ANTHROPIC_API_KEY) return claudeReading;
+  if (process.env.AI_ROUTER_API_KEY && process.env.AI_ROUTER_BASE_URL) return { model: routerModel(), read: routerReading };
+  if (process.env.ANTHROPIC_API_KEY) return { model: CLAUDE_MODEL, read: claudeReading };
   return null;
 }

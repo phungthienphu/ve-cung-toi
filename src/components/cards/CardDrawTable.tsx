@@ -10,6 +10,7 @@ import { seanceFontClass } from "./fonts";
 import { ACE_OF_SPADES, AI_READINGS_PER_HOUR, FORTUNE_RESET, LINES, TOPICS, offlineReading, reading, type Topic } from "./fortune";
 import { Candle, Incense, Medium, MediumHand, Sigil, type MediumMood } from "./Medium";
 import { CardBack, CardFace, StaticCard } from "./PlayingCard";
+import { FortuneHistoryModal } from "./FortuneHistory";
 import { renderFortuneCard, shareCardFileName, type ShareCardInput } from "./shareCard";
 
 // A fortune teller's table with a 52-card deck: she asks the player's name
@@ -623,6 +624,8 @@ export default function CardDrawTable() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTalking, setPanelTalking] = useState(false);
   const [shareInput, setShareInput] = useState<ShareCardInput | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const closeHistory = useCallback(() => setHistoryOpen(false), []);
   // In-flight /api/fortune requests, so they can be cancelled.
   const [readingRequests] = useState(() => new Set<AbortController>());
 
@@ -949,7 +952,7 @@ export default function CardDrawTable() {
   // Keyboard shortcuts, always calling the latest actions.
   useEffect(() => {
     keyHandler.current = (event) => {
-      if (preview !== null || shareInput !== null || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (preview !== null || shareInput !== null || historyOpen || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       const actions: Record<string, () => void> = {
         s: shuffle,
@@ -1106,19 +1109,34 @@ export default function CardDrawTable() {
         {line.text}
       </p>
 
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-3 pt-3 sm:px-6 sm:pt-4">
-        <Link href="/" aria-label="Về trang chủ" className="shrink-0 rounded-full px-3 py-1.5 text-sm font-bold text-[#f3e6c4]/70 transition hover:bg-white/10 hover:text-[#f3e6c4]">
+      <header className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-3 sm:px-6 sm:pt-4">
+        <Link
+          href="/"
+          aria-label="Về trang chủ"
+          className="justify-self-start rounded-full px-3 py-1.5 text-sm font-bold text-[#f3e6c4]/70 transition hover:bg-white/10 hover:text-[#f3e6c4]"
+        >
           ‹ <span className="hidden sm:inline">Trang chủ</span>
         </Link>
         <h1 className="truncate font-seance text-2xl font-extrabold tracking-wide text-[#f3d27a] drop-shadow-[0_0_14px_rgba(224,184,74,0.4)] sm:text-4xl">Bà Đồng Xem Bài</h1>
-        <button
-          type="button"
-          onClick={newRound}
-          disabled={phase === "askName" || phase === "askTopic"}
-          className="shrink-0 rounded-full px-3 py-1.5 text-sm font-bold text-[#f3e6c4]/70 transition hover:bg-white/10 hover:text-[#f3e6c4] disabled:invisible"
-        >
-          ↺ <span className="hidden sm:inline">Ván mới</span>
-        </button>
+        <div className="flex items-center gap-1 justify-self-end">
+          <button
+            type="button"
+            onClick={newRound}
+            disabled={phase === "askName" || phase === "askTopic"}
+            className="rounded-full px-3 py-1.5 text-sm font-bold text-[#f3e6c4]/70 transition hover:bg-white/10 hover:text-[#f3e6c4] disabled:hidden"
+          >
+            ↺ <span className="hidden sm:inline">Ván mới</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            title="Sổ quẻ (admin)"
+            aria-label="Sổ quẻ (admin)"
+            className="rounded-full px-2.5 py-1.5 text-sm text-[#f3e6c4]/45 transition hover:bg-white/10 hover:text-[#f3e6c4]"
+          >
+            📜
+          </button>
+        </div>
       </header>
 
       <div className="mx-auto mt-2 w-full max-w-6xl px-3">
@@ -1260,7 +1278,7 @@ export default function CardDrawTable() {
             </div>
           ) : (
             <p className="min-w-0 flex-1 truncate">
-              🔮 Chỉ để giải trí thôi nha.
+              🔮 Chỉ để giải trí thôi nha · quẻ được lưu lại.
               <span className="hidden sm:inline"> · Phím tắt: S xào bài · F xòe bài · R rút ngẫu nhiên · G gom bài</span>
             </p>
           )}
@@ -1269,6 +1287,7 @@ export default function CardDrawTable() {
 
       {preview !== null && <PreviewModal id={preview} picked={picked} name={name} onClose={closePreview} onMove={movePreview} />}
       {shareInput && <ShareImageModal input={shareInput} onClose={closeShareImage} />}
+      {historyOpen && <FortuneHistoryModal onClose={closeHistory} />}
     </main>
   );
 }
