@@ -208,6 +208,293 @@ body {
   .ww-moon { animation: none; }
 }
 
+/* ---------- Fortune-teller card table (components/cards) ----------
+   Each card is three nested layers so the three motions never fight:
+   .pc-card    — where it sits on the table (translate/rotate/scale, slow, staggered)
+   .pc-lift    — the hover lift + glow (fast)
+   .pc-flip    — face up / face down (3D)
+   Pointer input goes to a separate layer of transparent .pc-hitbox buttons
+   that never move on hover, so a lifted card can't steal the pointer from
+   its neighbours while you sweep along the fan.
+   All sizes inside a card are em-based off its font-size (= width / 5). */
+.font-seance { font-family: var(--font-seance), Georgia, serif; }
+.bg-seance {
+  background-color: #070307;
+  background-image:
+    radial-gradient(ellipse at 50% 12%, rgba(190, 30, 45, 0.3), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0 26px, rgba(110, 12, 24, 0.16) 26px 52px),
+    linear-gradient(180deg, #1d0509 0%, #0b0306 70%, #050204 100%);
+}
+.seance-vignette {
+  background: radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0, 0, 0, 0.75) 100%);
+}
+.altar-cloth {
+  background:
+    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 3px 3px,
+    radial-gradient(ellipse at 50% 0%, #8c1426 0%, #5a0a18 45%, #2c040c 100%);
+  box-shadow:
+    inset 0 18px 30px -14px rgba(0, 0, 0, 0.85),
+    inset 0 0 90px rgba(0, 0, 0, 0.6),
+    0 -2px 0 #e0b84a,
+    0 -5px 0 #5c3f0c,
+    0 -16px 34px rgba(0, 0, 0, 0.65);
+}
+
+.pc-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  transition: transform 0.65s cubic-bezier(0.22, 0.9, 0.24, 1);
+  will-change: transform;
+}
+.pc-hitbox {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5em;
+  background: transparent;
+  cursor: pointer;
+  transform-origin: 50% 50%;
+  transition: transform 0.65s cubic-bezier(0.22, 0.9, 0.24, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.pc-hitbox:focus { outline: none; }
+.pc-hitbox.is-drawn { cursor: zoom-in; }
+/* While the deck swirls in the air the cards glide at constant speed. */
+.pc-stage.is-swirl .pc-card { transition-duration: 0.42s; transition-timing-function: linear; }
+
+.pc-lift {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.5em;
+  perspective: 900px;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.22s ease;
+}
+.pc-flip {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.25, 1);
+}
+.pc-flip.is-up { transform: rotateY(180deg); }
+.pc-side {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 0.5em;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  box-shadow: 0 0.08em 0.3em rgba(0, 0, 0, 0.45), 0 0.02em 0.05em rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.22s ease;
+}
+.pc-face {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, #fffdf6 0%, #f7f1e1 60%, #ece3cb 100%);
+  border: 1px solid #c9bd9c;
+}
+.pc-face.pc-static { transform: none; }
+.pc-back {
+  background-color: #3b0712;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(224, 184, 74, 0.16) 0 0.06em, transparent 0.06em 0.42em),
+    repeating-linear-gradient(-45deg, rgba(224, 184, 74, 0.16) 0 0.06em, transparent 0.06em 0.42em),
+    radial-gradient(ellipse at 50% 50%, #7a0f22 0%, #4a0714 60%, #2a030b 100%);
+  border: 0.22em solid #17040a;
+}
+.pc-back-frame {
+  position: absolute;
+  inset: 0.14em;
+  border: 0.05em solid rgba(224, 184, 74, 0.8);
+  border-radius: 0.28em;
+}
+.pc-back-emblem {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  width: 1.5em;
+  height: 1.5em;
+  align-items: center;
+  justify-content: center;
+  border: 0.07em solid #e0b84a;
+  border-radius: 0.2em;
+  background: radial-gradient(circle, #2a030b, #120106);
+  color: #e0b84a;
+  font-size: 1em;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.pc-back-emblem > span { transform: rotate(-45deg); line-height: 1; }
+.pc-back::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(115deg, transparent 42%, rgba(255, 236, 190, 0.55) 50%, transparent 58%);
+  transform: translateX(-100%);
+}
+
+/* The card under the pointer (or keyboard focus): lifts out of the fan,
+   brightens and glows candle-gold, with a light sweep across its back. */
+.pc-card.is-hot { z-index: 1000 !important; }
+.pc-card.is-hot .pc-lift {
+  transform: translateY(-22%) scale(1.1);
+  filter: brightness(1.25) saturate(1.2);
+}
+.pc-card.is-hot .pc-side {
+  box-shadow:
+    0 0 0 0.1em #ffe08a,
+    0 0 1.1em 0.3em rgba(255, 214, 102, 0.9),
+    0 0 2.6em 0.8em rgba(255, 90, 40, 0.5);
+}
+.pc-card.is-hot .pc-back::after { animation: pc-shine 0.8s ease-out; }
+@keyframes pc-shine { to { transform: translateX(100%); } }
+/* Drawn (face-up) cards: a softer lift and a pale glow — click to zoom. */
+.pc-card.is-hot.is-drawn .pc-lift { transform: translateY(-10%) scale(1.06); filter: none; }
+.pc-card.is-hot.is-drawn .pc-side { box-shadow: 0 0 0 0.08em #fff6dc, 0 0 1.4em 0.3em rgba(255, 240, 200, 0.6); }
+
+@keyframes pc-zoom-in {
+  0% { transform: scale(0.6) rotateY(90deg); opacity: 0; }
+  100% { transform: scale(1) rotateY(0); opacity: 1; }
+}
+.pc-zoom { animation: pc-zoom-in 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; }
+@keyframes pc-pop-in {
+  0% { transform: translateY(6px) scale(0.85); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.pc-pop { animation: pc-pop-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+
+/* The medium (Medium.tsx). --lx / --ly (-1…1) are set from the pointer so her eyes follow it. */
+.md-root { --lx: 0; --ly: 0; overflow: visible; }
+.md-head { transform-box: view-box; transform-origin: 160px 190px; animation: md-sway 7s ease-in-out infinite; }
+@keyframes md-sway {
+  0%, 100% { transform: rotate(-1.3deg); }
+  50% { transform: rotate(1.5deg) translateY(1px); }
+}
+.md-pupil { transform: translate(calc(var(--lx) * 3.4px), calc(var(--ly) * 2px)); transition: transform 0.15s ease-out; }
+.md-lid { transform-box: fill-box; transform-origin: 50% 0%; transform: scaleY(0); animation: md-blink 6s infinite; }
+@keyframes md-blink {
+  0%, 92%, 100% { transform: scaleY(0); }
+  94%, 95.5% { transform: scaleY(1); }
+}
+.md-eye { transform-box: fill-box; transform-origin: 50% 50%; transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.md-eye-glow { mix-blend-mode: screen; animation: md-eye-pulse 3s ease-in-out infinite; }
+@keyframes md-eye-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.75; }
+}
+.md-chant .md-eye-glow { animation: md-eye-hot 0.45s ease-in-out infinite alternate; }
+.md-shock .md-eye-glow { animation: none; opacity: 1; }
+@keyframes md-eye-hot {
+  from { opacity: 0.75; }
+  to { opacity: 1; }
+}
+.md-shock .md-eye { transform: scale(1.3); }
+.md-shock .md-lid, .md-chant .md-lid { animation: none; }
+.md-gem { animation: md-eye-pulse 2.2s ease-in-out infinite; }
+.md-mouth { transform-box: fill-box; transform-origin: 50% 25%; transform: scaleY(0); }
+.md-talking .md-mouth { animation: md-talk 0.17s ease-in-out infinite alternate; }
+@keyframes md-talk {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+.md-shock .md-mouth { animation: none; transform: scaleY(1.5); }
+
+.md-hand { transition: transform 0.5s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.4s ease, filter 0.4s ease; transform-origin: 50% 0%; }
+.md-hand.is-away { opacity: 0; transform: translateY(-30%) scale(0.9); }
+.md-hand.is-chant { transform: translateY(-34%); filter: drop-shadow(0 0 12px rgba(255, 60, 40, 0.95)); }
+.md-hand.is-chant > svg { animation: md-twitch 0.32s ease-in-out infinite alternate; }
+@keyframes md-twitch {
+  from { transform: var(--mirror, scaleX(1)) rotate(-3deg); }
+  to { transform: var(--mirror, scaleX(1)) rotate(3deg); }
+}
+
+.md-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: md-flicker 1.6s ease-in-out infinite; }
+@keyframes md-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0); }
+  25% { transform: scale(0.93, 1.08) skewX(3deg); }
+  50% { transform: scale(1.05, 0.94) skewX(-2deg); }
+  75% { transform: scale(0.96, 1.05) skewX(1deg); }
+}
+.md-halo {
+  background: radial-gradient(circle, rgba(255, 170, 80, 0.42) 0%, rgba(255, 110, 40, 0.14) 40%, transparent 70%);
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%);
+  animation: md-halo 2.4s ease-in-out infinite;
+}
+@keyframes md-halo {
+  0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
+  40% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.94); }
+  65% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+}
+.md-smoke { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; animation: md-smoke 5.4s ease-out infinite; }
+@keyframes md-smoke {
+  0% { transform: translateY(12px) scaleX(0.6); opacity: 0; }
+  20% { opacity: 0.5; }
+  100% { transform: translateY(-46px) scaleX(1.5); opacity: 0; }
+}
+.md-sigil { animation: md-spin 80s linear infinite; }
+@keyframes md-spin { to { transform: rotate(360deg); } }
+
+.md-bubble {
+  background: linear-gradient(180deg, #f5e9cb 0%, #e6d3a3 100%);
+  color: #2a070d;
+  border: 2px solid #5a0a18;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(224, 184, 74, 0.22);
+}
+.md-bubble::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 22px;
+  width: 15px;
+  height: 15px;
+  background: #f1e3bf;
+  border-left: 2px solid #5a0a18;
+  border-bottom: 2px solid #5a0a18;
+  transform: rotate(45deg);
+}
+.md-scroll {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.5), transparent 60%),
+    linear-gradient(180deg, #f5e9cb 0%, #e9d6a6 100%);
+  border: 2px solid #5a0a18;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 5px rgba(224, 184, 74, 0.28), inset 0 0 40px rgba(120, 70, 20, 0.25);
+}
+.md-caret { display: inline-block; width: 0.5ch; animation: md-caret 0.8s steps(1) infinite; }
+@keyframes md-caret { 50% { opacity: 0; } }
+
+.md-shake { animation: md-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes md-shake {
+  10%, 90% { transform: translate(-2px, 0); }
+  20%, 80% { transform: translate(4px, 0); }
+  30%, 50%, 70% { transform: translate(-8px, 2px); }
+  40%, 60% { transform: translate(8px, -2px); }
+}
+.md-flash {
+  background: radial-gradient(circle at 50% 35%, rgba(255, 0, 0, 0.35), rgba(70, 0, 0, 0.8));
+  animation: md-flash 1s ease-out both;
+}
+@keyframes md-flash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-card, .pc-hitbox, .pc-flip, .pc-lift { transition-duration: 0.01s !important; }
+  .pc-zoom, .pc-pop, .md-head, .md-sigil, .md-smoke, .md-shake, .md-hand.is-chant > svg { animation: none !important; }
+}
+
 /* ---------- Celebration banner (CelebrationBanner.tsx) ---------- */
 @keyframes celebration-pop {
   0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }

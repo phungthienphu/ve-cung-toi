@@ -80,6 +80,17 @@ const GAMES: GameCard[] = [
     border: "border-fuchsia-300",
     button: "from-violet-600 to-fuchsia-500",
   },
+  {
+    href: "/card-draw",
+    emoji: "🔮",
+    title: "Bà Đồng Xem Bài",
+    description: "Bà đồng lật, xào rồi xòe 52 lá bài Tây cho bạn rút — rút.",
+    tag: "Rút bài ngẫu nhiên",
+    players: "1 người · không cần phòng",
+    gradient: "from-rose-700 via-red-900 to-black",
+    border: "border-rose-300",
+    button: "from-rose-700 to-red-900",
+  },
 ];
 
 export default function GamePickerPage() {

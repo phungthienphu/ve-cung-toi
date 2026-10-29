@@ -21,6 +21,7 @@ export const GAMES_SEO = {
   tank: { title: "Đại Chiến Xe Tăng", description: "Bắn xe tăng cùng hội bạn, tối đa 8 người.", path: "/tank-game", image: "/og/tank.jpg" },
   soccer: { title: "Sân Cỏ Đẫm Máu", description: "Đá bóng 2 đội, 1vs1 đến 4vs4, có bot lấp chỗ.", path: "/soccer", image: "/og/soccer.jpg" },
   battleship: { title: "Hải Chiến", description: "Giấu hạm đội, đoán tọa độ, nã pháo. Solo, Hỗn chiến hoặc Đồng đội.", path: "/battleship", image: "/og/battleship.jpg" },
+  cards: { title: "Bà Đồng Xem Bài", description: "Rút bài Tây ngẫu nhiên kiểu xem bói: bà đồng lật, xào, xòe 52 lá, bạn rút .", path: "/card-draw", image: "/og/home.jpg" },
   leaderboard: { title: "Lịch sử trận đấu", description: "Các trận gần nhất của mọi game trên Chơi Cùng Tôi.", path: "/leaderboard", image: "/og/home.jpg" },
 } satisfies Record<string, GameSeo>;
 
