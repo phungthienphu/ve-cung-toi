@@ -15,7 +15,7 @@ export interface GameSeo {
 }
 
 export const GAMES_SEO = {
-  home: { title: SITE_NAME, description: "Game nhiều người chơi ngay trên trình duyệt, không cần tài khoản: vẽ đoán chữ, Ma Sói, xe tăng, bóng đá, Hải Chiến.", path: "", image: "/og/home.jpg" },
+  home: { title: SITE_NAME, description: "Game nhiều người chơi ngay trên trình duyệt, không cần tài khoản: vẽ đoán chữ, Ma Sói, xe tăng, bóng đá, Hải Chiến và Bà Đồng xem bói.", path: "", image: "/og/home.jpg" },
   draw: { title: "Vẽ Cùng Tôi", description: "Vẽ và đoán chữ cùng hội bạn, không cần tài khoản.", path: "/draw-guess", image: "/og/draw.jpg", roomPath: "/room" },
   werewolf: { title: "Ma Sói", description: "Suy luận, giấu vai và bỏ phiếu. Ai là sói trong đêm nay?", path: "/werewolf", image: "/og/werewolf.jpg" },
   tank: { title: "Đại Chiến Xe Tăng", description: "Bắn xe tăng cùng hội bạn, tối đa 8 người.", path: "/tank-game", image: "/og/tank.jpg" },

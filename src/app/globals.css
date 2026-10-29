@@ -38,21 +38,38 @@ body {
   background-position: center;
   background-color: #ecdcb8;
 }
-.bg-home {
-  background-image: url("/background-home.png");
-  background-size: cover;
-  background-position: center;
-  background-color: #ecdcb8;
+/* Home hub (app/page.tsx): dark launcher with soft colour glows. */
+.bg-hub {
+  background-color: #0a0812;
+  background-image:
+    radial-gradient(56rem 36rem at 0% -8%, rgba(124, 58, 237, 0.26), transparent 60%),
+    radial-gradient(48rem 32rem at 100% 4%, rgba(249, 115, 22, 0.16), transparent 60%),
+    radial-gradient(40rem 30rem at 50% 100%, rgba(236, 72, 153, 0.14), transparent 65%);
 }
-
-/* Wooden signboard like the ones in the home hero art — plank grain from a
-   few stacked gradients, no extra image asset. */
-.wood-sign {
-  background:
-    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px),
-    linear-gradient(180deg, #a9703a 0%, #8a5527 55%, #74441f 100%);
-  border: 3px solid #5a3417;
-  box-shadow: inset 0 2px 0 rgba(255, 220, 160, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.25), 0 8px 0 #4a2a12, 0 18px 30px rgba(40, 20, 5, 0.45);
+/* "NEW" tag with a light sweeping across it. */
+.badge-new {
+  background: linear-gradient(110deg, #ff2d55 0%, #ff7a00 40%, #ffd36e 50%, #ff7a00 60%, #ff2d55 100%);
+  background-size: 260% 100%;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(120, 0, 20, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2), 0 6px 18px rgba(255, 45, 85, 0.5);
+  animation: badge-new-shine 2.8s linear infinite;
+}
+@keyframes badge-new-shine {
+  from { background-position: 100% 0; }
+  to { background-position: -160% 0; }
+}
+/* Hải Chiến tile: a gridded sea. */
+.tile-sea {
+  background-color: #0c3558;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 34px),
+    radial-gradient(ellipse at 80% 20%, rgba(56, 189, 248, 0.35), transparent 60%),
+    linear-gradient(160deg, #0f4c7a 0%, #0b2a47 60%, #071a2e 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge-new { animation: none; }
 }
 
 /* Hải Chiến: open-sea backdrop, drawn in CSS so the game needs no image. */

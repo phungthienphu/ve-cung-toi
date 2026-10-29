@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { drawFontClass } from "@/lib/drawFonts";
+import { SITE_URL } from "@/lib/seo";
 import { playNightFall, playPop, playTypeTick, playWhoosh } from "@/lib/sound";
 import { DECK_SIZE, ORDERED_DECK, cardInfo, shuffled } from "./deck";
 import { seanceFontClass } from "./fonts";
 import { ACE_OF_SPADES, AI_READINGS_PER_HOUR, FORTUNE_RESET, LINES, TOPICS, offlineReading, reading, type Topic } from "./fortune";
 import { Candle, Incense, Medium, MediumHand, Sigil, type MediumMood } from "./Medium";
 import { CardBack, CardFace, StaticCard } from "./PlayingCard";
+import { renderFortuneCard, shareCardFileName, type ShareCardInput } from "./shareCard";
 
 // A fortune teller's table with a 52-card deck: she asks the player's name
 // and question, shows the whole deck face up, gathers it, lets the player
@@ -409,6 +411,7 @@ function ReadingPanel({
   onPreview,
   onClose,
   onNewRound,
+  onShareImage,
   style,
 }: {
   reading: ReadingState;
@@ -419,6 +422,7 @@ function ReadingPanel({
   onPreview: (id: number) => void;
   onClose: () => void;
   onNewRound: () => void;
+  onShareImage: () => void;
   style: CSSProperties;
 }) {
   const [copied, setCopied] = useState(false);
@@ -479,6 +483,15 @@ function ReadingPanel({
       <ReadingText key={state.key} text={state.text} waiting={state.status === "loading" || (state.status === "streaming" && !state.text)} onTalking={onTalking} />
       {state.notice && <p className="px-4 pb-1 text-xs italic text-[#5a0a18]/75 sm:px-6">{state.notice}</p>}
       <div className="flex flex-wrap items-center gap-2 border-t border-[#5a0a18]/20 px-4 py-2.5 sm:px-6">
+        {finished && (
+          <button
+            type="button"
+            onClick={onShareImage}
+            className="rounded-xl bg-gradient-to-b from-[#ffd36e] to-[#e0951a] px-4 py-2 font-seance text-lg font-bold text-[#3b0a0f] shadow-[0_3px_0_#7a3b06] transition hover:brightness-110 active:translate-y-px"
+          >
+            🖼️ Tải ảnh quẻ
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -497,6 +510,80 @@ function ReadingPanel({
         <span className="ml-auto text-[11px] font-semibold text-[#5a0a18]/60">
           🔮 Chỉ để giải trí{state.remaining !== null ? ` · còn ${state.remaining} lượt AI trong giờ này` : ""}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/** Preview of the shareable image of the reading, with download / share. */
+function ShareImageModal({ input, onClose }: { input: ShareCardInput; onClose: () => void }) {
+  const [image, setImage] = useState<{ url: string; file: File } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [shareable, setShareable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let url = "";
+    renderFortuneCard(input)
+      .then((blob) => {
+        if (cancelled) return;
+        const file = new File([blob], shareCardFileName(input.name), { type: "image/png" });
+        url = URL.createObjectURL(blob);
+        setImage({ url, file });
+        // Phones can hand the image straight to Zalo / Messenger / Photos.
+        setShareable(typeof navigator.canShare === "function" && navigator.canShare({ files: [file] }));
+      })
+      .catch((error) => {
+        console.error("[fortune] share image failed", error);
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [input]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function share() {
+    if (!image) return;
+    try {
+      await navigator.share({ files: [image.file], title: "Quẻ bói của Bà Đồng" });
+    } catch {
+      // Share sheet dismissed.
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Ảnh quẻ" onClick={(event) => event.stopPropagation()} className="flex max-h-full w-full max-w-md flex-col items-center gap-4">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a blob: URL drawn in the browser
+          <img src={image.url} alt="Ảnh quẻ bói" className="pc-pop max-h-[72vh] w-auto rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] ring-1 ring-[#e0b84a]/40" />
+        ) : failed ? (
+          <p className="text-center text-[#f3e6c4]">Không vẽ được ảnh quẻ, con thử lại nhé.</p>
+        ) : (
+          <p className="animate-pulse py-16 font-seance text-2xl text-[#f3d27a]">🕯️ Bà đồng đang vẽ quẻ…</p>
+        )}
+        <div className="flex flex-wrap justify-center gap-2">
+          {image && (
+            <a href={image.url} download={image.file.name} className={PRIMARY}>
+              📥 Tải ảnh
+            </a>
+          )}
+          {image && shareable && (
+            <button type="button" onClick={share} className={SECONDARY}>
+              📤 Chia sẻ
+            </button>
+          )}
+          <button type="button" onClick={onClose} className={SECONDARY}>
+            Đóng
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -535,6 +622,7 @@ export default function CardDrawTable() {
   const [aiReading, setAiReading] = useState<ReadingState | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTalking, setPanelTalking] = useState(false);
+  const [shareInput, setShareInput] = useState<ShareCardInput | null>(null);
   // In-flight /api/fortune requests, so they can be cancelled.
   const [readingRequests] = useState(() => new Set<AbortController>());
 
@@ -844,10 +932,24 @@ export default function CardDrawTable() {
     }
   }
 
+  function openShareImage() {
+    if (!aiReading) return;
+    setShareInput({
+      cards: aiReading.cards,
+      name,
+      question,
+      topicLabel: topic !== "any" ? (TOPICS.find((item) => item.id === topic)?.label ?? "") : "",
+      text: aiReading.text,
+      portrait: lookRef.current?.querySelector("svg") ?? null,
+      link: `${SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")}/card-draw`,
+    });
+  }
+  const closeShareImage = useCallback(() => setShareInput(null), []);
+
   // Keyboard shortcuts, always calling the latest actions.
   useEffect(() => {
     keyHandler.current = (event) => {
-      if (preview !== null || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (preview !== null || shareInput !== null || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       const actions: Record<string, () => void> = {
         s: shuffle,
@@ -1124,6 +1226,7 @@ export default function CardDrawTable() {
                 onPreview={setPreview}
                 onClose={() => setPanelOpen(false)}
                 onNewRound={gatherBack}
+                onShareImage={openShareImage}
                 style={{ left: Math.max(8, (g.w - 720) / 2), right: Math.max(8, (g.w - 720) / 2), top: g.tableTop + 6, bottom: 8 }}
               />
             )}
@@ -1165,6 +1268,7 @@ export default function CardDrawTable() {
       </div>
 
       {preview !== null && <PreviewModal id={preview} picked={picked} name={name} onClose={closePreview} onMove={movePreview} />}
+      {shareInput && <ShareImageModal input={shareInput} onClose={closeShareImage} />}
     </main>
   );
 }
