@@ -26,6 +26,8 @@ import {
   playPop,
   playSadTrombone,
   playSeatMove,
+  playSkillCast,
+  playSkillResult,
   playTeaseBoing,
   playUhOh,
   playYourTurn,
@@ -33,8 +35,9 @@ import {
 } from "@/lib/sound";
 import { useOldMaidRoom } from "@/lib/useOldMaidRoom";
 import { RANKS } from "@/components/cards/deck";
-import { DEAL_MS, EMOTES, JOKER, isPair, rankOf, type Emote } from "@shared/oldMaidTypes";
-import { JokerFace, MyHand, SCAN_START_MS, scanStepMs } from "./MyHand";
+import { DEAL_MS, EMOTES, JOKER, SKILL_PEEK_MS, isPair, isSkill, rankOf, skillOf, type Emote } from "@shared/oldMaidTypes";
+import { JokerFace, MyHand, SCAN_START_MS, cardLabel, scanStepMs } from "./MyHand";
+import { CastOverlay, DoubleChoice, ReturnButton, SkillSheet, skillStatus, type SkillCast } from "./SkillUi";
 import { ChatPanel, FinalPanel, LobbyPanel, RoundEndPanel, Scoreboard, SettingsPanel, btnGhost, btnPrimary, useNow } from "./panels";
 import type { Quality } from "./scene/Table3D";
 
@@ -86,7 +89,20 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
   /** The card you just drew, being checked against your hand. */
   const [scan, setScan] = useState<{ card: number; key: number } | null>(null);
   /** How the last draw ended, for the banner until the next turn. */
-  const [settled, setSettled] = useState<{ drawerId: string; pair: [number, number] | null } | null>(null);
+  const [settled, setSettled] = useState<{ drawerId: string; targetId: string; pair: [number, number] | null; returned: boolean } | null>(null);
+  // ---------- skill cards ----------
+  /** The skill card whose sheet is open. */
+  const [skillSheet, setSkillSheet] = useState<string | null>(null);
+  /** 🔍 played-to-be: waiting for you to tap the card to look at. */
+  const [aimingPeek, setAimingPeek] = useState<string | null>(null);
+  /** The last "tung chiêu" moment, shown on every screen. */
+  const [cast, setCast] = useState<SkillCast | null>(null);
+  /** What your 🔍 showed you (this turn only). */
+  const [peekReveal, setPeekReveal] = useState<{ targetId: string; slot: number; card: number } | null>(null);
+  /** Which card someone looked at with 🔍 (everyone sees the tag). */
+  const [peekMark, setPeekMark] = useState<{ targetId: string; slot: number } | null>(null);
+  /** 🤲 Rút hai: the two cards to choose between. */
+  const [choice, setChoice] = useState<[number, number] | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [seenChat, setSeenChat] = useState(0);
@@ -132,11 +148,15 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
     send({ type: "quick_start", bots: quickBots });
   }, [quickBots, state, playerId, me?.seat, send]);
 
-  // A new draw starts with nothing selected.
-  const turnKey = turn ? `${turn.drawerId}:${turn.endsAt}` : "";
+  // A new draw starts with nothing selected (and nothing peeked). Named by its start, not its
+  // deadline (a skill can add time), plus its target (↩️ can change it).
+  const turnKey = turn ? `${turn.drawerId}:${turn.targetId}:${turn.startedAt}` : "";
   const drawSentFor = useRef("");
   useEffect(() => {
     setLocalHover(null);
+    setAimingPeek(null);
+    setPeekReveal(null);
+    setPeekMark(null);
     if (turnKey) setScan(null);
   }, [turnKey]);
 
@@ -157,9 +177,19 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
     },
     [iDraw, sendHover],
   );
+  const peekAt = useCallback(
+    (slot: number) => {
+      if (!aimingPeek) return;
+      send({ type: "use_skill", cardId: aimingPeek, slot });
+      setAimingPeek(null);
+    },
+    [aimingPeek, send],
+  );
   const onTap = useCallback(
     (slot: number, mouse: boolean) => {
       if (!iDraw) return;
+      // 🔍 waiting for a card: this tap looks at it instead of taking it.
+      if (aimingPeek) return peekAt(slot);
       // Mouse: click takes the card. Touch: first tap picks it (everyone sees), second tap takes it.
       if (mouse || localHover === slot) draw(slot);
       else {
@@ -167,7 +197,7 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
         sendHover(slot);
       }
     },
-    [iDraw, localHover, draw, sendHover],
+    [iDraw, aimingPeek, peekAt, localHover, draw, sendHover],
   );
 
   // Keyboard: ← → to point, Enter / Space to draw.
@@ -178,6 +208,8 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       if (event.key === "Escape") {
         setPanel(null);
         setEmoteOpen(false);
+        setSkillSheet(null);
+        setAimingPeek(null);
         return;
       }
       if (!iDraw || !targetCount) return;
@@ -188,12 +220,13 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
         onHover(next);
       } else if ((event.key === "Enter" || event.key === " ") && localHover !== null) {
         event.preventDefault();
-        draw(localHover);
+        if (aimingPeek) peekAt(localHover);
+        else draw(localHover);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [iDraw, targetCount, localHover, onHover, draw]);
+  }, [iDraw, targetCount, localHover, onHover, draw, aimingPeek, peekAt]);
 
   // ---------- table events → sounds, toasts, the private Joker reveal ----------
   const lastSeq = useRef(0);
@@ -214,7 +247,16 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       } else if (event.type === "drew") {
         playCardFlick();
         setSettled(null);
-        if (event.drawerId === playerId && event.card !== undefined) {
+        setPeekReveal(null);
+        setPeekMark(null);
+        if (event.switched) {
+          if (event.drawerId === playerId) toast("🎭 Dính bẫy! Lá bạn nhận đã bị tráo.", "bad");
+          else if (event.targetId === playerId) toast(`🎭 Bẫy sập! ${nameOf(event.drawerId)} nhận lá khác.`, "good");
+        }
+        if (event.drawerId === playerId && event.card !== undefined && event.extraCard !== undefined) {
+          // 🤲: choose first; the check starts with the card kept.
+          setChoice([event.card, event.extraCard]);
+        } else if (event.drawerId === playerId && event.card !== undefined) {
           setScan({ card: event.card, key: seq });
           // The check along your hand, in time with the hop in MyHand.
           const mine = hand.round === state?.round ? hand.cards : [];
@@ -226,12 +268,40 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
               setJokerAt(Date.now());
               playJokerSting();
             }, 450);
-        } else if (event.targetId === playerId && event.card === JOKER) {
+        } else if (event.targetId === playerId && event.card === JOKER && event.extraCard === undefined) {
           toast(`😮‍💨 Phù! ${nameOf(event.drawerId)} vừa rút mất con heo của bạn.`, "good");
         }
         if (event.timedOut && event.drawerId === playerId) toast("⏰ Hết giờ — đã rút giúp bạn 1 lá.", "bad");
+      } else if (event.type === "kept") {
+        if (event.drawerId === playerId && event.kept !== undefined) {
+          setChoice(null);
+          setScan({ card: event.kept, key: seq });
+          const mine = hand.round === state?.round ? hand.cards : [];
+          const mate = state ? mine.findIndex((item) => isPair(item.card, event.kept!, state.config.pairRule)) : -1;
+          playCheckSweep(mate >= 0 ? mate + 1 : mine.length, scanStepMs(mine.length), SCAN_START_MS, mate >= 0);
+          if (event.kept === JOKER) {
+            setJokerAt(Date.now());
+            playJokerSting();
+          }
+        } else if (event.targetId === playerId) {
+          playCardTuck();
+          toast(`🤲 ${nameOf(event.drawerId)} trả lại bạn 1 lá${event.returned === JOKER ? " — con heo về nhà rồi 😱" : ""}.`, event.returned === JOKER ? "bad" : "info");
+        }
+      } else if (event.type === "skill") {
+        playSkillCast();
+        setCast({ key: seq, playerId: event.playerId, skill: event.skill, card: event.card, targetId: event.targetId, at: Date.now() });
+        if (event.skill === "peek" && event.targetId && event.slot !== undefined) setPeekMark({ targetId: event.targetId, slot: event.slot });
+        if (event.skill === "return" && event.playerId === playerId) setScan(null);
+      } else if (event.type === "peeked") {
+        setPeekReveal({ targetId: event.targetId, slot: event.slot, card: event.card });
+        const bad = event.card === JOKER;
+        window.setTimeout(() => playSkillResult(bad), 500);
+        toast(bad ? "🔍 Lá đó là CON HEO 🐷 — né ngay!" : `🔍 Lá đó là ${cardLabel(event.card)}.`, bad ? "bad" : "good");
+      } else if (event.type === "radar") {
+        window.setTimeout(() => playSkillResult(event.hasJoker), 500);
+        toast(event.hasJoker ? `📡 ${nameOf(event.targetId)} ĐANG giữ con heo! 🐷` : `📡 ${nameOf(event.targetId)} không giữ heo.`, event.hasJoker ? "bad" : "good");
       } else if (event.type === "resolved") {
-        setSettled({ drawerId: event.drawerId, pair: event.pair });
+        setSettled({ drawerId: event.drawerId, targetId: event.targetId, pair: event.pair, returned: event.returned });
         // Kept a moment so the mate doesn't drop back before it leaves your hand.
         if (event.drawerId === playerId) window.setTimeout(() => setScan(null), 400);
         if (event.pair) {
@@ -241,6 +311,12 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
           window.setTimeout(playPairDing, 1050);
         } else playCardTuck();
       } else if (event.type === "shuffled") {
+        // Shuffled or rearranged: any card looked at with 🔍 is lost in the mix.
+        setPeekMark((current) => (current?.targetId === event.playerId ? null : current));
+        setPeekReveal((current) => {
+          if (current?.targetId === event.playerId) toast(`🔀 ${nameOf(event.playerId)} đổi chỗ bài — lá vừa soi lẫn mất rồi!`, "bad");
+          return current?.targetId === event.playerId ? null : current;
+        });
         if (event.playerId !== playerId && state?.turn?.targetId === event.playerId) {
           playCardShuffle();
           if (state.turn.drawerId === playerId) toast(`🔀 ${nameOf(event.playerId)} vừa xào bài!`);
@@ -385,6 +461,24 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
     [state?.hostId, playerId, me?.seat, send],
   );
 
+  // ---------- skill cards: what's playable, and playing them ----------
+  const myCards = useMemo(() => (state && hand.round === state.round ? hand.cards : []), [state, hand]);
+  const statusOf = useCallback((card: number) => (state ? skillStatus(card, state, playerId) : { ok: false as const, reason: "" }), [state, playerId]);
+  const readySkills = useMemo(() => new Set(myCards.filter((item) => isSkill(item.card) && statusOf(item.card).ok).map((item) => item.id)), [myCards, statusOf]);
+  const sheetCard = myCards.find((item) => item.id === skillSheet && isSkill(item.card));
+  const returnCard = myCards.find((item) => isSkill(item.card) && skillOf(item.card) === "return" && readySkills.has(item.id));
+  const radarTargets = (state?.players ?? [])
+    .filter((player) => player.id !== playerId && player.seat !== null && player.finishedRank === null && player.cardCount > 0)
+    .map((player) => ({ id: player.id, name: player.name }));
+  const playSkill = (cardId: string, targetId?: string) => {
+    const item = myCards.find((candidate) => candidate.id === cardId);
+    setSkillSheet(null);
+    if (!item) return;
+    // 🔍 needs a card picked first; the rest go straight out.
+    if (skillOf(item.card) === "peek") setAimingPeek(cardId);
+    else send({ type: "use_skill", cardId, targetId });
+  };
+
   // ---------- banner ----------
   let banner: { title: string; hint?: string; tone: "mine" | "danger" | "calm" } | null = null;
   if (state) {
@@ -393,19 +487,36 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       const dealingNow = state.phaseEndsAt && now < state.phaseEndsAt - 2200;
       banner = { title: dealingNow ? "🃏 Đang chia bài…" : "✨ Bỏ các đôi ra giữa bàn…", tone: "calm" };
     } else if (state.phase === "playing") {
-      if (iDraw) banner = { title: `🎯 Lượt bạn — rút 1 lá của ${nameOf(turn?.targetId)}`, hint: touch ? "Chạm chọn lá, chạm lần nữa để rút" : "Rê chuột chọn lá, bấm để rút · ← → Enter", tone: "mine" };
-      else if (iAmTarget) banner = { title: `😬 ${nameOf(turn?.drawerId)} đang rút bài của BẠN`, hint: "Bấm 1 lá để nhử · 🔀 Xào để đánh lừa", tone: "danger" };
-      else if (turn) banner = { title: `${nameOf(turn.drawerId)} đang rút bài của ${nameOf(turn.targetId)}`, tone: "calm" };
+      // Skills in effect this turn, said plainly on the banner.
+      const effects = turn
+        ? [
+            turn.reversed && "↩️ rút bên trái",
+            turn.double && "🤲 rút hai, giữ một",
+            turn.switchArmed && `🎭 ${turn.targetId === playerId ? "bẫy của bạn đang giăng" : `${nameOf(turn.targetId)} giăng bẫy — lá chọn sẽ bị tráo`}`,
+          ].filter(Boolean).join(" · ")
+        : "";
+      if (iDraw && aimingPeek) banner = { title: "🔍 Chạm vào 1 lá để soi", hint: "Chỉ bạn thấy mặt lá · Esc để huỷ", tone: "mine" };
+      else if (iDraw)
+        banner = {
+          title: `🎯 Lượt bạn — rút 1 lá của ${nameOf(turn?.targetId)}`,
+          hint: effects || (touch ? "Chạm chọn lá, chạm lần nữa để rút" : "Rê chuột chọn lá, bấm để rút · ← → Enter"),
+          tone: "mine",
+        };
+      else if (iAmTarget) banner = { title: `😬 ${nameOf(turn?.drawerId)} đang rút bài của BẠN`, hint: effects || "Bấm 1 lá để nhử · 🔀 Xào để đánh lừa", tone: "danger" };
+      else if (turn) banner = { title: `${nameOf(turn.drawerId)} đang rút bài của ${nameOf(turn.targetId)}`, hint: effects || undefined, tone: "calm" };
       else if (state.pending) {
-        const { drawerId, targetId } = state.pending;
-        if (drawerId === playerId) banner = { title: "🔍 Dò xem có thành đôi không…", tone: "mine" };
+        const { drawerId, targetId, choosing } = state.pending;
+        if (choosing) banner = { title: drawerId === playerId ? "🤲 Chọn 1 lá để giữ" : `🤲 ${nameOf(drawerId)} đang chọn lá để giữ…`, tone: drawerId === playerId ? "mine" : "calm" };
+        else if (drawerId === playerId) banner = { title: "🔍 Dò xem có thành đôi không…", hint: returnCard ? "🛡️ Có thể trả lá này về" : undefined, tone: "mine" };
         else if (targetId === playerId) banner = { title: `😮 ${nameOf(drawerId)} đã rút 1 lá của bạn`, hint: "Đang dò bài…", tone: "danger" };
         else banner = { title: `🔍 ${nameOf(drawerId)} đang dò bài…`, tone: "calm" };
       } else if (settled) {
         const who = settled.drawerId === playerId ? "Bạn" : nameOf(settled.drawerId);
-        banner = settled.pair
-          ? { title: `🃏 ${who} bỏ đôi ${RANKS[rankOf(settled.pair[0])]} xuống bàn!`, tone: settled.drawerId === playerId ? "mine" : "calm" }
-          : { title: `🤐 ${who} cất lá vào tay`, tone: "calm" };
+        banner = settled.returned
+          ? { title: `🛡️ ${who} trả lá về cho ${settled.targetId === playerId ? "bạn" : nameOf(settled.targetId)}`, tone: "calm" }
+          : settled.pair
+            ? { title: `🃏 ${who} bỏ đôi ${RANKS[rankOf(settled.pair[0])]} xuống bàn!`, tone: settled.drawerId === playerId ? "mine" : "calm" }
+            : { title: `🤐 ${who} cất lá vào tay`, tone: "calm" };
       } else banner = { title: "…", tone: "calm" };
     } else if (state.lastRound) banner = { title: state.lastRound.pigId === playerId ? "🐷 Bạn là HEO!" : `🐷 ${state.lastRound.pigName} là HEO!`, tone: "danger" };
   }
@@ -436,6 +547,8 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
             quality={quality}
             onQualityDrop={qualityDrop}
             lobby={lobby}
+            peekReveal={peekReveal}
+            peekMark={peekMark}
           />
         ) : (
           <TableLoading />
@@ -499,7 +612,7 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       )}
 
       {watching && state.phase !== "lobby" && (
-        <div className="pointer-events-none absolute inset-x-0 top-36 z-20 flex justify-center px-3 sm:top-28">
+        <div className="pointer-events-none absolute inset-x-0 top-36 z-20 flex justify-center px-3 lg:top-28">
           <p className="rounded-full bg-black/60 px-4 py-2 text-sm font-semibold text-white/85 ring-1 ring-white/15 backdrop-blur">👀 Bạn đang xem — ván sau sẽ được ngồi vào bàn</p>
         </div>
       )}
@@ -507,7 +620,14 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       {/* your hand + table talk */}
       {state && state.phase !== "lobby" && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-2 pb-[max(env(safe-area-inset-bottom),6px)]">
-          {iDraw && touch && localHover !== null && (
+          {iDraw && aimingPeek && (
+            <div className="pointer-events-auto mb-2 flex justify-center">
+              <button type="button" onClick={() => setAimingPeek(null)} className="om-pop rounded-full bg-black/60 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/20 backdrop-blur">
+                🔍 Đang chọn lá để soi · Huỷ
+              </button>
+            </div>
+          )}
+          {iDraw && touch && localHover !== null && !aimingPeek && (
             <div className="pointer-events-auto mb-2 flex justify-center">
               <button type="button" onClick={() => draw(localHover)} className={`${btnPrimary} om-pop`}>
                 ✋ Rút lá này
@@ -524,9 +644,12 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
               scan={scan}
               pairRule={state.config.pairRule}
               spotlight={iAmTarget}
+              readySkills={readySkills}
+              peekedSlot={peekMark?.targetId === playerId ? peekMark.slot : null}
               canTease={state.phase === "playing" && amActive}
               canArrange={inRound && amActive}
               onTease={tease}
+              onSkill={setSkillSheet}
               onReorder={reorder}
               onShuffle={shuffleMine}
             />
@@ -577,6 +700,33 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
         <SettingsPanel quality={quality} muted={muted} onQuality={changeQuality} onMute={changeMute} onClose={() => setPanel(null)} />
       )}
 
+      {/* skill cards: the "tung chiêu" moment, a card's sheet, 🤲's choice, 🛡️ above everything */}
+      <CastOverlay cast={cast} myId={playerId} nameOf={nameOf} />
+      {sheetCard && state && (
+        <SkillSheet
+          card={sheetCard.card}
+          status={statusOf(sheetCard.card)}
+          radarTargets={radarTargets}
+          canTease={state.phase === "playing" && amActive}
+          teased={state.teased[playerId] === myCards.indexOf(sheetCard)}
+          onUse={(targetId) => playSkill(sheetCard.id, targetId)}
+          onTease={() => {
+            const slot = myCards.indexOf(sheetCard);
+            tease(state.teased[playerId] === slot ? null : slot);
+            setSkillSheet(null);
+          }}
+          onClose={() => setSkillSheet(null)}
+        />
+      )}
+      {choice && state?.pending?.choosing && state.pending.drawerId === playerId && (
+        <DoubleChoice cards={choice} endsAt={state.pending.endsAt} targetName={nameOf(state.pending.targetId)} onKeep={(which) => send({ type: "keep", which })} />
+      )}
+      {returnCard && state?.pending && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-56 z-[55] flex justify-center">
+          <ReturnButton endsAt={state.pending.endsAt} totalMs={SKILL_PEEK_MS} onReturn={() => send({ type: "use_skill", cardId: returnCard.id })} />
+        </div>
+      )}
+
       {/* you drew the pig — only you see this */}
       {jokerAt && now - jokerAt < 2100 && (
         <div className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center">
@@ -592,7 +742,7 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       )}
 
       {/* toasts */}
-      <div className="pointer-events-none absolute inset-x-0 top-36 z-50 flex flex-col items-center gap-2 px-3 sm:top-24">
+      <div className="pointer-events-none absolute inset-x-0 top-36 z-50 flex flex-col items-center gap-2 px-3 lg:top-24">
         {toasts.map((item) => (
           <p
             key={item.id}

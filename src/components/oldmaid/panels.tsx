@@ -6,12 +6,17 @@ import {
   MIN_PLAYERS,
   PAIR_RULE_LABELS,
   ROUNDS_TO_PLAY,
+  SKILLS,
+  SKILL_COPIES,
+  SKILL_ORDER,
+  skillsInPlay,
   TURN_SECONDS,
   type OldMaidClientMessage,
   type OldMaidConfig,
   type OldMaidPlayer,
   type PublicOldMaidState,
 } from "@shared/oldMaidTypes";
+import { Face, cardLabel } from "./MyHand";
 import type { Quality } from "./scene/Table3D";
 import { SEAT_COLORS } from "./scene/PigAvatar";
 
@@ -164,6 +169,7 @@ export function LobbyPanel({
           disabled={!isHost}
           onChange={(pairRule) => set({ pairRule })}
         />
+        <SkillSettings config={config} isHost={isHost} onChange={set} />
         <Choice
           label="Chung cuộc"
           value={config.roundsToPlay}
@@ -241,8 +247,113 @@ export function LobbyPanel({
           <li>☝️ Bị rút thì <b>nhử</b> 1 lá hoặc <b>xào</b> bài để lừa người rút. Ai cũng thấy người rút đang nhắm lá nào!</li>
           <li>🎉 Hết bài là thoát. Người cuối cùng ôm Joker là <b>HEO</b>.</li>
         </ul>
+        {skillsInPlay(config) && (
+          <>
+            <p className="mt-3 font-bold text-white">✨ Lá kỹ năng</p>
+            <p className="mt-1 text-xs text-white/60">Xào chung với bài: ai cầm lá nào thì dùng lá đó (1 lần), rút được của người khác thì thành của mình. Mỗi lượt dùng tối đa 1 lá. Lá kỹ năng cũng là bài — muốn thoát phải dùng hết hoặc để người khác rút mất.</p>
+            <SkillGuide className="mt-2" />
+          </>
+        )}
       </details>
     </section>
+  );
+}
+
+/** Lobby: skill cards on or off, which kinds go in the deck, one or two of each. */
+function SkillSettings({ config, isHost, onChange }: { config: OldMaidConfig; isHost: boolean; onChange: (patch: Partial<OldMaidConfig>) => void }) {
+  const toggle = (type: OldMaidConfig["skills"][number]) => {
+    const has = config.skills.includes(type);
+    if (has && config.skills.length === 1) return; // at least one stays chosen
+    onChange({ skills: has ? config.skills.filter((item) => item !== type) : [...config.skills, type] });
+  };
+  return (
+    <div className="space-y-2 rounded-2xl bg-violet-500/10 p-3 ring-1 ring-violet-300/15">
+      <Choice
+        label="✨ Lá kỹ năng (xào chung với bài)"
+        value={config.skillsOn}
+        options={[
+          { value: true, label: "Bật" },
+          { value: false, label: "Tắt — chơi cổ điển" },
+        ]}
+        disabled={!isHost}
+        onChange={(skillsOn) => onChange({ skillsOn })}
+      />
+      {config.skillsOn && (
+        <>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-white/45">Dùng những lá nào</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {SKILL_ORDER.map((type) => {
+              const on = config.skills.includes(type);
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  disabled={!isHost}
+                  aria-pressed={on}
+                  title={SKILLS[type].detail}
+                  onClick={() => toggle(type)}
+                  className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition disabled:cursor-default ${
+                    on ? "bg-violet-500 text-white shadow-[0_0_14px_rgba(139,92,246,0.45)]" : "bg-white/5 text-white/45 line-through decoration-white/30"
+                  }`}
+                >
+                  <span className="text-base no-underline">{SKILLS[type].icon}</span>
+                  <span className="min-w-0 truncate">{SKILLS[type].name}</span>
+                </button>
+              );
+            })}
+          </div>
+          <Choice
+            label="Mỗi loại"
+            value={config.skillCopies}
+            options={SKILL_COPIES.map((copies) => ({ value: copies as number, label: `${copies} lá` }))}
+            disabled={!isHost}
+            onChange={(skillCopies) => onChange({ skillCopies })}
+          />
+          <p className="text-[11px] text-violet-200/70">Bộ bài thêm {config.skills.length * config.skillCopies} lá kỹ năng. Rê chuột lên từng lá để xem tác dụng.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The six skill cards, one line each: icon, name, when, what. */
+export function SkillGuide({ className = "" }: { className?: string }) {
+  return (
+    <ul className={`space-y-1.5 ${className}`}>
+      {SKILL_ORDER.map((type) => (
+        <li key={type} className="flex gap-2.5 rounded-xl bg-violet-500/10 px-2.5 py-2 ring-1 ring-violet-300/15">
+          <span className="text-xl leading-none">{SKILLS[type].icon}</span>
+          <span className="min-w-0">
+            <b className="text-white">{SKILLS[type].name}</b> <span className="text-[11px] text-violet-200/80">· {SKILLS[type].when}</span>
+            <span className="block text-xs text-white/65">{SKILLS[type].detail}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The cards still in hand when the round ended — the pig's Joker, and any skill card nobody got to use — face up. */
+function Leftovers({ state, myId }: { state: PublicOldMaidState; myId: string }) {
+  const leftovers = Object.entries(state.lastRound?.leftovers ?? {});
+  if (!leftovers.length) return null;
+  const nameOf = (id: string) => (id === myId ? "Bạn" : state.players.find((player) => player.id === id)?.name ?? "?");
+  return (
+    <div className="mt-3 rounded-2xl bg-white/5 p-3">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-white/45">Lá còn trên tay khi hết ván</p>
+      {leftovers.map(([id, cards]) => (
+        <div key={id} className="mt-2 flex items-center gap-3">
+          <span className="w-20 shrink-0 truncate text-sm font-bold">{nameOf(id)}</span>
+          <ul className="flex flex-wrap gap-1.5">
+            {cards.map((card, index) => (
+              <li key={index} title={cardLabel(card)} aria-label={cardLabel(card)} className="relative block h-[3.9rem] w-11" style={{ fontSize: 9 }}>
+                <Face card={card} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -266,6 +377,7 @@ export function RoundEndPanel({ state, myId, send }: { state: PublicOldMaidState
         {iAmPig ? "Bạn là HEO! 🐷" : `🐷 ${summary.pigName} là HEO!`}
       </h2>
       {iAmPig && <p className="mt-1 text-sm text-white/65">Ván sau bạn chia bài và rút trước — gỡ lại đi!</p>}
+      <Leftovers state={state} myId={myId} />
 
       <ol className="mt-4 space-y-1.5">
         {summary.rows.map((row) => {
@@ -319,6 +431,7 @@ export function FinalPanel({ state, myId, send }: { state: PublicOldMaidState; m
   return (
     <section className={`${panelClass} om-pop`}>
       <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/45">Chung cuộc · {state.round} ván</p>
+      <Leftovers state={state} myId={myId} />
       <div className="mt-3 grid grid-cols-2 gap-2">
         {best && (
           <div className="rounded-2xl bg-amber-300/15 p-3 text-center ring-1 ring-amber-300/40">

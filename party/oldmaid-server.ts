@@ -4,6 +4,7 @@ import {
   DEAL_MS,
   DECK,
   DEFAULT_OLDMAID_CONFIG,
+  DOUBLE_CHOOSE_MS,
   DRAW_PEEK_MS,
   EMOTE_COOLDOWN_MS,
   KEEP_SETTLE_MS,
@@ -15,12 +16,22 @@ import {
   OPENING_PAIRS_MS,
   PAIR_THROW_MS,
   RECONNECT_GRACE_MS,
+  SKILLS,
+  SKILL_COPIES,
+  SKILL_ORDER,
+  SKILL_PEEK_MS,
+  SKILL_SHOW_MS,
+  SKILL_TIME_FLOOR_MS,
   ROUNDS_TO_PLAY,
   TURN_SECONDS,
   isEmote,
   isPair,
+  isSkill,
   seatAfter,
   seatBefore,
+  skillDeck,
+  skillOf,
+  skillsInPlay,
   splitPairs,
   type Emote,
   type OldMaidChatEntry,
@@ -33,6 +44,7 @@ import {
   type OldMaidRoomListing,
   type OldMaidRoundSummary,
   type OldMaidServerMessage,
+  type SkillType,
   type OldMaidTurn,
   type PublicOldMaidState,
 } from "../shared/oldMaidTypes";
@@ -78,6 +90,8 @@ function shuffled<T>(items: T[]): T[] {
 
 const isAuto = (player: PlayerState) => player.isBot || player.standIn;
 
+type SkillEvent = Extract<OldMaidEvent, { type: "skill" }>;
+
 export class OldMaidRoom extends Server<Env> {
   players = new Map<string, PlayerState>();
   hands = new Map<string, OldMaidHandCard[]>();
@@ -88,8 +102,20 @@ export class OldMaidRoom extends Server<Env> {
   round = 0;
   dealerId: string | null = null;
   turn: OldMaidTurn | null = null;
-  /** The card between hands: drawn, not yet paired off or slipped in. */
-  pending: { drawerId: string; targetId: string; since: number; taken: OldMaidHandCard } | null = null;
+  /** The card between hands: drawn, not yet paired off or slipped in (with a second one while 🤲 choosing). */
+  pending: {
+    drawerId: string;
+    targetId: string;
+    since: number;
+    endsAt: number;
+    taken: OldMaidHandCard;
+    extra: OldMaidHandCard | null;
+    choosing: boolean;
+    skillUsers: string[];
+  } | null = null;
+  pendingTimer: ReturnType<typeof setTimeout> | null = null;
+  /** What a bot learned with 🔍 this turn, so its draw can use it. */
+  botPeek: { botId: string; slot: number; joker: boolean } | null = null;
   hoverSlot: number | null = null;
   teased = new Map<string, number>();
   discard: number[] = [];
@@ -146,6 +172,8 @@ export class OldMaidRoom extends Server<Env> {
       case "shuffle_hand": return this.shuffleHand(sender.id);
       case "reorder": return this.reorder(sender.id, msg.order);
       case "tease": return this.tease(sender.id, msg.slot);
+      case "use_skill": return this.useSkill(sender.id, msg.cardId, msg.slot, msg.targetId);
+      case "keep": return this.keep(sender.id, msg.which === 1 ? 1 : 0);
       case "emote": return this.emote(sender.id, msg.emote);
       case "chat": return this.sendChat(sender.id, msg.text);
       case "next_round": return this.nextRound(sender.id);
@@ -235,6 +263,7 @@ export class OldMaidRoom extends Server<Env> {
     player.standIn = true;
     this.systemChat(message);
     if (this.turn?.drawerId === player.id) this.planBotDraw(player);
+    if (this.pending?.drawerId === player.id) this.planBotPending(player);
   }
 
   private removePlayer(player: PlayerState, message: string) {
@@ -290,6 +319,13 @@ export class OldMaidRoom extends Server<Env> {
     if ((ROUNDS_TO_PLAY as readonly number[]).includes(incoming.roundsToPlay as number)) next.roundsToPlay = incoming.roundsToPlay as number;
     if (typeof incoming.isPublic === "boolean") next.isPublic = incoming.isPublic;
     if (incoming.botLevel === "easy" || incoming.botLevel === "smart") next.botLevel = incoming.botLevel;
+    if (typeof incoming.skillsOn === "boolean") next.skillsOn = incoming.skillsOn;
+    if (Array.isArray(incoming.skills)) {
+      // Known kinds only, in the usual order; at least one stays chosen.
+      const chosen = SKILL_ORDER.filter((type) => incoming.skills!.includes(type));
+      if (chosen.length) next.skills = chosen;
+    }
+    if ((SKILL_COPIES as readonly number[]).includes(incoming.skillCopies as number)) next.skillCopies = incoming.skillCopies as number;
     this.config = next;
     this.broadcastState();
   }
@@ -371,7 +407,8 @@ export class OldMaidRoom extends Server<Env> {
     this.dealerId = dealer.id;
     // Deal the whole deck one at a time, starting with the player after the dealer.
     const order = this.turnOrderFrom(dealer.seat!, seated);
-    shuffled(DECK).forEach((card, index) => this.hands.get(order[index % order.length].id)!.push({ id: token(), card }));
+    // Skill cards are shuffled in like any card (and dealt like any card).
+    shuffled([...DECK, ...skillDeck(this.config)]).forEach((card, index) => this.hands.get(order[index % order.length].id)!.push({ id: token(), card }));
 
     this.enterPhase("dealing", DEAL_MS + OPENING_PAIRS_MS);
     this.broadcastEvent({ type: "deal", dealerId: dealer.id, counts: this.counts() });
@@ -412,13 +449,27 @@ export class OldMaidRoom extends Server<Env> {
     if (!drawer || drawer.seat === null || this.phase !== "playing") return;
     const target = this.activeBefore(drawer.seat);
     if (!target || target.id === drawer.id) return this.endRound();
-    this.turn = { drawerId, targetId: target.id, endsAt: Date.now() + this.config.turnSeconds * 1000 };
+    this.turn = {
+      drawerId,
+      targetId: target.id,
+      startedAt: Date.now(),
+      endsAt: Date.now() + this.config.turnSeconds * 1000,
+      skillUsers: [],
+      switchArmed: false,
+      double: false,
+      reversed: false,
+    };
     this.hoverSlot = null;
+    this.botPeek = null;
     this.broadcastState();
-    this.clearTurnTimer();
-    this.turnTimer = setTimeout(() => this.timeOut(), this.config.turnSeconds * 1000);
+    this.armTurnTimer(this.config.turnSeconds * 1000);
     if (isAuto(drawer)) this.planBotDraw(drawer);
     if (isAuto(target)) this.planBotDefense(target);
+  }
+
+  private armTurnTimer(ms: number) {
+    this.clearTurnTimer();
+    this.turnTimer = setTimeout(() => this.timeOut(), ms);
   }
 
   /** Out of time: take the card the drawer was pointing at, or any card. */
@@ -431,6 +482,24 @@ export class OldMaidRoom extends Server<Env> {
     this.draw(this.turn.drawerId, slot, true);
   }
 
+  /** How long a drawn card is checked: longer for everyone once skill cards are in play (time for a 🛡️). */
+  private peekMs() {
+    return skillsInPlay(this.config) ? SKILL_PEEK_MS : DRAW_PEEK_MS;
+  }
+
+  private armPendingTimer(ms: number, fn: () => void) {
+    this.clearPendingTimer();
+    this.pendingTimer = setTimeout(() => {
+      this.pendingTimer = null;
+      fn();
+    }, ms);
+  }
+
+  private clearPendingTimer() {
+    if (this.pendingTimer) clearTimeout(this.pendingTimer);
+    this.pendingTimer = null;
+  }
+
   private draw(drawerId: string, slot: number, timedOut: boolean) {
     const turn = this.turn;
     if (this.phase !== "playing" || !turn || turn.drawerId !== drawerId || this.pending) return;
@@ -441,31 +510,75 @@ export class OldMaidRoom extends Server<Env> {
     this.turn = null;
     this.hoverSlot = null;
 
+    // 🎭 Đánh tráo: the trap springs — a random other card instead of the one picked.
+    const switched = turn.switchArmed && targetHand.length > 1;
+    if (switched) {
+      const others = targetHand.map((_, index) => index).filter((index) => index !== slot);
+      slot = others[randomInt(others.length)];
+    }
     const [taken] = targetHand.splice(slot, 1);
+    // 🤲 Rút hai: a second, random card comes along (its slot as it was before the first left).
+    let extra: OldMaidHandCard | null = null;
+    let extraSlot: number | undefined;
+    if (turn.double && targetHand.length > 0) {
+      const index = randomInt(targetHand.length);
+      [extra] = targetHand.splice(index, 1);
+      extraSlot = index >= slot ? index + 1 : index;
+    }
     this.teased.delete(turn.targetId);
     this.teased.delete(drawerId);
     const drawer = this.players.get(drawerId)!;
     const target = this.players.get(turn.targetId)!;
     drawer.draws += 1;
-    if (taken.card === JOKER) drawer.jokerDraws += 1;
-    // The card stays in the drawer's fingers for a moment: everyone watches them check it.
-    this.pending = { drawerId, targetId: target.id, since: Date.now(), taken };
+    if (taken.card === JOKER || extra?.card === JOKER) drawer.jokerDraws += 1;
+    // The card stays in the drawer's fingers for a moment: everyone watches them check it
+    // (or, after 🤲, choose which of the two to keep).
+    const now = Date.now();
+    const holdMs = extra ? DOUBLE_CHOOSE_MS : this.peekMs();
+    this.pending = { drawerId, targetId: target.id, since: now, endsAt: now + holdMs, taken, extra, choosing: Boolean(extra), skillUsers: [...turn.skillUsers] };
 
-    const event: OldMaidEvent = { type: "drew", drawerId, targetId: target.id, slot, timedOut };
+    const event: OldMaidEvent = { type: "drew", drawerId, targetId: target.id, slot, timedOut, switched, extraSlot };
     for (const connection of this.getConnections()) {
       const privy = connection.id === drawerId || connection.id === target.id;
-      connection.send(JSON.stringify({ type: "event", event: privy ? { ...event, card: taken.card } : event } satisfies OldMaidServerMessage));
+      const full: OldMaidEvent = privy ? { ...event, card: taken.card, extraCard: extra?.card } : event;
+      connection.send(JSON.stringify({ type: "event", event: full } satisfies OldMaidServerMessage));
     }
-    if (!targetHand.length) this.finish(target);
     this.broadcastState();
     this.sendHand(target.id);
-    this.flow(DRAW_PEEK_MS, () => this.resolveDraw());
+    if (extra) this.armPendingTimer(holdMs, () => this.keep(drawerId, 0));
+    else this.armPendingTimer(holdMs, () => this.resolveDraw());
+    if (isAuto(drawer)) this.planBotPending(drawer);
+  }
+
+  /** 🤲 Rút hai: keep one of the two drawn cards (0 = the one picked), hand the other back. */
+  private keep(drawerId: string, which: 0 | 1) {
+    const pending = this.pending;
+    if (!pending || pending.drawerId !== drawerId || !pending.choosing || !pending.extra || this.phase !== "playing") return;
+    const [kept, back] = which === 1 ? [pending.extra, pending.taken] : [pending.taken, pending.extra];
+    const targetHand = this.hands.get(pending.targetId);
+    targetHand?.splice(randomInt(targetHand.length + 1), 0, back);
+    const holdMs = this.peekMs();
+    Object.assign(pending, { taken: kept, extra: null, choosing: false, endsAt: Date.now() + holdMs });
+
+    const event: OldMaidEvent = { type: "kept", drawerId, targetId: pending.targetId };
+    for (const connection of this.getConnections()) {
+      const full: OldMaidEvent =
+        connection.id === drawerId ? { ...event, kept: kept.card, returned: back.card } : connection.id === pending.targetId ? { ...event, returned: back.card } : event;
+      connection.send(JSON.stringify({ type: "event", event: full } satisfies OldMaidServerMessage));
+    }
+    this.broadcastState();
+    this.sendHand(pending.targetId);
+    this.armPendingTimer(holdMs, () => this.resolveDraw());
+    const drawer = this.players.get(drawerId);
+    if (drawer && isAuto(drawer)) this.planBotPending(drawer);
   }
 
   /** The drawer has checked the card: throw down the pair it makes, or slip it into their hand. */
   private resolveDraw() {
     const pending = this.pending;
     if (!pending || this.phase !== "playing") return;
+    if (pending.choosing) return this.keep(pending.drawerId, 0);
+    this.clearPendingTimer();
     this.pending = null;
     const drawer = this.players.get(pending.drawerId);
     const drawerHand = this.hands.get(pending.drawerId);
@@ -481,16 +594,153 @@ export class OldMaidRoom extends Server<Env> {
         drawerHand.splice(randomInt(drawerHand.length + 1), 0, pending.taken);
       }
     }
-    this.broadcastEvent({ type: "resolved", drawerId: pending.drawerId, pair });
-    if (drawer && drawerHand && !drawerHand.length) this.finish(drawer);
+    this.broadcastEvent({ type: "resolved", drawerId: pending.drawerId, targetId: pending.targetId, pair, returned: false });
+    this.finishEmpty(pending.targetId, pending.drawerId);
     this.broadcastState();
     this.sendHand(pending.drawerId, pair ? undefined : pending.taken.id);
+    this.afterDraw(pending.drawerId, pending.targetId, pair ? PAIR_THROW_MS : KEEP_SETTLE_MS);
+  }
 
-    const fromSeat = drawer?.seat ?? this.players.get(pending.targetId)?.seat ?? 0;
-    this.flow(pair ? PAIR_THROW_MS : KEEP_SETTLE_MS, () => {
+  /** Out go whoever's hand is now empty — the one drawn from first, as they emptied first. */
+  private finishEmpty(...ids: string[]) {
+    for (const id of ids) {
+      const player = this.players.get(id);
+      if (player && player.seat !== null && !this.hands.get(id)?.length) this.finish(player);
+    }
+  }
+
+  /** After a draw (or a turn cut short): the next drawer, or the end of the round. */
+  private afterDraw(drawerId: string, targetId: string, delayMs: number) {
+    const fromSeat = this.players.get(drawerId)?.seat ?? this.players.get(targetId)?.seat ?? 0;
+    this.flow(delayMs, () => {
+      if (this.phase !== "playing" || this.turn || this.pending) return;
       if (this.active().length < MIN_PLAYERS) return this.endRound();
       this.startTurn(this.activeAfter(fromSeat).id);
     });
+  }
+
+  // ---------- skill cards ----------
+
+  private useSkill(id: string, cardId: string, slot?: number, targetId?: string) {
+    const player = this.players.get(id);
+    const hand = this.hands.get(id);
+    if (!player || !hand || player.seat === null || this.phase !== "playing") return;
+    const index = hand.findIndex((item) => item.id === cardId);
+    if (index < 0 || !isSkill(hand[index].card)) return;
+    const card = hand[index].card;
+    const skill = skillOf(card);
+    const turn = this.turn;
+    const pending = this.pending;
+    const fail = (message: string) => this.sendErrorTo(id, message);
+    if ((pending?.skillUsers ?? turn?.skillUsers ?? []).includes(id)) return fail("Mỗi lượt chỉ dùng được 1 lá kỹ năng.");
+
+    const ownTurn = Boolean(turn && turn.drawerId === id && !pending);
+    let target: PlayerState | undefined;
+    switch (skill) {
+      case "peek": {
+        if (!ownTurn) return fail(SKILLS.peek.when + ".");
+        const size = this.hands.get(turn!.targetId)?.length ?? 0;
+        if (!Number.isInteger(slot) || slot! < 0 || slot! >= size) return fail("Chọn 1 lá để soi.");
+        break;
+      }
+      case "radar": {
+        if (!ownTurn) return fail(SKILLS.radar.when + ".");
+        target = targetId ? this.players.get(targetId) : undefined;
+        if (!target || target.id === id || !this.isActive(target)) return fail("Chọn 1 người còn đang cầm bài.");
+        break;
+      }
+      case "double":
+        if (!ownTurn) return fail(SKILLS.double.when + ".");
+        if ((this.hands.get(turn!.targetId)?.length ?? 0) < 2) return fail("Người kia chỉ còn 1 lá — không rút hai được.");
+        break;
+      case "reverse": {
+        if (!ownTurn) return fail(SKILLS.reverse.when + ".");
+        target = this.activeAfter(player.seat);
+        if (!target || target.id === id || target.id === turn!.targetId) return fail("Bàn chỉ còn 2 người — bên trái cũng là bên phải.");
+        break;
+      }
+      case "switch":
+        if (!turn || turn.targetId !== id || pending) return fail(SKILLS.switch.when + ".");
+        if (turn.switchArmed) return;
+        if (hand.length - 1 < 2) return fail("Cần ít nhất 2 lá khác trên tay để tráo.");
+        break;
+      case "return":
+        if (!pending || pending.drawerId !== id || pending.choosing) return fail(SKILLS.return.when + ".");
+        break;
+    }
+
+    // Played: the card goes face up to the middle, and that's this player's one skill this turn.
+    hand.splice(index, 1);
+    this.discard.push(card);
+    this.teased.delete(id);
+    (pending ? pending.skillUsers : turn!.skillUsers).push(id);
+    // Who it's aimed at, for every screen's "tung chiêu" line.
+    const used: SkillEvent = { type: "skill", playerId: id, skill, card };
+    if (skill === "peek") used.slot = slot;
+    if (target) used.targetId = target.id;
+    else if (skill === "peek" || skill === "double") used.targetId = turn!.targetId;
+    else if (skill === "switch") used.targetId = turn!.drawerId;
+
+    if (skill === "return") return this.returnDrawn(used);
+
+    const current = turn!;
+    if (skill === "double") current.double = true;
+    if (skill === "switch") current.switchArmed = true;
+    if (skill === "reverse" && target) {
+      // A trap set by the one you were about to draw from is wasted.
+      current.targetId = target.id;
+      current.reversed = true;
+      current.switchArmed = false;
+      this.hoverSlot = null;
+      this.broadcast(JSON.stringify({ type: "hover", drawerId: id, slot: null } satisfies OldMaidServerMessage));
+    }
+    if (ownTurn) {
+      // Time to act on what you learned: the clock never drops below a few seconds after a skill.
+      const left = Math.max(current.endsAt - Date.now(), SKILL_TIME_FLOOR_MS);
+      current.endsAt = Date.now() + left;
+      this.armTurnTimer(left);
+    }
+    this.broadcastEvent(used);
+    if (skill === "peek") this.sendEventTo(id, { type: "peeked", targetId: current.targetId, slot: slot!, card: this.hands.get(current.targetId)![slot!].card });
+    if (skill === "radar" && target) this.sendEventTo(id, { type: "radar", targetId: target.id, hasJoker: Boolean(this.hands.get(target.id)?.some((item) => item.card === JOKER)) });
+    this.systemChat(`${SKILLS[skill].icon} ${player.name} dùng ${SKILLS[skill].name}${target ? ` lên ${target.name}` : ""}.`);
+
+    // A skill card can be your last card: then you're out, and if it was your turn, it ends here.
+    if (!hand.length) {
+      this.finish(player);
+      if (ownTurn) {
+        this.clearTurnTimer();
+        this.clearBotTimers();
+        this.turn = null;
+        this.broadcastState();
+        this.sendHand(id);
+        return this.afterDraw(id, current.targetId, SKILL_SHOW_MS);
+      }
+    }
+    this.broadcastState();
+    this.sendHand(id);
+    if (skill === "reverse" && target && isAuto(target)) this.planBotDefense(target);
+  }
+
+  /** 🛡️ Trả lại: the card just drawn goes back into the hand it came from; the turn ends there. */
+  private returnDrawn(used: SkillEvent) {
+    const pending = this.pending!;
+    this.clearPendingTimer();
+    this.clearBotTimers();
+    this.pending = null;
+    const targetHand = this.hands.get(pending.targetId);
+    targetHand?.splice(randomInt(targetHand.length + 1), 0, pending.taken);
+    const player = this.players.get(pending.drawerId)!;
+    used.targetId = pending.targetId;
+    this.broadcastEvent(used);
+    this.broadcastEvent({ type: "resolved", drawerId: pending.drawerId, targetId: pending.targetId, pair: null, returned: true });
+    this.systemChat(`🛡️ ${player.name} trả lá vừa rút về cho ${this.players.get(pending.targetId)?.name ?? "?"}.`);
+    this.finishEmpty(pending.drawerId);
+    this.broadcastState();
+    this.sendHand(pending.drawerId);
+    this.sendHand(pending.targetId);
+    // Long enough for every screen to show the 🛡️ being played.
+    this.afterDraw(pending.drawerId, pending.targetId, SKILL_SHOW_MS);
   }
 
   private finish(player: PlayerState) {
@@ -506,8 +756,11 @@ export class OldMaidRoom extends Server<Env> {
     this.clearTurnTimer();
     this.clearBotTimers();
     this.turn = null;
+    this.clearPendingTimer();
     if (this.pending) {
-      this.hands.get(this.pending.drawerId)?.push(this.pending.taken);
+      const hand = this.hands.get(this.pending.drawerId);
+      hand?.push(this.pending.taken);
+      if (this.pending.extra) hand?.push(this.pending.extra);
       this.pending = null;
     }
     const seated = this.seated();
@@ -531,6 +784,12 @@ export class OldMaidRoom extends Server<Env> {
         const player = this.players.get(id);
         return player ? [{ id, name: player.name, place: index + 1, draws: player.draws, jokerDraws: player.jokerDraws }] : [];
       }),
+      leftovers: Object.fromEntries(
+        seated.flatMap((player) => {
+          const cards = (this.hands.get(player.id) ?? []).map((item) => item.card);
+          return cards.length ? [[player.id, cards]] : [];
+        }),
+      ),
     };
     this.broadcastEvent({ type: "pig", playerId: pig.id });
     void this.reportHistory(seated);
@@ -669,6 +928,8 @@ export class OldMaidRoom extends Server<Env> {
     const next = order.map((cardId) => byId.get(cardId));
     if (next.some((item) => !item) || new Set(order).size !== order.length) return;
     this.hands.set(id, next as OldMaidHandCard[]);
+    // Re-arranging while being drawn from moves cards about like a shuffle (and spoils a 🔍): the table sees it.
+    if (this.turn?.targetId === id) this.broadcastEvent({ type: "shuffled", playerId: id });
     if (this.teased.delete(id)) this.broadcastState();
     this.sendHand(id);
   }
@@ -705,40 +966,101 @@ export class OldMaidRoom extends Server<Env> {
 
   // ---------- bots ----------
 
-  /** Draws like a person thinking it over: points at a few cards (everyone sees), then takes one. */
+  /**
+   * Draws like a person thinking it over: maybe plays a skill card first, points at a few cards
+   * (everyone sees), then takes one — the slot decided when it actually draws, so a 🔍 peek or
+   * a ↩️ change of target is taken into account.
+   */
   private planBotDraw(bot: PlayerState) {
     const turn = this.turn;
     if (!turn || turn.drawerId !== bot.id) return;
-    const size = this.hands.get(turn.targetId)?.length ?? 0;
-    if (!size) return;
     const smart = bot.standIn || this.config.botLevel === "smart";
-    const looks = smart ? 2 + randomInt(3) : 1;
     let at = rand(500, 900);
-    let slot = randomInt(size);
+
+    const skill = this.botTurnSkill(bot, smart);
+    if (skill) {
+      this.botLater(at, () => {
+        const current = this.turn;
+        if (!current || current.drawerId !== bot.id) return;
+        const size = this.hands.get(current.targetId)?.length ?? 0;
+        if (skill.type === "peek" && size) {
+          const teased = this.teased.get(current.targetId);
+          const slot = smart && teased !== undefined && teased < size ? teased : randomInt(size);
+          this.useSkill(bot.id, skill.id, slot);
+          const card = this.hands.get(current.targetId)?.[slot]?.card;
+          if (this.turn?.skillUsers.includes(bot.id)) this.botPeek = { botId: bot.id, slot, joker: card === JOKER };
+        } else if (skill.type === "radar") {
+          const others = this.active().filter((player) => player.id !== bot.id);
+          if (others.length) this.useSkill(bot.id, skill.id, undefined, others[randomInt(others.length)].id);
+        } else {
+          this.useSkill(bot.id, skill.id);
+        }
+      });
+      at += rand(700, 1200);
+    }
+
+    const looks = smart ? 2 + randomInt(3) : 1;
     for (let look = 0; look < looks; look++) {
-      const pointAt = randomInt(size);
-      slot = pointAt;
-      this.botLater(at, () => this.hover(bot.id, pointAt));
+      this.botLater(at, () => {
+        const size = this.turn?.drawerId === bot.id ? this.hands.get(this.turn.targetId)?.length ?? 0 : 0;
+        if (size) this.hover(bot.id, randomInt(size));
+      });
       at += rand(450, 850);
     }
-    const teased = this.teased.get(turn.targetId);
-    if (smart && teased !== undefined && size > 1 && Math.random() < 0.6) {
-      // Doesn't fall for the dangled card (most of the time).
-      const others = Array.from({ length: size }, (_, index) => index).filter((index) => index !== teased);
-      slot = others[randomInt(others.length)];
-      this.botLater(at, () => this.hover(bot.id, slot));
-      at += rand(350, 600);
-    }
-    const final = slot;
     // Never let a bot run out the clock.
-    this.botLater(Math.min(at + rand(150, 400), this.config.turnSeconds * 1000 - 600), () => this.draw(bot.id, final, false));
+    this.botLater(Math.min(at + rand(150, 400), this.config.turnSeconds * 1000 - 600), () => {
+      const current = this.turn;
+      if (!current || current.drawerId !== bot.id) return;
+      const slot = this.botDrawSlot(bot, current.targetId, smart);
+      if (slot === null) return;
+      this.hover(bot.id, slot);
+      this.draw(bot.id, slot, false);
+    });
   }
 
-  /** While being drawn from: shuffle, dangle a card (the Joker or a decoy), pull a face. */
+  /** A skill card worth playing on this turn, if the bot feels like it. */
+  private botTurnSkill(bot: PlayerState, smart: boolean): { id: string; type: SkillType } | null {
+    if (Math.random() > (smart ? 0.6 : 0.3)) return null;
+    const hand = this.hands.get(bot.id) ?? [];
+    const targetSize = this.hands.get(this.turn?.targetId ?? "")?.length ?? 0;
+    const usable = (type: SkillType) =>
+      type === "radar" || ((type === "peek" || type === "double") && targetSize > 1) || (type === "reverse" && this.active().length > 2);
+    const options = hand.filter((item) => isSkill(item.card) && usable(skillOf(item.card))).map((item) => ({ id: item.id, type: skillOf(item.card) }));
+    return options.length ? options[randomInt(options.length)] : null;
+  }
+
+  /** Where the bot draws: steer by a 🔍 peek, mostly avoid a dangled card, else anywhere. */
+  private botDrawSlot(bot: PlayerState, targetId: string, smart: boolean): number | null {
+    const size = this.hands.get(targetId)?.length ?? 0;
+    if (!size) return null;
+    const all = Array.from({ length: size }, (_, index) => index);
+    const peek = this.botPeek?.botId === bot.id && this.botPeek.slot < size ? this.botPeek : null;
+    if (peek) {
+      if (!peek.joker) return peek.slot;
+      const others = all.filter((index) => index !== peek.slot);
+      if (others.length) return others[randomInt(others.length)];
+    }
+    const teased = this.teased.get(targetId);
+    if (smart && teased !== undefined && size > 1 && Math.random() < 0.6) {
+      // Doesn't fall for the dangled card (most of the time).
+      const others = all.filter((index) => index !== teased);
+      return others[randomInt(others.length)];
+    }
+    return randomInt(size);
+  }
+
+  /** While being drawn from: shuffle, dangle a card (the Joker or a decoy), set a 🎭 trap, pull a face. */
   private planBotDefense(bot: PlayerState) {
     const hand = this.hands.get(bot.id);
     if (!hand?.length) return;
     const smart = bot.standIn || this.config.botLevel === "smart";
+    // Holding the pig with a 🎭 in hand: set the trap.
+    const trap = hand.find((item) => isSkill(item.card) && skillOf(item.card) === "switch");
+    if (trap && hand.some((item) => item.card === JOKER) && hand.length > 2 && Math.random() < (smart ? 0.6 : 0.3)) {
+      this.botLater(rand(500, 1100), () => {
+        if (this.turn?.targetId === bot.id) this.useSkill(bot.id, trap.id);
+      });
+    }
     if (!smart) return;
     if (hand.length > 1 && Math.random() < 0.3) this.botLater(rand(200, 600), () => this.shuffleHand(bot.id));
     this.botLater(rand(700, 1300), () => {
@@ -753,6 +1075,24 @@ export class OldMaidRoom extends Server<Env> {
       }
     });
     if (Math.random() < 0.3) this.botLater(rand(900, 2200), () => this.emote(bot.id, BOT_EMOTES[randomInt(BOT_EMOTES.length)]));
+  }
+
+  /** Holding a just-drawn card: 🤲 keep the one that isn't the pig, 🛡️ hand the pig straight back. */
+  private planBotPending(bot: PlayerState) {
+    const pending = this.pending;
+    if (!pending || pending.drawerId !== bot.id) return;
+    const smart = bot.standIn || this.config.botLevel === "smart";
+    if (pending.choosing && pending.extra) {
+      const which: 0 | 1 = pending.taken.card === JOKER ? 1 : pending.extra.card === JOKER ? 0 : randomInt(2) === 0 ? 0 : 1;
+      this.botLater(rand(900, 1600), () => this.keep(bot.id, which));
+      return;
+    }
+    const shield = this.hands.get(bot.id)?.find((item) => isSkill(item.card) && skillOf(item.card) === "return");
+    if (shield && pending.taken.card === JOKER && Math.random() < (smart ? 0.9 : 0.4)) {
+      this.botLater(rand(600, 1200), () => {
+        if (this.pending?.drawerId === bot.id && !this.pending.choosing) this.useSkill(bot.id, shield.id);
+      });
+    }
   }
 
   // ---------- helpers ----------
@@ -849,6 +1189,7 @@ export class OldMaidRoom extends Server<Env> {
 
   private clearAllTimers() {
     this.clearTurnTimer();
+    this.clearPendingTimer();
     this.clearBotTimers();
     for (const handle of this.flowTimers) clearTimeout(handle);
     this.flowTimers.clear();
@@ -879,7 +1220,14 @@ export class OldMaidRoom extends Server<Env> {
       })),
       round: this.round,
       turn: this.turn,
-      pending: this.pending && { drawerId: this.pending.drawerId, targetId: this.pending.targetId, since: this.pending.since },
+      pending: this.pending && {
+        drawerId: this.pending.drawerId,
+        targetId: this.pending.targetId,
+        since: this.pending.since,
+        endsAt: this.pending.endsAt,
+        choosing: this.pending.choosing,
+        skillUsers: this.pending.skillUsers,
+      },
       phaseEndsAt: this.phaseEndsAt,
       dealerId: this.dealerId,
       teased: Object.fromEntries(this.teased),
@@ -902,6 +1250,12 @@ export class OldMaidRoom extends Server<Env> {
 
   private broadcastEvent(event: OldMaidEvent) {
     this.broadcast(JSON.stringify({ type: "event", event } satisfies OldMaidServerMessage));
+  }
+
+  /** An event only one player may see (what 🔍 / 📡 showed them). */
+  private sendEventTo(id: string, event: OldMaidEvent) {
+    const message = JSON.stringify({ type: "event", event } satisfies OldMaidServerMessage);
+    for (const connection of this.getConnections()) if (connection.id === id) connection.send(message);
   }
 
   // Every open connection of the player: after a refresh the old socket can still be open.
@@ -954,7 +1308,7 @@ export class OldMaidRoom extends Server<Env> {
           roomId: this.name,
           players: rows.map((row) => ({ name: row.name, score: rows.length - row.place })),
           rounds: this.round,
-          mode: `${rows.length} người`,
+          mode: `${rows.length} người${skillsInPlay(this.config) ? " · lá kỹ năng" : ""}`,
           winnerName: rows[0]?.name ?? null,
           detail: rows.map((row) => ({ name: row.name, place: row.place, pig: row.id === this.lastRound!.pigId, draws: row.draws, jokerDraws: row.jokerDraws })),
           playedAt: new Date().toISOString(),

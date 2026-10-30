@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { JOKER, isPair, rankOf, type OldMaidHandCard, type PairRule } from "@shared/oldMaidTypes";
+import { JOKER, SKILLS, isPair, isSkill, rankOf, skillOf, type OldMaidHandCard, type PairRule } from "@shared/oldMaidTypes";
 import { CardFace } from "@/components/cards/PlayingCard";
 import { cardInfo } from "@/components/cards/deck";
 
 // Your own hand, face up along the bottom of the screen (crisp HTML cards, the
 // same art as Bà Đồng's table). Slot 0 is on your left, as on the table.
-// Tap a card to dangle it ("nhử": it bobs up and down); drag sideways to
-// re-order. While someone draws from you, the hand grows and the card they're
+// Tap a card to dangle it ("nhử": it bobs up and down) — or, for a skill
+// card, to open what it does and play it; drag sideways to re-order. While someone draws from you, the hand grows and the card they're
 // pointing at lights up live. After you draw, a hop runs along your cards
 // ("dò lá") and stops on the drawn card's mate, if you hold one.
 
@@ -24,11 +24,29 @@ export function JokerFace({ className = "" }: { className?: string }) {
   );
 }
 
-function Face({ card }: { card: number }) {
-  return card === JOKER ? <JokerFace /> : <CardFace id={card} className="pc-static" />;
+/** A skill card: violet with a gold frame, its icon big in the middle. */
+export function SkillFace({ card, className = "" }: { card: number; className?: string }) {
+  const skill = SKILLS[skillOf(card)];
+  return (
+    <span
+      className={`pc-side pc-static flex flex-col items-center justify-between overflow-hidden bg-gradient-to-b from-[#7c3aed] to-[#3b0764] px-[0.25em] py-[0.4em] text-center text-white shadow-[inset_0_0_0_0.12em_#fcd34d] ${className}`}
+    >
+      {/* Corner index, like a playing card's: readable when the hand overlaps it. */}
+      <span className="absolute left-[0.28em] top-[0.22em] text-[0.95em] leading-none">{skill.icon}</span>
+      <span className="pl-[1.2em] text-[0.48em] font-black tracking-[0.16em] text-amber-200">KỸ NĂNG</span>
+      <span className="text-[2.1em] leading-none drop-shadow-[0_0.1em_0.3em_rgba(255,236,170,0.6)]">{skill.icon}</span>
+      <span className="font-serif text-[0.72em] font-black leading-tight">{skill.name}</span>
+    </span>
+  );
 }
 
-const cardLabel = (card: number) => (card === JOKER ? "Joker — con heo" : cardInfo(card).name);
+export function Face({ card }: { card: number }) {
+  if (card === JOKER) return <JokerFace />;
+  if (isSkill(card)) return <SkillFace card={card} />;
+  return <CardFace id={card} className="pc-static" />;
+}
+
+export const cardLabel = (card: number) => (card === JOKER ? "Joker — con heo" : isSkill(card) ? `Lá kỹ năng ${SKILLS[skillOf(card)].name}` : cardInfo(card).name);
 
 /** When the check starts: as the drawn card arrives in front of your eyes. */
 export const SCAN_START_MS = 450;
@@ -50,9 +68,12 @@ export function MyHand({
   scan,
   pairRule,
   spotlight,
+  readySkills,
+  peekedSlot,
   canTease,
   canArrange,
   onTease,
+  onSkill,
   onReorder,
   onShuffle,
 }: {
@@ -67,9 +88,15 @@ export function MyHand({
   pairRule: PairRule;
   /** You're being drawn from: the hand steps forward. */
   spotlight: boolean;
+  /** Skill cards that can be played right now: they glow. */
+  readySkills: Set<string>;
+  /** The drawer looked at this card of yours with 🔍. */
+  peekedSlot: number | null;
   canTease: boolean;
   canArrange: boolean;
   onTease: (slot: number | null) => void;
+  /** A skill card was tapped: open what it does. */
+  onSkill: (cardId: string) => void;
   onReorder: (order: string[]) => void;
   onShuffle: () => void;
 }) {
@@ -149,7 +176,8 @@ export function MyHand({
       const from = cards.findIndex((card) => card.id === current.id);
       if (from < 0) return; // the card left your hand mid-drag
       if (!current.moved) {
-        if (canTease) onTease(teasedSlot === from ? null : from);
+        if (isSkill(cards[from].card)) onSkill(current.id);
+        else if (canTease) onTease(teasedSlot === from ? null : from);
         return;
       }
       const to = Math.max(0, Math.min(cards.length - 1, Math.round(from + current.dx / Math.max(spacing, 1))));
@@ -167,10 +195,11 @@ export function MyHand({
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
     };
-  }, [dragging, cards, spacing, canArrange, canTease, onReorder, onTease, teasedSlot]);
+  }, [dragging, cards, spacing, canArrange, canTease, onReorder, onTease, onSkill, teasedSlot]);
 
   const sortByRank = () => {
-    const sorted = [...cards].sort((a, b) => (a.card === JOKER ? 99 : rankOf(a.card)) - (b.card === JOKER ? 99 : rankOf(b.card)) || a.card - b.card);
+    const order = (card: number) => (isSkill(card) ? 100 : card === JOKER ? 99 : rankOf(card));
+    const sorted = [...cards].sort((a, b) => order(a.card) - order(b.card) || a.card - b.card);
     onReorder(sorted.map((card) => card.id));
   };
 
@@ -215,14 +244,14 @@ export function MyHand({
                 setDrag({ id: card.id, from: index, startX: event.clientX, dx: 0, moved: false });
               }}
               onKeyDown={(event) => {
-                if ((event.key === "Enter" || event.key === " ") && canTease) {
-                  event.preventDefault();
-                  onTease(teased ? null : index);
-                }
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                if (isSkill(card.card)) onSkill(card.id);
+                else if (canTease) onTease(teased ? null : index);
               }}
               className={`om-hand-card pointer-events-auto absolute bottom-2 touch-none select-none ${isDragged ? "z-50 cursor-grabbing" : "cursor-pointer"} ${
                 pointed ? "om-pointed" : ""
-              } ${card.id === fresh ? "om-fresh" : ""}`}
+              } ${card.id === fresh ? "om-fresh" : ""} ${readySkills.has(card.id) ? "om-skill-ready" : ""}`}
               style={{
                 left,
                 width: cardW,
@@ -245,6 +274,12 @@ export function MyHand({
                   <span className="om-match-badge absolute -top-8 left-1/2 whitespace-nowrap rounded-full bg-emerald-400 px-2.5 py-1 text-[11px] font-black text-emerald-950 shadow-lg">
                     🎯 Thành đôi!
                   </span>
+                )}
+                {readySkills.has(card.id) && !pointed && !teased && (
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-black text-white shadow">✨ Dùng được</span>
+                )}
+                {peekedSlot === index && !pointed && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-sky-400 px-2 py-0.5 text-[10px] font-black text-sky-950 shadow">🔍 bị soi</span>
                 )}
               </span>
               {pointed && (

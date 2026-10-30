@@ -4,7 +4,7 @@ import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { DEAL_MS, MAX_SEATS, OPENING_PAIRS_MS, seatAfter, seatBefore, type Emote, type PublicOldMaidState } from "@shared/oldMaidTypes";
+import { DEAL_MS, MAX_SEATS, OPENING_PAIRS_MS, SKILL_SHOW_MS, seatAfter, seatBefore, type Emote, type PublicOldMaidState } from "@shared/oldMaidTypes";
 import type { LiveEmote, LoggedEvent } from "@/lib/useOldMaidRoom";
 import { CARD_H, EYE_Y, FAN_R, FAN_Y, SEAT_R, TABLE_R, TABLE_TOP, cardGeometry, faceMaterial, getBackMaterial, onCircle, seatAngle } from "./cards3d";
 import { Fan, fanPose, type FanOffer } from "./Fan";
@@ -44,6 +44,10 @@ export interface Table3DProps {
   quality: Quality;
   onQualityDrop: () => void;
   lobby: LobbyControls;
+  /** What your 🔍 showed you: that card turns face up (on your screen only). */
+  peekReveal: { targetId: string; slot: number; card: number } | null;
+  /** The card someone looked at with 🔍 this turn, tagged for everyone. */
+  peekMark: { targetId: string; slot: number } | null;
 }
 
 const CENTER = new THREE.Vector3(0, TABLE_TOP, 0);
@@ -438,6 +442,23 @@ function SceneContents(props: Table3DProps) {
         heldPose.current.pos.copy(from);
         setHeld({ key: seq, drawerId: event.drawerId, mine: event.drawerId === myId, card: event.card, from });
       }
+      if (event.type === "skill") {
+        // The played card lands face up in the middle once its "tung chiêu" moment is over.
+        const seat = seatOf(event.playerId);
+        const from = event.playerId === myId ? onScreen(HAND_SPOT) : seat !== null ? restPos[seat].clone() : CENTER.clone();
+        origins.current.set(event.card, { from, delay: SKILL_SHOW_MS - 600, duration: THROW_MS });
+      }
+      if (event.type === "kept") {
+        // 🤲: the card not kept goes back into the hand it came from.
+        incoming.current.set(event.targetId, { from: heldPose.current.pos.clone(), until: Date.now() + 900 });
+        if (event.drawerId === myId && event.kept !== undefined) setHeld((current) => (current ? { ...current, card: event.kept } : current));
+      }
+      if (event.type === "resolved" && event.returned) {
+        // 🛡️: the drawn card flies straight back.
+        incoming.current.set(event.targetId, { from: heldPose.current.pos.clone(), until: Date.now() + 900 });
+        setHeld(finish);
+        continue;
+      }
       if (event.type === "resolved") {
         const mine = event.drawerId === myId;
         const seat = seatOf(event.drawerId);
@@ -657,7 +678,9 @@ function SceneContents(props: Table3DProps) {
                 interactive={isTarget && iDraw}
                 onHover={props.onHover}
                 onTap={props.onTap}
-                revealCard={roundPigId === player.id ? 52 : null}
+                revealCards={roundPigId ? state.lastRound?.leftovers?.[player.id] ?? null : null}
+                revealSlot={isTarget && iDraw && props.peekReveal?.targetId === player.id ? props.peekReveal : null}
+                markSlot={isTarget && props.peekMark?.targetId === player.id ? props.peekMark.slot : null}
                 getIncoming={getIncoming(player.id)}
                 register={registerFor(player.id)}
               />

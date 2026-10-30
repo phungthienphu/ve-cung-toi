@@ -36,8 +36,12 @@ export interface FanProps {
   interactive: boolean;
   onHover?: (slot: number | null) => void;
   onTap?: (slot: number, mouse: boolean) => void;
-  /** Turn the last card face up for everyone (the pig's Joker at the reveal). */
-  revealCard: number | null;
+  /** At the end of a round: the cards still held, face up for everyone, slot by slot. */
+  revealCards: number[] | null;
+  /** A card you looked at with 🔍: face up on the side facing you, only on your screen. */
+  revealSlot: { slot: number; card: number } | null;
+  /** A card someone looked at with 🔍 this turn: tagged for everyone. */
+  markSlot: number | null;
   /** Where a card that just appeared flies in from (the deck while dealing, the drawer's fingers after a draw). */
   getIncoming?: () => THREE.Vector3 | null;
   register?: (group: THREE.Group | null) => void;
@@ -69,6 +73,7 @@ function FanCard({
   scanning,
   interactive,
   reveal,
+  marked,
   fan,
   slots,
   getIncoming,
@@ -82,6 +87,7 @@ function FanCard({
   scanning: boolean;
   interactive: boolean;
   reveal: number | null;
+  marked: boolean;
   fan: React.RefObject<THREE.Group | null>;
   /** Filled with each card's world position while the hand is held out, so a drawn card can fly from where it was. */
   slots: THREE.Vector3[] | null;
@@ -177,12 +183,17 @@ function FanCard({
             <span className="om-tease rounded-full bg-pink-500 px-2 py-0.5 text-xs font-black text-white shadow-lg">☝️ nhử</span>
           </Label>
         )}
+        {marked && (
+          <Label position={[0, -0.55, 0.02]} zIndexRange={[15, 0]} style={{ pointerEvents: "none" }}>
+            <span className="rounded-full bg-sky-400 px-2 py-0.5 text-xs font-black text-sky-950 shadow-lg">🔍 bị soi</span>
+          </Label>
+        )}
       </group>
     </group>
   );
 }
 
-export function Fan({ count, restPos, offer, aspect, highlight, teased, scanning, interactive, onHover, onTap, revealCard, getIncoming, register }: FanProps) {
+export function Fan({ count, restPos, offer, aspect, highlight, teased, scanning, interactive, onHover, onTap, revealCards, revealSlot, markSlot, getIncoming, register }: FanProps) {
   const group = useRef<THREE.Group>(null);
   const slots = useRef<THREE.Vector3[]>([]);
   const mode: FanMode = !offer ? "rest" : offer.pov ? "pov" : "table";
@@ -220,7 +231,8 @@ export function Fan({ count, restPos, offer, aspect, highlight, teased, scanning
           teased={teased === index}
           scanning={scanning}
           interactive={interactive}
-          reveal={revealCard !== null && count === 1 ? revealCard : null}
+          reveal={revealCards?.[index] ?? (revealSlot?.slot === index ? revealSlot.card : null)}
+          marked={markSlot === index}
           fan={group}
           slots={offer ? slots.current : null}
           getIncoming={getIncoming}

@@ -913,3 +913,16 @@ export function playSadTrombone() {
   glide(277, 262, 0.76, 0.34, 0.09, "triangle");
   glide(262, 220, 1.14, 0.95, 0.09, "triangle");
 }
+
+/** A skill card played: a rising sparkle, a swish of magic and a soft boom. */
+export function playSkillCast() {
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, i * 0.05, 0.35, 0.055, "sine"));
+  noiseSweep(0, 0.55, 0.05, 900, 4200);
+  glide(110, 45, 0.28, 0.45, 0.16);
+}
+
+/** What a 🔍 or 📡 showed you: a bright "ting" — or a worried slide if it's the pig. */
+export function playSkillResult(bad: boolean) {
+  if (bad) glide(466, 233, 0, 0.4, 0.07, "triangle");
+  else [880, 1174.7].forEach((f, i) => tone(f, i * 0.07, 0.25, 0.07, "sine"));
+}

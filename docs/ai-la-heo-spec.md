@@ -402,6 +402,40 @@ v1 đã code theo mặc định dưới đây. Chủ dự án chưa xác nhận,
 - Lá đang nhử nhấp nhả lên xuống liên tục (cả trên tay bạn lẫn trong 3D), không chỉ nhô lên.
 - Nút âm thanh nổi của web bị ẩn trong phòng chơi để không che bài; tắt/bật tiếng nằm trong ⚙️ Cài đặt.
 
+## 17. Lá kỹ năng (v2, 30/10/2026)
+
+Người dùng thấy chỉ bốc bài thì nhàm, nên chọn cách **kiểu UNO**: lá kỹ năng được xào chung với bộ bài, ai cầm lá nào thì dùng lá đó, và rút được lá kỹ năng của người khác. Phương án mang vật phẩm từ sảnh (có thời gian hồi) đã bị bỏ.
+
+**Luật:**
+- Lá kỹ năng là bài trên tay, không ghép đôi với lá nào. Muốn thoát phải dùng hết, hoặc để người khác rút mất. Nếu lá cuối cùng trên tay là lá kỹ năng thì dùng xong là thoát, và lượt kết thúc ngay.
+- Mỗi lá dùng 1 lần, xong thì lật ngửa giữa bàn. Mỗi lượt, mỗi người dùng tối đa 1 lá. Lá vừa rút được phải chờ tới lượt sau mới dùng.
+- Dùng chiêu thì cả bàn biết: màn "tung chiêu" hiện 1,8 giây (`SKILL_SHOW_MS`) trên mọi màn hình, kèm âm thanh và một dòng trong chat. Kết quả của 🔍 và 📡 chỉ người dùng thấy.
+- Dùng chiêu trong lượt của mình thì đồng hồ còn ít nhất 8 giây (`SKILL_TIME_FLOOR_MS`).
+- Khi bật lá kỹ năng, nhịp dò lá dài 2,6 giây (`SKILL_PEEK_MS`) **cho mọi người**, để kịp quyết có dùng 🛡️ không, mà nhìn thời gian cũng không đoán được ai đang cầm 🛡️.
+- Ở sảnh, chủ phòng chọn: Bật/Tắt, dùng những lá nào (ít nhất 1 lá), mỗi loại 1 hay 2 lá. Mặc định: bật, đủ 6 loại, mỗi loại 1 lá. Ván có lá kỹ năng được ghi "· lá kỹ năng" trong lịch sử.
+
+| Lá | Dùng khi | Tác dụng |
+|---|---|---|
+| 🔍 Kính lúp | Lượt mình, trước khi rút | Chọn 1 lá để xem mặt (chỉ mình thấy, lá lật ngửa trong quạt bài trước mắt). Cả bàn thấy nhãn "🔍 bị soi" trên lá đó. Người bị soi xào hoặc sắp lại bài thì kết quả soi mất tác dụng. |
+| 📡 Radar heo | Lượt mình | Chọn 1 người: biết người đó CÓ hay KHÔNG giữ heo. |
+| 🤲 Rút hai | Lượt mình | Lá chọn rút kèm 1 lá ngẫu nhiên. Có 6 giây (`DOUBLE_CHOOSE_MS`) để chọn giữ lá nào, lá kia trả về vị trí ngẫu nhiên. Hết giờ thì giữ lá đã chọn. |
+| ↩️ Đổi hướng | Lượt mình | Rút bài người bên trái. Bẫy 🎭 của người bên phải bị bỏ phí. Không dùng được khi bàn còn 2 người. |
+| 🎭 Đánh tráo | Khi bị rút, trước lúc họ bấm | Giăng bẫy công khai: lá người kia chọn bị đổi thành 1 lá ngẫu nhiên khác. Cần ít nhất 2 lá khác trên tay. |
+| 🛡️ Trả lại | Lúc đang dò lá vừa rút | Trả lá đó về vị trí ngẫu nhiên trong tay người kia, lượt kết thúc. Không ai biết chắc đó có phải heo không, nên có thể dùng để lừa. |
+
+**Bot:**
+- Khi tới lượt: hay dùng chiêu (bot khôn khoảng 60%), soi lá đang được nhử, né heo nếu soi thấy heo.
+- Khi bị rút mà đang giữ heo: giăng 🎭.
+- Khi Rút hai: giữ lá không phải heo.
+- Lỡ bốc trúng heo mà có 🛡️: trả lại ngay.
+
+**Kỹ thuật:**
+- Mã lá kỹ năng: `SKILL_BASE (60) + bản sao × 6 + loại`.
+- Mặt lá: 6 ô mới trong atlas 3D, `SkillFace` cho HTML.
+- Server giữ `pending.extra` / `choosing` cho 🤲.
+- Sự kiện mới: `skill`, `peeked`, `radar`, `kept`; `resolved.returned`; `drew.switched/extraSlot/extraCard`.
+- Người bị rút giờ thoát lúc ngã ngũ lá bài, không còn thoát ngay khi bị rút, vì 🛡️ có thể trả lá về cho họ.
+
 ## Nguồn tham khảo
 
 - [Old maid (card game) — Wikipedia](https://en.wikipedia.org/wiki/Old_maid_(card_game))

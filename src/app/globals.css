@@ -595,10 +595,37 @@ body {
   100% { opacity: 0; transform: scale(0.9) translateY(30px); }
 }
 .om-timer { transition: width 0.25s linear; }
+/* A skill card that can be played right now: a slow violet pulse. */
+.om-skill-ready .pc-side, .om-skill-ready.rounded-2xl { animation: om-skill-ready 1.4s ease-in-out infinite; }
+@keyframes om-skill-ready {
+  0%, 100% { box-shadow: inset 0 0 0 0.12em #fcd34d, 0 0 0.6em 0.1em rgba(167, 139, 250, 0.45); }
+  50% { box-shadow: inset 0 0 0 0.12em #fde68a, 0 0 1.5em 0.4em rgba(196, 181, 253, 0.9); }
+}
+/* "Tung chiêu": the card flips up big, holds, then drops to the table (matches SKILL_SHOW_MS). */
+.om-cast { animation: om-cast 1.8s cubic-bezier(0.2, 0.9, 0.3, 1) both; perspective: 800px; }
+@keyframes om-cast {
+  0% { transform: translateY(40px) rotateY(180deg) scale(0.3); opacity: 0; }
+  16% { transform: translateY(0) rotateY(0) scale(1.12); opacity: 1; }
+  26% { transform: scale(1); }
+  76% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(140px) scale(0.35); opacity: 0; }
+}
+.om-cast-burst {
+  background: radial-gradient(circle, rgba(237, 233, 254, 0.9) 0%, rgba(167, 139, 250, 0.55) 30%, rgba(124, 58, 237, 0) 68%);
+  animation: om-cast-burst 1.8s ease-out both;
+}
+@keyframes om-cast-burst {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+  18% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  60% { opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .om-hand-card { transition-duration: 0.01s !important; }
   .om-fresh, .om-leave, .om-emote, .om-tease, .om-banner, .om-pop, .om-shake, .om-joker-card, .om-scan, .om-match, .om-match .pc-side, .om-match-badge { animation-duration: 0.01s !important; }
   .om-teased { animation: none; transform: translateY(-16px); }
+  .om-cast, .om-cast-burst { animation-duration: 0.01s !important; }
+  .om-skill-ready .pc-side, .om-skill-ready.rounded-2xl { animation: none; box-shadow: inset 0 0 0 0.12em #fcd34d, 0 0 1em 0.3em rgba(196, 181, 253, 0.8); }
 }
 
 /* ---------- Celebration banner (CelebrationBanner.tsx) ---------- */

@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SkillFace } from "@/components/oldmaid/MyHand";
 import { btnGhost, btnPrimary } from "@/components/oldmaid/panels";
 import { drawFontClass } from "@/lib/drawFonts";
 import { makeRoomId } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import type { OldMaidRoomListing } from "@shared/oldMaidTypes";
+import { SKILLS, SKILL_BASE, SKILL_ORDER, type OldMaidRoomListing } from "@shared/oldMaidTypes";
 
 const ROOM_LIST_POLL_MS = 4000;
 
@@ -172,6 +173,30 @@ export default function OldMaidHomePage() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section className="mt-10">
+          <h2 className="font-draw-display text-2xl font-extrabold">✨ Lá kỹ năng</h2>
+          <p className="mt-1 max-w-2xl text-sm text-white/65">
+            Xào chung với bài: ai cầm lá nào thì dùng lá đó, rút được của người khác thì thành của mình. Mỗi lượt dùng tối đa 1 lá, dùng xong lá lật ngửa giữa bàn
+            cho cả bàn thấy. Chủ phòng bật/tắt và chọn lá ngoài sảnh.
+          </p>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {SKILL_ORDER.map((type, index) => (
+              <li key={type} className="flex gap-4 rounded-3xl bg-violet-500/[0.08] p-4 ring-1 ring-violet-300/15">
+                <span className="relative block h-[6.3rem] w-[4.5rem] shrink-0" style={{ fontSize: 14 }}>
+                  <SkillFace card={SKILL_BASE + index} />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-draw-display text-lg font-extrabold">
+                    {SKILLS[type].icon} {SKILLS[type].name}
+                  </h3>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-violet-200/70">{SKILLS[type].when}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-white/65">{SKILLS[type].detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <div className="mt-8 flex justify-center gap-5 text-sm">

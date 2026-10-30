@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { JOKER, MAX_SEATS } from "@shared/oldMaidTypes";
+import { JOKER, MAX_SEATS, SKILLS, SKILL_ORDER, isSkill, skillOf, type SkillType } from "@shared/oldMaidTypes";
 import { drawCard } from "@/components/cards/shareCard";
 
 // Everything the 3D table shares: card textures (one atlas painted on a
@@ -18,10 +18,12 @@ export const FAN_Y = 1.4;
 export const EYE_Y = 2.2;
 
 const COLS = 11;
-const ROWS = 5;
+const ROWS = 6;
 const CELL_W = 160;
 const CELL_H = 224;
 const BACK_CELL = 53;
+/** The six skill faces follow the back. */
+const SKILL_CELL = 54;
 
 function roundedCard(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
   ctx.beginPath();
@@ -131,6 +133,44 @@ function drawBack(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: numb
   }
 }
 
+/** A skill card: violet with a gold frame, the skill's icon big in the middle, its name and what it does. */
+function drawSkill(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, type: SkillType) {
+  const h = w * 1.4;
+  const skill = SKILLS[type];
+  const paper = ctx.createLinearGradient(cx, cy - h / 2, cx, cy + h / 2);
+  paper.addColorStop(0, "#7c3aed");
+  paper.addColorStop(1, "#3b0764");
+  ctx.fillStyle = paper;
+  roundedCard(ctx, cx, cy, w, h);
+  ctx.fill();
+  ctx.strokeStyle = "#fcd34d";
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(252, 211, 77, 0.45)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(cx - w / 2 + 9, cy - h / 2 + 9, w - 18, h - 18, w * 0.07);
+  ctx.stroke();
+  const glow = ctx.createRadialGradient(cx, cy - h * 0.08, 0, cx, cy - h * 0.08, w * 0.42);
+  glow.addColorStop(0, "rgba(255, 236, 170, 0.55)");
+  glow.addColorStop(1, "rgba(255, 236, 170, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#fde68a";
+  ctx.font = `800 ${w * 0.085}px Georgia, serif`;
+  ctx.fillText("KỸ NĂNG", cx, cy - h * 0.39);
+  ctx.font = `${w * 0.44}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.fillText(skill.icon, cx, cy - h * 0.08);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `900 ${w * 0.13}px Georgia, serif`;
+  ctx.fillText(skill.name, cx, cy + h * 0.24);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.font = `700 ${w * 0.075}px sans-serif`;
+  ctx.fillText(skill.short, cx, cy + h * 0.34);
+}
+
 let atlas: THREE.CanvasTexture | null = null;
 const cardTextures = new Map<number, THREE.Texture>();
 const faceMaterials = new Map<number, THREE.MeshStandardMaterial>();
@@ -144,12 +184,13 @@ function getAtlas(): THREE.CanvasTexture {
   canvas.height = ROWS * CELL_H;
   const ctx = canvas.getContext("2d")!;
   const w = CELL_W - 8;
-  for (let cell = 0; cell <= BACK_CELL; cell++) {
+  for (let cell = 0; cell < SKILL_CELL + SKILL_ORDER.length; cell++) {
     const cx = (cell % COLS) * CELL_W + CELL_W / 2;
     const cy = Math.floor(cell / COLS) * CELL_H + CELL_H / 2;
     if (cell < JOKER) drawCard(ctx, cell, cx, cy, w, 0, false);
     else if (cell === JOKER) drawJoker(ctx, cx, cy, w);
-    else drawBack(ctx, cx, cy, w);
+    else if (cell === BACK_CELL) drawBack(ctx, cx, cy, w);
+    else drawSkill(ctx, cx, cy, w, SKILL_ORDER[cell - SKILL_CELL]);
   }
   atlas = new THREE.CanvasTexture(canvas);
   atlas.colorSpace = THREE.SRGBColorSpace;
@@ -169,10 +210,12 @@ function cellTexture(cell: number): THREE.Texture {
 }
 
 export function faceMaterial(card: number): THREE.MeshStandardMaterial {
-  let material = faceMaterials.get(card);
+  // Every copy of a skill shares its type's face.
+  const cell = isSkill(card) ? SKILL_CELL + SKILL_ORDER.indexOf(skillOf(card)) : card;
+  let material = faceMaterials.get(cell);
   if (!material) {
-    material = new THREE.MeshStandardMaterial({ map: cellTexture(card), alphaTest: 0.5, roughness: 0.55, metalness: 0 });
-    faceMaterials.set(card, material);
+    material = new THREE.MeshStandardMaterial({ map: cellTexture(cell), alphaTest: 0.5, roughness: 0.55, metalness: 0 });
+    faceMaterials.set(cell, material);
   }
   return material;
 }
