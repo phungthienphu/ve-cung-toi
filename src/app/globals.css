@@ -518,7 +518,7 @@ body {
   background-image: radial-gradient(ellipse at 50% 30%, #3b2416 0%, #170e09 70%);
 }
 .om-hand-card {
-  transition: left 0.28s cubic-bezier(0.22, 0.9, 0.24, 1), transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease;
+  transition: left 0.28s cubic-bezier(0.22, 0.9, 0.24, 1), transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease, width 0.3s ease, height 0.3s ease;
   transform-origin: 50% 100%;
 }
 @media (hover: hover) {
@@ -547,6 +547,28 @@ body {
   80% { opacity: 1; }
   100% { transform: translateY(-14px); opacity: 0; }
 }
+/* A dangled card ("nhử") pops up and dips back, again and again. */
+.om-teased { animation: om-teased 0.8s ease-in-out infinite; }
+@keyframes om-teased {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-26px); }
+}
+/* Checking a drawn card against your hand ("dò lá"): a hop runs along the cards… */
+.om-scan { animation: om-scan 0.34s ease-out var(--d, 0ms); }
+@keyframes om-scan {
+  45% { transform: translateY(-16px); filter: brightness(1.25); }
+}
+/* …and stops on the mate, which rises up glowing green. */
+.om-match { animation: om-match 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) var(--d, 0ms) both; }
+@keyframes om-match {
+  from { transform: translateY(0); }
+  to { transform: translateY(-34px) scale(1.08); }
+}
+.om-match .pc-side { animation: om-match-glow 0.45s ease-out var(--d, 0ms) both; }
+@keyframes om-match-glow {
+  to { box-shadow: 0 0 0 0.1em #b9f5c8, 0 0 1.2em 0.35em rgba(74, 222, 128, 0.9), 0 0 2.4em 0.8em rgba(34, 197, 94, 0.45); }
+}
+.om-match-badge { animation: om-banner 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) var(--d, 0ms) both; }
 .om-tease { display: inline-block; animation: om-tease 0.9s ease-in-out infinite alternate; }
 @keyframes om-tease { to { transform: translateY(-4px); } }
 .om-banner { animation: om-banner 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
@@ -575,7 +597,8 @@ body {
 .om-timer { transition: width 0.25s linear; }
 @media (prefers-reduced-motion: reduce) {
   .om-hand-card { transition-duration: 0.01s !important; }
-  .om-fresh, .om-leave, .om-emote, .om-tease, .om-banner, .om-pop, .om-shake, .om-joker-card { animation-duration: 0.01s !important; }
+  .om-fresh, .om-leave, .om-emote, .om-tease, .om-banner, .om-pop, .om-shake, .om-joker-card, .om-scan, .om-match, .om-match .pc-side, .om-match-badge { animation-duration: 0.01s !important; }
+  .om-teased { animation: none; transform: translateY(-16px); }
 }
 
 /* ---------- Celebration banner (CelebrationBanner.tsx) ---------- */

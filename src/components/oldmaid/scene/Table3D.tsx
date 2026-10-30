@@ -1,20 +1,27 @@
 "use client";
 
-import { Html, PerformanceMonitor } from "@react-three/drei";
+import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { DEAL_MS, MAX_SEATS, OPENING_PAIRS_MS, type Emote, type PublicOldMaidState } from "@shared/oldMaidTypes";
+import { DEAL_MS, MAX_SEATS, OPENING_PAIRS_MS, seatAfter, seatBefore, type Emote, type PublicOldMaidState } from "@shared/oldMaidTypes";
 import type { LiveEmote, LoggedEvent } from "@/lib/useOldMaidRoom";
-import { CARD_H, EYE_Y, FAN_R, FAN_Y, SEAT_R, TABLE_R, TABLE_TOP, cardGeometry, faceMaterial, fanLayout, getBackMaterial, onCircle, seatAngle } from "./cards3d";
-import { Fan, fanPose } from "./Fan";
+import { CARD_H, EYE_Y, FAN_R, FAN_Y, SEAT_R, TABLE_R, TABLE_TOP, cardGeometry, faceMaterial, getBackMaterial, onCircle, seatAngle } from "./cards3d";
+import { Fan, fanPose, type FanOffer } from "./Fan";
 import { PigAvatar, SEAT_COLORS, type AvatarStatus } from "./PigAvatar";
+import { Label } from "./Label";
 
-// The 3D table. Camera: from your seat when nothing is happening, then for
-// every draw it flies to the drawer's eyes (first person) looking at the hand
-// held out to them — you watch their pointer wander over the cards live.
+// The 3D table. Seats have fixed places; the camera lives behind yours and
+// swings round the table (never through it) when you change seats or the
+// action moves. It only goes first person for your own draw: the hand you draw
+// from floats up in front of your eyes. When your hand is drawn from, the view
+// stays yours (your face-up hand at the bottom shows where they're pointing).
+// Anyone else's draw you watch from across the table, so both pigs are in
+// shot with the hand held out between them, the drawer's pointer lighting up
+// its cards live. A drawn card then stays in the drawer's fingers while they
+// check it against their hand ("dò lá"), before the pair is thrown down to the
+// felt or the card slipped in.
 
-export type CameraMode = "follow" | "overview";
 export type Quality = "high" | "low";
 
 export interface LobbyControls {
@@ -28,7 +35,6 @@ export interface LobbyControls {
 export interface Table3DProps {
   state: PublicOldMaidState;
   myId: string;
-  myHandCount: number;
   /** Slot being pointed at in the current draw: yours while you draw, the server's live one otherwise. */
   highlight: number | null;
   onHover: (slot: number | null) => void;
@@ -36,13 +42,55 @@ export interface Table3DProps {
   events: LoggedEvent[];
   emotes: LiveEmote[];
   quality: Quality;
-  cameraMode: CameraMode;
   onQualityDrop: () => void;
   lobby: LobbyControls;
 }
 
 const CENTER = new THREE.Vector3(0, TABLE_TOP, 0);
 const UP = new THREE.Vector3(0, 1, 0);
+const FLIP = new THREE.Quaternion().setFromAxisAngle(UP, Math.PI);
+/** A card tossed from a hand at rest, tilted back. */
+const TOSSED = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4 * Math.PI, 0, 0));
+/** Camera-space spots: the drawn card in front of your eyes, and the bottom of the screen (your hand). */
+const HOLD_SPOT = new THREE.Vector3(0, 0.1, -2.1);
+const HAND_SPOT = new THREE.Vector3(0, -0.95, -1.7);
+const STASH_SPOT = new THREE.Vector3(0, -1.4, -2.1);
+const THROW_MS = 1050;
+const TAN_HALF_FOV = Math.tan((50 / 2) * (Math.PI / 180));
+/** The lobby / result panel docked on the right on a wide screen (23rem + margin). */
+const SIDE_SHEET_PX = 380;
+
+const REST_POS = Array.from({ length: MAX_SEATS }, (_, seat) => onCircle(seatAngle(seat), FAN_R, FAN_Y));
+const EYES = Array.from({ length: MAX_SEATS }, (_, seat) => onCircle(seatAngle(seat), SEAT_R - 0.25, EYE_Y));
+/**
+ * Where a drawer holds the card they just drew: out in front, chin high and a little to one
+ * side — every camera looks down on it, so the pig's face shows above it. Kept upright, back
+ * to the table, so no camera ever sees its face.
+ */
+const HOLD_SPOTS = Array.from({ length: MAX_SEATS }, (_, seat) => onCircle(seatAngle(seat) + 0.16, 2.9, 1.6));
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/** Someone else's draw, seen from across the table: both pigs face the camera, the offered hand between them. */
+function sideOnShot(drawerSeat: number, targetSeat: number, myAngle: number, aspect: number) {
+  const a = EYES[drawerSeat];
+  const b = EYES[targetSeat];
+  const look = a.clone().add(b).multiplyScalar(0.5);
+  look.y = 1.55;
+  const outward = new THREE.Vector3(look.x, 0, look.z);
+  if (outward.lengthSq() < 0.25) {
+    // Sitting opposite each other: look along the table from your side instead.
+    outward.set(b.z - a.z, 0, a.x - b.x);
+    if (outward.dot(onCircle(myAngle, 1, 0)) < 0) outward.negate();
+  }
+  outward.normalize();
+  const spread = Math.hypot(a.x - b.x, a.z - b.z) / 2 + 1;
+  const distance = clamp(spread / (TAN_HALF_FOV * Math.min(aspect, 1.7)), 5.5, 11);
+  // Low (about 24°), so the line of sight passes under the lantern over the middle of the table.
+  const position = look.clone().addScaledVector(outward, -distance * 0.91);
+  position.y += distance * 0.41;
+  return { position, look };
+}
 
 /** Deterministic mess for the discard pile. */
 function pileSpot(index: number) {
@@ -53,38 +101,45 @@ function pileSpot(index: number) {
   return { x: Math.cos(angle) * r, z: Math.sin(angle) * r * 0.8 - 0.1, spin: (a - Math.floor(a)) * Math.PI * 2 };
 }
 
-type Origins = React.RefObject<Map<number, { from: THREE.Vector3; delay: number }>>;
+interface Pose {
+  pos: THREE.Vector3;
+  quat: THREE.Quaternion;
+}
+type Origins = React.RefObject<Map<number, { from: THREE.Vector3; quat?: THREE.Quaternion; delay: number; duration: number }>>;
 
 function DiscardCard({ card, index, origins }: { card: number; index: number; origins: Origins }) {
   const ref = useRef<THREE.Group>(null);
   const spot = useMemo(() => pileSpot(index), [index]);
   const target = useMemo(() => new THREE.Vector3(spot.x, TABLE_TOP + 0.075 + index * 0.0015, spot.z), [spot, index]);
-  const start = useRef<{ from: THREE.Vector3; at: number } | null | undefined>(undefined);
+  const flat = useMemo(() => new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, spot.spin)), [spot]);
+  const flight = useRef<{ from: THREE.Vector3; quat: THREE.Quaternion; at: number; duration: number } | null | undefined>(undefined);
 
   useFrame(() => {
     const group = ref.current;
     if (!group) return;
-    if (start.current === undefined) {
+    if (flight.current === undefined) {
       // First frame: if this card was just thrown, fly it in from whoever threw it.
       const origin = origins.current.get(card);
       origins.current.delete(card);
-      start.current = origin ? { from: origin.from.clone(), at: performance.now() + origin.delay } : null;
+      flight.current = origin ? { from: origin.from.clone(), quat: (origin.quat ?? TOSSED).clone(), at: performance.now() + origin.delay, duration: origin.duration } : null;
     }
-    const flight = start.current;
-    if (!flight) {
+    const current = flight.current;
+    if (!current) {
       group.position.copy(target);
-      group.rotation.set(Math.PI / 2, 0, spot.spin);
+      group.quaternion.copy(flat);
       group.visible = true;
       return;
     }
-    const t = Math.min(1, Math.max(0, (performance.now() - flight.at) / 650));
-    const ease = 1 - Math.pow(1 - t, 3);
-    group.position.lerpVectors(flight.from, target, ease);
-    group.position.y += Math.sin(t * Math.PI) * 0.9;
-    // Flips face up on the way down.
-    group.rotation.set(Math.PI / 2 - (1 - ease) * Math.PI * 0.9, 0, spot.spin * ease);
-    group.visible = performance.now() >= flight.at;
-    if (t >= 1) start.current = null;
+    const now = performance.now();
+    const t = Math.min(1, Math.max(0, (now - current.at) / current.duration));
+    // Off the hand quickly, then floating down to the felt, turning face up.
+    const ease = 1 - Math.pow(1 - t, 2.6);
+    group.position.lerpVectors(current.from, target, ease);
+    group.position.y += Math.sin(t * Math.PI) * (0.35 + current.from.distanceTo(target) * 0.18);
+    group.quaternion.slerpQuaternions(current.quat, flat, Math.min(1, t * 1.2));
+    group.rotateOnWorldAxis(UP, (1 - ease) * 1.6);
+    group.visible = now >= current.at;
+    if (t >= 1) flight.current = null;
   });
 
   return (
@@ -95,41 +150,116 @@ function DiscardCard({ card, index, origins }: { card: number; index: number; or
   );
 }
 
-/** A card flying from the hand you drew from down towards your own hand (at the bottom of the screen). */
-function Flyer({ from, card, onDone }: { from: THREE.Vector3; card: number | undefined; onDone: () => void }) {
+interface Held {
+  key: number;
+  drawerId: string;
+  /** Your own draw: it hangs in front of your eyes and turns face up. */
+  mine: boolean;
+  card?: number;
+  /** Where it was drawn from (null: just appear, e.g. after a reconnect). */
+  from: THREE.Vector3 | null;
+  /** Kept, not paired: sliding down into your hand. */
+  stashAt?: number;
+  /** Thrown down or put away (kept as a marker so a stale state can't bring it back). */
+  done?: boolean;
+}
+
+const finish = (held: Held | null): Held | null => held && { ...held, done: true };
+
+/** The card just drawn, in the drawer's fingers while they check it against their hand. */
+function HeldCard({ held, holdAt, pose, onStashed }: { held: Held; holdAt: THREE.Vector3; pose: React.RefObject<Pose>; onStashed: () => void }) {
   const ref = useRef<THREE.Group>(null);
   const camera = useThree((s) => s.camera);
-  const startAt = useRef(performance.now());
-  const to = useMemo(() => new THREE.Vector3(0, -0.75, -1.2).applyMatrix4(camera.matrixWorld), [camera]);
-  useFrame(() => {
+  const startedAt = useRef(performance.now());
+  const done = useRef(false);
+  // Someone else holds it up in front of their face: back to the table, face to themselves.
+  const holdQuat = useMemo(() => {
+    const dummy = new THREE.Object3D();
+    dummy.position.copy(holdAt);
+    dummy.lookAt(0, holdAt.y, 0);
+    return dummy.quaternion.clone();
+  }, [holdAt]);
+  const spot = useMemo(() => new THREE.Vector3(), []);
+  const quat = useMemo(() => new THREE.Quaternion(), []);
+  const turn = useMemo(() => new THREE.Quaternion(), []);
+  const wobble = useMemo(() => new THREE.Quaternion(), []);
+  const euler = useMemo(() => new THREE.Euler(), []);
+
+  useFrame(({ clock }) => {
     const group = ref.current;
     if (!group) return;
-    const t = Math.min(1, (performance.now() - startAt.current) / 700);
+    const now = performance.now();
+    const t = held.from ? Math.min(1, (now - startedAt.current) / 550) : 1;
     const ease = 1 - Math.pow(1 - t, 3);
-    group.position.lerpVectors(from, to, ease);
-    group.position.y += Math.sin(t * Math.PI) * 0.25;
-    group.lookAt(camera.position);
-    // Turns its face to you as it comes.
-    group.rotateY(Math.PI * Math.min(1, t * 1.6));
-    group.scale.setScalar(1 - t * 0.35);
-    if (t >= 1) onDone();
+    const time = clock.elapsedTime;
+    if (held.mine) {
+      spot.copy(HOLD_SPOT).applyMatrix4(camera.matrixWorld);
+      // Turns its face to you as it arrives.
+      quat.copy(camera.quaternion).multiply(turn.setFromAxisAngle(UP, Math.PI * Math.min(1, t * 1.4)));
+    } else {
+      spot.copy(holdAt);
+      quat.copy(holdQuat);
+    }
+    // Looked over: a little tilt this way and that.
+    quat.multiply(wobble.setFromEuler(euler.set(Math.sin(time * 2.3) * 0.07, Math.sin(time * 1.7) * 0.1, Math.sin(time * 3.1) * 0.06)));
+    spot.y += Math.sin(time * 2.6) * 0.025;
+
+    if (held.stashAt) {
+      const s = Math.min(1, (now - held.stashAt) / 380);
+      group.position.lerpVectors(spot, STASH_SPOT.clone().applyMatrix4(camera.matrixWorld), s * s);
+      group.scale.setScalar(1 - s * 0.4);
+      if (s >= 1 && !done.current) {
+        done.current = true;
+        onStashed();
+      }
+    } else if (held.from) {
+      group.position.lerpVectors(held.from, spot, ease);
+      group.position.y += Math.sin(t * Math.PI) * 0.3;
+    } else {
+      group.position.copy(spot);
+    }
+    group.quaternion.copy(quat);
+    pose.current.pos.copy(group.position);
+    pose.current.quat.copy(group.quaternion);
   });
+
   return (
-    <group ref={ref}>
+    <group ref={ref} renderOrder={5}>
       <mesh geometry={cardGeometry} material={getBackMaterial()} position={[0, 0, 0.001]} />
-      <mesh geometry={cardGeometry} material={card !== undefined ? faceMaterial(card) : getBackMaterial()} position={[0, 0, -0.001]} rotation={[0, Math.PI, 0]} />
+      <mesh geometry={cardGeometry} material={held.mine && held.card !== undefined ? faceMaterial(held.card) : getBackMaterial()} position={[0, 0, -0.001]} rotation={[0, Math.PI, 0]} />
     </group>
   );
 }
 
-function CameraRig({ position, look }: { position: THREE.Vector3; look: THREE.Vector3 }) {
-  const current = useRef(look.clone());
-  const camera = useThree((s) => s.camera);
+/**
+ * Eases the camera to where the scene wants it, going round the table's axis
+ * (so a change of seat is a swing round the table, not a cut). `shift` slides
+ * the picture left by that many pixels, clear of a panel docked on the right.
+ */
+function CameraRig({ position, look, shift }: { position: THREE.Vector3; look: THREE.Vector3; shift: number }) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const size = useThree((s) => s.size);
+  const rig = useRef<{ angle: number; radius: number; y: number; look: THREE.Vector3; shift: number } | null>(null);
   useFrame((_, delta) => {
     const k = 1 - Math.exp(-delta * 3.2);
-    camera.position.lerp(position, k);
-    current.current.lerp(look, k);
-    camera.lookAt(current.current);
+    rig.current ??= {
+      angle: Math.atan2(camera.position.x, camera.position.z),
+      radius: Math.hypot(camera.position.x, camera.position.z),
+      y: camera.position.y,
+      look: look.clone(),
+      shift: 0,
+    };
+    const current = rig.current;
+    const angle = Math.atan2(position.x, position.z);
+    current.angle += Math.atan2(Math.sin(angle - current.angle), Math.cos(angle - current.angle)) * k;
+    current.radius += (Math.hypot(position.x, position.z) - current.radius) * k;
+    current.y += (position.y - current.y) * k;
+    current.look.lerp(look, k);
+    camera.position.set(Math.sin(current.angle) * current.radius, current.y, Math.cos(current.angle) * current.radius);
+    camera.lookAt(current.look);
+    current.shift += (shift - current.shift) * k;
+    if (Math.abs(current.shift) > 0.5) camera.setViewOffset(size.width, size.height, current.shift, 0, size.width, size.height);
+    else if (camera.view?.enabled) camera.clearViewOffset();
   });
   return null;
 }
@@ -201,9 +331,10 @@ function Room({ quality }: { quality: Quality }) {
 }
 
 function SceneContents(props: Table3DProps) {
-  const { state, myId, events, emotes, quality, cameraMode, lobby } = props;
+  const { state, myId, events, emotes, quality, lobby } = props;
   const size = useThree((s) => s.size);
   const aspect = size.width / Math.max(1, size.height);
+  const portrait = aspect < 0.8;
   const camera = useThree((s) => s.camera);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -212,20 +343,44 @@ function SceneContents(props: Table3DProps) {
   }, []);
 
   const me = state.players.find((player) => player.id === myId);
-  const mySeat = me?.seat ?? 0;
+  // Watching from no seat: from the front, a little higher (over whoever sits there).
+  const myAngle = seatAngle(me?.seat ?? 0);
+  const watching = me?.seat == null;
   const seated = useMemo(() => state.players.filter((player) => player.seat !== null), [state.players]);
   const bySeat = useMemo(() => new Map(seated.map((player) => [player.seat!, player])), [seated]);
-  const angleOf = useCallback((seat: number) => seatAngle(seat, mySeat), [mySeat]);
-  const restPos = useMemo(() => Array.from({ length: MAX_SEATS }, (_, seat) => onCircle(seatAngle(seat, mySeat), FAN_R, FAN_Y)), [mySeat]);
-  const eyes = useMemo(() => Array.from({ length: MAX_SEATS }, (_, seat) => onCircle(seatAngle(seat, mySeat), SEAT_R - 0.25, EYE_Y)), [mySeat]);
+  const seatOf = useCallback((id: string | undefined) => state.players.find((player) => player.id === id)?.seat ?? null, [state.players]);
+  const restPos = REST_POS;
+  const eyes = EYES;
+  const overviewPos = useMemo(() => onCircle(myAngle, portrait ? 8.6 : 6.6, (portrait ? 8.2 : 5.4) + (watching ? 1.6 : 0)), [myAngle, portrait, watching]);
 
   const turn = state.turn;
-  const drawer = turn ? state.players.find((player) => player.id === turn.drawerId) : undefined;
-  const target = turn ? state.players.find((player) => player.id === turn.targetId) : undefined;
+  const pending = state.pending;
   const iDraw = turn?.drawerId === myId;
-  // First person for every draw (yours always; others' unless the overview camera is chosen).
-  const povSeat = drawer?.seat != null && (iDraw || cameraMode === "follow") ? drawer.seat : null;
-  const offeredTo = povSeat !== null && target?.seat != null ? eyes[povSeat] : null;
+  const drawerSeat = seatOf(turn?.drawerId);
+  const targetSeat = seatOf(turn?.targetId);
+  // The draw on camera: from pointing at a card through checking the one taken, and held
+  // through the short gap before the next turn so the camera doesn't bounce back and forth.
+  const actionDrawerSeat = seatOf(turn?.drawerId ?? pending?.drawerId);
+  const actionTargetSeat = seatOf(turn?.targetId ?? pending?.targetId);
+  const lastAction = useRef<{ drawer: number; target: number } | null>(null);
+  if (state.phase !== "playing") lastAction.current = null;
+  else if (actionDrawerSeat !== null && actionTargetSeat !== null) lastAction.current = { drawer: actionDrawerSeat, target: actionTargetSeat };
+  const framedDrawer = lastAction.current?.drawer ?? null;
+  const framedTarget = lastAction.current?.target ?? null;
+  const involved = me?.seat != null && (framedDrawer === me.seat || framedTarget === me.seat);
+  const sideOn = useMemo(
+    () => (framedDrawer !== null && framedTarget !== null && !involved ? sideOnShot(framedDrawer, framedTarget, myAngle, aspect) : null),
+    [framedDrawer, framedTarget, involved, myAngle, aspect],
+  );
+
+  // The hand being drawn from is held out to the drawer: right before your eyes if it's you
+  // drawing, across the felt (turned a little towards the camera) for anyone else's draw. Your
+  // own hand never is — when you're drawn from, your face-up hand at the bottom shows it all.
+  const offer = useMemo<FanOffer | null>(() => {
+    if (drawerSeat === null || targetSeat === null || turn?.targetId === myId) return null;
+    const to = eyes[drawerSeat];
+    return { to, pov: iDraw, face: iDraw ? to : to.clone().lerp(sideOn?.position ?? overviewPos, 0.5) };
+  }, [drawerSeat, targetSeat, turn?.targetId, myId, eyes, iDraw, sideOn, overviewPos]);
 
   // ---------- dealing: cards appear in each hand one by one ----------
   const dealCounts = useRef<Record<string, number>>({});
@@ -249,24 +404,15 @@ function SceneContents(props: Table3DProps) {
     }
     return fn;
   }, []);
-  const origins = useRef(new Map<number, { from: THREE.Vector3; delay: number }>());
+  const origins = useRef(new Map<number, { from: THREE.Vector3; quat?: THREE.Quaternion; delay: number; duration: number }>());
   const incoming = useRef(new Map<string, { from: THREE.Vector3; until: number }>());
-  const [flyers, setFlyers] = useState<{ key: number; from: THREE.Vector3; card: number | undefined }[]>([]);
+  const heldPose = useRef<Pose>({ pos: new THREE.Vector3(), quat: new THREE.Quaternion() });
+  const [held, setHeld] = useState<Held | null>(null);
   const lastSeq = useRef(0);
 
-  const slotWorld = useCallback(
-    (ownerId: string, slot: number, count: number, offered: boolean) => {
-      const group = fans.current.get(ownerId);
-      if (!group) return null;
-      const layout = fanLayout(count, offered, aspect)[slot];
-      if (!layout) return null;
-      group.updateWorldMatrix(true, false);
-      return group.localToWorld(new THREE.Vector3(layout.x, layout.y, layout.z));
-    },
-    [aspect],
-  );
-
-  useEffect(() => {
+  // Layout effect: runs before the next frame, so cards mounted by the same update find their origins.
+  useLayoutEffect(() => {
+    const onScreen = (spot: THREE.Vector3) => spot.clone().applyMatrix4(camera.matrixWorld);
     for (const { seq, event } of events) {
       if (seq <= lastSeq.current) continue;
       lastSeq.current = seq;
@@ -274,33 +420,47 @@ function SceneContents(props: Table3DProps) {
         dealCounts.current = event.counts;
         origins.current.clear();
         incoming.current.clear();
+        setHeld(null);
       }
       if (event.type === "pairs") {
         let order = 0;
         for (const [playerId, cards] of Object.entries(event.byPlayer)) {
-          const seat = state.players.find((player) => player.id === playerId)?.seat;
-          const from = seat != null ? (playerId === myId ? camera.position.clone().addScaledVector(UP, -1.2) : restPos[seat].clone()) : CENTER.clone();
-          cards.forEach((card) => origins.current.set(card, { from, delay: order++ * 70 }));
+          const seat = seatOf(playerId);
+          const from = playerId === myId ? onScreen(HAND_SPOT) : seat !== null ? restPos[seat].clone() : CENTER.clone();
+          cards.forEach((card) => origins.current.set(card, { from, delay: order++ * 70, duration: 750 }));
         }
       }
       if (event.type === "drew") {
-        const drawerSeat = state.players.find((player) => player.id === event.drawerId)?.seat;
-        const targetCount = state.players.find((player) => player.id === event.targetId)?.cardCount ?? 0;
+        const seat = seatOf(event.targetId);
+        const slots = fans.current.get(event.targetId)?.userData.slots as THREE.Vector3[] | undefined;
         const from =
-          slotWorld(event.targetId, event.slot, Math.max(targetCount, event.slot + 1), cameraMode === "follow" || event.drawerId === myId) ??
-          (drawerSeat != null ? eyes[drawerSeat].clone() : CENTER.clone());
+          event.targetId === myId ? onScreen(HAND_SPOT) : slots?.[event.slot]?.clone() ?? (seat !== null ? restPos[seat].clone() : CENTER.clone());
+        heldPose.current.pos.copy(from);
+        setHeld({ key: seq, drawerId: event.drawerId, mine: event.drawerId === myId, card: event.card, from });
+      }
+      if (event.type === "resolved") {
+        const mine = event.drawerId === myId;
+        const seat = seatOf(event.drawerId);
+        const { pos, quat } = heldPose.current;
         if (event.pair) {
-          const mateFrom = event.drawerId === myId ? camera.position.clone().addScaledVector(UP, -1.2) : drawerSeat != null ? restPos[drawerSeat].clone() : CENTER.clone();
-          origins.current.set(event.pair[0], { from: mateFrom, delay: 120 });
-          origins.current.set(event.pair[1], { from, delay: 0 });
-        } else if (event.drawerId === myId) {
-          setFlyers((current) => [...current, { key: seq, from, card: event.card }]);
+          // Thrown down together: the drawn card from the fingers, its mate from the hand.
+          origins.current.set(event.pair[1], { from: pos.clone(), quat: quat.clone(), delay: 0, duration: THROW_MS });
+          origins.current.set(event.pair[0], {
+            from: mine ? onScreen(HAND_SPOT) : seat !== null ? restPos[seat].clone() : CENTER.clone(),
+            quat: mine ? camera.quaternion.clone().multiply(FLIP) : undefined,
+            delay: 140,
+            duration: THROW_MS,
+          });
+          setHeld(finish);
+        } else if (mine) {
+          setHeld((current) => (current?.mine ? { ...current, stashAt: performance.now() } : finish(current)));
         } else {
-          incoming.current.set(event.drawerId, { from, until: Date.now() + 900 });
+          incoming.current.set(event.drawerId, { from: pos.clone(), until: Date.now() + 900 });
+          setHeld(finish);
         }
       }
     }
-  }, [events, state.players, myId, restPos, eyes, camera, slotWorld, cameraMode]);
+  }, [events, seatOf, myId, restPos, camera]);
 
   const getIncoming = useCallback(
     (playerId: string) => () => {
@@ -311,28 +471,59 @@ function SceneContents(props: Table3DProps) {
     [],
   );
 
+  // The card in the drawer's fingers: from the draw event, or (joined mid-draw) just from the state.
+  const heldView: Held | null = held
+    ? !held.done && (held.stashAt || pending?.drawerId === held.drawerId)
+      ? held
+      : null
+    : pending
+      ? { key: -pending.since, drawerId: pending.drawerId, mine: pending.drawerId === myId, from: null }
+      : null;
+  const heldSeat = heldView ? seatOf(heldView.drawerId) : null;
+  const angleOf = seatAngle;
+  const clearHeld = useCallback(() => setHeld(finish), []);
+
   // ---------- camera ----------
-  const pigSeat = state.phase === "roundEnd" || state.phase === "final" ? state.players.find((player) => player.id === state.lastRound?.pigId)?.seat ?? null : null;
+  const pigSeat = state.phase === "roundEnd" || state.phase === "final" ? seatOf(state.lastRound?.pigId) : null;
+  // Your draw, and the check of the card you took: first person, looking where that hand was held out.
+  const myDrawFromSeat = iDraw ? targetSeat : pending?.drawerId === myId ? seatOf(pending.targetId) : null;
+  const myDrawFromCount = myDrawFromSeat !== null ? (bySeat.get(myDrawFromSeat)?.cardCount ?? 0) + (iDraw ? 0 : 1) : 0;
+  // A panel docks on the right of a wide screen in the lobby and between rounds: keep the table clear of it.
+  const sideSheet = !portrait && size.width >= 640 && (state.phase === "lobby" || state.phase === "roundEnd" || state.phase === "final");
   const view = useMemo(() => {
-    if (povSeat !== null && offeredTo && target?.seat != null) {
-      const pose = fanPose(restPos[target.seat], offeredTo, target.cardCount, aspect);
-      const position = offeredTo.clone().addScaledVector(pose.position.clone().sub(offeredTo).normalize(), -0.15);
+    if (me?.seat != null && myDrawFromSeat !== null) {
+      const eye = eyes[me.seat];
+      const pose = fanPose(restPos[myDrawFromSeat], { to: eye, pov: true, face: eye }, Math.max(1, myDrawFromCount), aspect);
+      const position = eye.clone().addScaledVector(pose.position.clone().sub(eye).normalize(), -0.15);
       position.y += 0.05;
       return { position, look: pose.position };
     }
-    const portrait = aspect < 0.8;
-    // On a phone the lobby / result panel covers the lower half: aim lower so the table sits up top.
-    const sheetUp = portrait && state.phase !== "dealing" && state.phase !== "playing";
     if (pigSeat !== null) {
-      const angle = angleOf(pigSeat);
-      const look = onCircle(angle, SEAT_R, sheetUp ? 1.05 : 1.85);
+      const angle = seatAngle(pigSeat);
+      const look = onCircle(angle, SEAT_R, portrait ? 1.05 : 1.85);
       return { position: onCircle(angle, SEAT_R - 2.3, 2.7), look };
     }
-    return {
-      position: onCircle(0, portrait ? 8.6 : 6.6, portrait ? 8.2 : 5.4),
-      look: new THREE.Vector3(0, sheetUp ? -1.9 : 0.9, portrait ? (sheetUp ? 1.2 : -0.2) : -0.5),
-    };
-  }, [povSeat, offeredTo, target?.seat, target?.cardCount, restPos, aspect, pigSeat, angleOf, state.phase]);
+    if (sideOn) return sideOn;
+    if (state.phase === "lobby" && !portrait) {
+      // Pull back until every seat (and its "＋ Ngồi đây") fits beside the panel.
+      const freeAspect = (size.width - (sideSheet ? SIDE_SHEET_PX : 0)) / Math.max(1, size.height);
+      const distance = clamp(5.4 / (TAN_HALF_FOV * freeAspect), 8, 16);
+      const look = onCircle(myAngle, 0.3, 0.6);
+      return { position: look.clone().add(onCircle(myAngle, distance * 0.74, distance * 0.67)), look };
+    }
+    // On a phone the lobby / result panel covers the lower half: aim lower so the table sits up top.
+    const sheetUp = portrait && state.phase !== "dealing" && state.phase !== "playing";
+    const look = onCircle(myAngle, portrait ? (sheetUp ? 1.2 : -0.2) : -0.5, sheetUp ? -1.9 : 0.9);
+    // Your hand being drawn from (or just drawn from): lean towards the drawer.
+    if (involved && framedDrawer !== null && framedDrawer !== me?.seat) look.lerp(onCircle(seatAngle(framedDrawer), SEAT_R - 0.6, 1.5), 0.35);
+    else if (involved && framedTarget !== null && framedTarget !== me?.seat) look.lerp(onCircle(seatAngle(framedTarget), SEAT_R - 0.6, 1.5), 0.3);
+    return { position: overviewPos, look };
+  }, [me?.seat, myDrawFromSeat, myDrawFromCount, eyes, restPos, aspect, portrait, pigSeat, sideOn, state.phase, size.width, size.height, sideSheet, myAngle, involved, framedDrawer, framedTarget, overviewPos]);
+
+  // In the lobby: who you'd draw from (on your right) and who draws from you (on your left).
+  const seatedSeats = seated.map((player) => player.seat!);
+  const drawFromSeat = me?.seat != null && seated.length > 1 ? seatBefore(seatedSeats, me.seat) : undefined;
+  const drawnBySeat = me?.seat != null && seated.length > 1 ? seatAfter(seatedSeats, me.seat) : undefined;
 
   // ---------- render ----------
   const latestEmote = (playerId: string): { emote: Emote; at: number } | null => {
@@ -345,7 +536,7 @@ function SceneContents(props: Table3DProps) {
   return (
     <>
       <Room quality={quality} />
-      <CameraRig position={view.position} look={view.look} />
+      <CameraRig position={view.position} look={view.look} shift={sideSheet ? SIDE_SHEET_PX / 2 : 0} />
 
       {/* the deck in the middle while it's being dealt */}
       {dealing && dealProgress < 1 && (
@@ -373,7 +564,7 @@ function SceneContents(props: Table3DProps) {
                 <meshStandardMaterial color="#4a2a12" roughness={0.85} />
               </mesh>
               {canSit && (
-                <Html position={onCircle(angle, SEAT_R, 1.35)} center zIndexRange={[25, 0]}>
+                <Label position={onCircle(angle, SEAT_R, 1.35)} zIndexRange={[25, 0]}>
                   <div className="flex flex-col items-center gap-1.5 whitespace-nowrap">
                     <button
                       type="button"
@@ -392,12 +583,13 @@ function SceneContents(props: Table3DProps) {
                       </button>
                     )}
                   </div>
-                </Html>
+                </Label>
               )}
             </group>
           );
         }
-        const isMe = player.id === myId;
+        // Your own cards are the face-up hand at the bottom of the screen, never a 3D fan.
+        if (player.id === myId) return null;
         const status: AvatarStatus = {
           name: player.name,
           cardCount: player.cardCount,
@@ -409,50 +601,59 @@ function SceneContents(props: Table3DProps) {
           place: player.finishedRank,
           crowned: state.pigId === player.id,
           shamed: roundPigId === player.id,
-          drawing: turn?.drawerId === player.id,
+          drawing: turn?.drawerId === player.id || pending?.drawerId === player.id,
           beingDrawn: turn?.targetId === player.id,
           ready: player.ready,
           showReady: inLobby && !player.isBot,
           turnEndsAt: turn?.drawerId === player.id ? turn.endsAt : null,
         };
         const isTarget = turn?.targetId === player.id;
-        const offered = isTarget ? offeredTo : null;
-        // Your own cards are the hand at the bottom of the screen; in 3D they only appear held out to a drawer.
-        const showFan = !isMe || (isTarget && !!offeredTo);
+        const neighbour =
+          seat === drawFromSeat && seat === drawnBySeat
+            ? "🔁 Hai bạn rút bài của nhau"
+            : seat === drawFromSeat
+              ? "🎯 Bạn rút bài người này"
+              : seat === drawnBySeat
+                ? "👀 Người này rút bài bạn"
+                : null;
+        const removable = lobby.isHost && player.isBot;
         const dealt = dealCounts.current[player.id] ?? player.cardCount;
-        const count = dealing ? Math.min(dealt, Math.ceil(dealt * dealProgress)) : isMe ? props.myHandCount : player.cardCount;
+        const count = dealing ? Math.min(dealt, Math.ceil(dealt * dealProgress)) : player.cardCount;
         return (
           <group key={player.id}>
-            {!isMe && (
-              <PigAvatar
-                seat={seat}
-                angle={angle}
-                status={status}
-                emote={latestEmote(player.id)}
-                hidden={povSeat === seat}
-                lobby={
-                  inLobby && lobby.isHost && player.isBot ? (
-                    <Html position={[0, 3.45, 0]} center zIndexRange={[25, 0]}>
-                      <button
-                        type="button"
-                        onClick={() => lobby.onRemoveBot(player.id)}
-                        className="rounded-full bg-red-500/90 px-2.5 py-1 text-[11px] font-bold text-white shadow transition hover:bg-red-500"
-                      >
-                        ✕ Mời bot ra
-                      </button>
-                    </Html>
-                  ) : null
-                }
-              />
-            )}
-            {showFan && count > 0 && (
+            <PigAvatar
+              seat={seat}
+              angle={angle}
+              status={status}
+              emote={latestEmote(player.id)}
+              lobby={
+                inLobby && (neighbour || removable) ? (
+                  <Label position={[0, 3.5, 0]} zIndexRange={[25, 0]}>
+                    <div className="flex flex-col items-center gap-1 whitespace-nowrap">
+                      {neighbour && <span className="rounded-full bg-amber-300/95 px-2.5 py-0.5 text-[11px] font-black text-amber-950 shadow">{neighbour}</span>}
+                      {removable && (
+                        <button
+                          type="button"
+                          onClick={() => lobby.onRemoveBot(player.id)}
+                          className="rounded-full bg-red-500/90 px-2.5 py-1 text-[11px] font-bold text-white shadow transition hover:bg-red-500"
+                        >
+                          ✕ Mời bot ra
+                        </button>
+                      )}
+                    </div>
+                  </Label>
+                ) : null
+              }
+            />
+            {count > 0 && (
               <Fan
                 count={count}
                 restPos={restPos[seat]}
-                offeredTo={offered}
+                offer={isTarget ? offer : null}
                 aspect={aspect}
                 highlight={isTarget ? props.highlight : null}
                 teased={state.teased[player.id] ?? null}
+                scanning={pending?.drawerId === player.id}
                 interactive={isTarget && iDraw}
                 onHover={props.onHover}
                 onTap={props.onTap}
@@ -465,24 +666,23 @@ function SceneContents(props: Table3DProps) {
         );
       })}
 
+      {/* the card just drawn, being checked */}
+      {heldView && heldSeat !== null && <HeldCard key={heldView.key} held={heldView} holdAt={HOLD_SPOTS[heldSeat]} pose={heldPose} onStashed={clearHeld} />}
+
       {/* your own seat: a ring on the felt, and a label while choosing seats */}
       {me?.seat != null && (
         <>
-          <mesh position={onCircle(0, SEAT_R - 0.9, TABLE_TOP + 0.005)} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={onCircle(myAngle, SEAT_R - 0.9, TABLE_TOP + 0.005)} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.32, 0.4, 32]} />
             <meshBasicMaterial color={SEAT_COLORS[me.seat % SEAT_COLORS.length]} transparent opacity={0.6} />
           </mesh>
           {inLobby && (
-            <Html position={onCircle(0, SEAT_R - 0.9, TABLE_TOP + 0.4)} center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+            <Label position={onCircle(myAngle, SEAT_R - 0.9, TABLE_TOP + 0.4)} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
               <span className="whitespace-nowrap rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950 shadow-lg">🫵 Bạn ngồi đây</span>
-            </Html>
+            </Label>
           )}
         </>
       )}
-
-      {flyers.map((flyer) => (
-        <Flyer key={flyer.key} from={flyer.from} card={flyer.card} onDone={() => setFlyers((current) => current.filter((item) => item.key !== flyer.key))} />
-      ))}
     </>
   );
 }

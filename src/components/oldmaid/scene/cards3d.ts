@@ -12,8 +12,9 @@ export const CARD_H = CARD_W * 1.4;
 export const TABLE_R = 3;
 export const TABLE_TOP = 0.8;
 export const SEAT_R = 4.15;
-export const FAN_R = 3.45;
-export const FAN_Y = 1.6;
+/** A hand held at rest: chest high, clear of the pig's snout even while it leans in to draw. */
+export const FAN_R = 3.3;
+export const FAN_Y = 1.4;
 export const EYE_Y = 2.2;
 
 const COLS = 11;
@@ -206,10 +207,14 @@ export const glowGeometry = new THREE.PlaneGeometry(CARD_W * 1.6, CARD_H * 1.43)
 
 // ---------- table layout ----------
 
-/** Seats run clockwise seen from above; yours is always nearest the camera (angle 0). */
-export function seatAngle(seat: number, mySeat: number): number {
-  const k = (((seat - mySeat) % MAX_SEATS) + MAX_SEATS) % MAX_SEATS;
-  return (k * Math.PI * 2) / MAX_SEATS;
+/**
+ * Each seat has a fixed place round the table, running clockwise seen from
+ * above from seat 0 at the front (+z). The camera comes round to yours, so
+ * whoever draws from you (the next seat) sits on your left, the one you draw
+ * from on your right.
+ */
+export function seatAngle(seat: number): number {
+  return (seat * Math.PI * 2) / MAX_SEATS;
 }
 
 export function onCircle(angle: number, radius: number, y: number): THREE.Vector3 {
@@ -225,15 +230,22 @@ export interface FanSlot {
 }
 
 /**
+ * How a hand is held: "rest" in front of its owner, "table" held out to a
+ * drawer across the felt (what everyone else watches), "pov" right in front of
+ * your eyes when it's you drawing.
+ */
+export type FanMode = "rest" | "table" | "pov";
+
+/**
  * A hand held as a fan, in the fan's own frame: +z faces whoever looks at the
  * backs, the holder is behind at -z, and slot 0 is at the holder's left (+x).
  */
-export function fanLayout(count: number, offered: boolean, aspect: number): FanSlot[] {
+export function fanLayout(count: number, mode: FanMode, aspect: number): FanSlot[] {
   if (!count) return [];
-  // Offered to a drawer it opens wide (narrower on a tall phone screen); held, it's a tight bunch.
-  const pivot = offered ? (aspect < 0.8 ? 0.75 : 1.05) : 0.5;
-  const maxSpread = offered ? (aspect < 0.8 ? 2.6 : 2.1) : Math.min(1.2, 0.09 * count);
-  const step = count > 1 ? Math.min(offered ? 0.2 : 0.09, maxSpread / (count - 1)) : 0;
+  // In front of your eyes it opens wide (narrower on a tall phone screen); held out over the table, a little; at rest, a tight bunch.
+  const pivot = mode === "pov" ? (aspect < 0.8 ? 0.75 : 1.05) : mode === "table" ? 0.8 : 0.5;
+  const maxSpread = mode === "pov" ? (aspect < 0.8 ? 2.6 : 2.1) : mode === "table" ? Math.min(1.6, 0.16 * count) : Math.min(1.2, 0.09 * count);
+  const step = count > 1 ? Math.min(mode === "pov" ? 0.2 : mode === "table" ? 0.16 : 0.09, maxSpread / (count - 1)) : 0;
   const mid = (count - 1) / 2;
   return Array.from({ length: count }, (_, index) => {
     const angle = (mid - index) * step;

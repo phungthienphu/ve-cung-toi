@@ -17,8 +17,12 @@ export const RECONNECT_GRACE_MS = 30_000;
 export const DEAL_MS = 3200;
 /** The opening pairs flying to the middle of the table. */
 export const OPENING_PAIRS_MS = 2200;
-/** From a draw to the next turn: the card's flight and any pair. */
-export const DRAW_RESOLVE_MS = 1500;
+/** A drawn card stays in the drawer's fingers while they check it against their hand ("dò lá"). */
+export const DRAW_PEEK_MS = 1600;
+/** After the check: a pair thrown slowly down to the middle… */
+export const PAIR_THROW_MS = 1300;
+/** …or an unmatched card slipped into the hand. Then the next turn starts. */
+export const KEEP_SETTLE_MS = 600;
 export const NEXT_ROUND_MS = 15_000;
 export const TURN_SECONDS = [10, 15, 20] as const;
 export const ROUNDS_TO_PLAY = [0, 5, 10] as const;
@@ -165,8 +169,10 @@ export interface PublicOldMaidState {
   hostId: string | null;
   players: OldMaidPlayer[];
   round: number;
-  /** Whose draw it is; null between draws while the card is in flight. */
+  /** Whose draw it is; null between draws. */
   turn: OldMaidTurn | null;
+  /** A card just drawn, still in the drawer's fingers while they check it against their hand. */
+  pending: { drawerId: string; targetId: string; since: number } | null;
   /** End of the current deal, or of the countdown to the next round. */
   phaseEndsAt: number | null;
   dealerId: string | null;
@@ -197,12 +203,12 @@ export type OldMaidEvent =
       drawerId: string;
       targetId: string;
       slot: number;
-      /** The pair it made, thrown face up to the middle. */
-      pair: [number, number] | null;
       /** The card itself — only sent to the drawer and the one drawn from. */
       card?: number;
       timedOut: boolean;
     }
+  /** The drawn card has been checked: thrown down with its mate (face up for all), or kept. */
+  | { type: "resolved"; drawerId: string; pair: [number, number] | null }
   | { type: "shuffled"; playerId: string }
   | { type: "out"; playerId: string; place: number }
   | { type: "pig"; playerId: string };

@@ -6,12 +6,37 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { drawFontClass } from "@/lib/drawFonts";
-import { isMuted, playCardFlick, playCardShuffle, playClockTick, playJokerSting, playMatchWin, playOink, playPairDing, playPop, setMuted } from "@/lib/sound";
+import {
+  isMuted,
+  playCardFlick,
+  playCardHover,
+  playCardLand,
+  playCardShuffle,
+  playCardSwish,
+  playCardTuck,
+  playCheckSweep,
+  playClockTick,
+  playDealRun,
+  playHeartbeat,
+  playJoin,
+  playJokerSting,
+  playMatchWin,
+  playOink,
+  playPairDing,
+  playPop,
+  playSadTrombone,
+  playSeatMove,
+  playTeaseBoing,
+  playUhOh,
+  playYourTurn,
+  setMuted,
+} from "@/lib/sound";
 import { useOldMaidRoom } from "@/lib/useOldMaidRoom";
-import { EMOTES, JOKER, type Emote } from "@shared/oldMaidTypes";
-import { JokerFace, MyHand } from "./MyHand";
+import { RANKS } from "@/components/cards/deck";
+import { DEAL_MS, EMOTES, JOKER, isPair, rankOf, type Emote } from "@shared/oldMaidTypes";
+import { JokerFace, MyHand, SCAN_START_MS, scanStepMs } from "./MyHand";
 import { ChatPanel, FinalPanel, LobbyPanel, RoundEndPanel, Scoreboard, SettingsPanel, btnGhost, btnPrimary, useNow } from "./panels";
-import type { CameraMode, Quality } from "./scene/Table3D";
+import type { Quality } from "./scene/Table3D";
 
 // Ai Là Heo room screen: the 3D table fills the screen; the turn banner, your
 // own hand and the panels are HTML on top. Three.js only loads here.
@@ -43,7 +68,6 @@ interface Toast {
 }
 
 const QUALITY_KEY = "oldmaid_quality";
-const CAMERA_KEY = "oldmaid_camera";
 
 export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roomId: string; playerId: string; name: string; quickBots: number }) {
   const router = useRouter();
@@ -53,13 +77,16 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
 
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [quality, setQuality] = useState<Quality>("high");
-  const [cameraMode, setCameraMode] = useState<CameraMode>("follow");
   const [muted, setMutedState] = useState(true);
   const [panel, setPanel] = useState<"chat" | "scores" | "settings" | null>(null);
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [localHover, setLocalHover] = useState<number | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [jokerAt, setJokerAt] = useState<number | null>(null);
+  /** The card you just drew, being checked against your hand. */
+  const [scan, setScan] = useState<{ card: number; key: number } | null>(null);
+  /** How the last draw ended, for the banner until the next turn. */
+  const [settled, setSettled] = useState<{ drawerId: string; pair: [number, number] | null } | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [seenChat, setSeenChat] = useState(0);
@@ -72,10 +99,8 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
     setTouch(window.matchMedia("(hover: none)").matches);
     try {
       const savedQuality = window.localStorage.getItem(QUALITY_KEY);
-      const savedCamera = window.localStorage.getItem(CAMERA_KEY);
       if (savedQuality === "high" || savedQuality === "low") setQuality(savedQuality);
       else if ((navigator.hardwareConcurrency ?? 8) <= 4) setQuality("low");
-      if (savedCamera === "follow" || savedCamera === "overview") setCameraMode(savedCamera);
     } catch {
       // Storage blocked: defaults.
     }
@@ -110,7 +135,10 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
   // A new draw starts with nothing selected.
   const turnKey = turn ? `${turn.drawerId}:${turn.endsAt}` : "";
   const drawSentFor = useRef("");
-  useEffect(() => setLocalHover(null), [turnKey]);
+  useEffect(() => {
+    setLocalHover(null);
+    if (turnKey) setScan(null);
+  }, [turnKey]);
 
   const draw = useCallback(
     (slot: number) => {
@@ -173,19 +201,45 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
     for (const { seq, event } of events) {
       if (seq <= lastSeq.current) continue;
       lastSeq.current = seq;
-      if (event.type === "deal") playCardShuffle();
-      else if (event.type === "pairs") {
-        if (Object.values(event.byPlayer).some((cards) => cards.length)) window.setTimeout(playPairDing, 200);
+      if (event.type === "deal") {
+        playCardShuffle();
+        const cards = Object.values(event.counts).reduce((sum, count) => sum + count, 0);
+        window.setTimeout(() => playDealRun(DEAL_MS - 600, cards), 350);
+      } else if (event.type === "pairs") {
+        if (Object.values(event.byPlayer).some((cards) => cards.length)) {
+          playCardSwish();
+          playCardLand(0.6);
+          window.setTimeout(playPairDing, 650);
+        }
       } else if (event.type === "drew") {
         playCardFlick();
-        if (event.pair) window.setTimeout(playPairDing, 380);
-        if (event.drawerId === playerId && event.card === JOKER) {
-          setJokerAt(Date.now());
-          playJokerSting();
+        setSettled(null);
+        if (event.drawerId === playerId && event.card !== undefined) {
+          setScan({ card: event.card, key: seq });
+          // The check along your hand, in time with the hop in MyHand.
+          const mine = hand.round === state?.round ? hand.cards : [];
+          const mate = state ? mine.findIndex((item) => isPair(item.card, event.card!, state.config.pairRule)) : -1;
+          playCheckSweep(mate >= 0 ? mate + 1 : mine.length, scanStepMs(mine.length), SCAN_START_MS, mate >= 0);
+          // Once it has turned face up in front of you.
+          if (event.card === JOKER)
+            window.setTimeout(() => {
+              setJokerAt(Date.now());
+              playJokerSting();
+            }, 450);
         } else if (event.targetId === playerId && event.card === JOKER) {
           toast(`😮‍💨 Phù! ${nameOf(event.drawerId)} vừa rút mất con heo của bạn.`, "good");
         }
         if (event.timedOut && event.drawerId === playerId) toast("⏰ Hết giờ — đã rút giúp bạn 1 lá.", "bad");
+      } else if (event.type === "resolved") {
+        setSettled({ drawerId: event.drawerId, pair: event.pair });
+        // Kept a moment so the mate doesn't drop back before it leaves your hand.
+        if (event.drawerId === playerId) window.setTimeout(() => setScan(null), 400);
+        if (event.pair) {
+          // Flung down slowly: swish, slap on the felt, ding.
+          playCardSwish();
+          playCardLand(1.0);
+          window.setTimeout(playPairDing, 1050);
+        } else playCardTuck();
       } else if (event.type === "shuffled") {
         if (event.playerId !== playerId && state?.turn?.targetId === event.playerId) {
           playCardShuffle();
@@ -197,15 +251,54 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
           confetti({ particleCount: 120, spread: 80, origin: { y: 0.75 }, zIndex: 60, disableForReducedMotion: true });
           toast(`🎉 Bạn đã thoát! Hạng ${event.place}.`, "good");
         } else {
-          playPop();
+          playJoin();
           toast(`🎉 ${nameOf(event.playerId)} đã thoát (hạng ${event.place}).`);
         }
       } else if (event.type === "pig") {
-        playOink();
-        window.setTimeout(playOink, 650);
+        playSadTrombone();
+        window.setTimeout(playOink, 2100);
       }
     }
-  }, [events, playerId, nameOf, toast, state?.turn]);
+  }, [events, playerId, nameOf, toast, state, hand]);
+
+  // ---------- table sounds that follow the state ----------
+  // The drawer's pointer moving card to card; your heart skipping when it lands on your pig.
+  const lastPointed = useRef<string>("");
+  useEffect(() => {
+    const key = highlight === null ? "" : `${turnKey}:${highlight}`;
+    if (key && key !== lastPointed.current) {
+      playCardHover();
+      if (iAmTarget && hand.cards[highlight!]?.card === JOKER) playHeartbeat();
+    }
+    lastPointed.current = key;
+  }, [highlight, turnKey, iAmTarget, hand.cards]);
+
+  // Your turn / your hand under attack.
+  const lastRole = useRef("");
+  useEffect(() => {
+    const role = iDraw ? `draw:${turnKey}` : iAmTarget ? `target:${turnKey}` : "";
+    if (role && role !== lastRole.current) {
+      if (iDraw) playYourTurn();
+      else playUhOh();
+    }
+    lastRole.current = role;
+  }, [iDraw, iAmTarget, turnKey]);
+
+  // A card dangled anywhere at the table.
+  const lastTeased = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const teased = state?.teased ?? {};
+    if (Object.entries(teased).some(([id, slot]) => lastTeased.current[id] !== slot)) playTeaseBoing();
+    lastTeased.current = teased;
+  }, [state?.teased]);
+
+  // Moving to another seat in the lobby: the camera swings round the table.
+  const lastSeat = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    const seat = me?.seat;
+    if (lastSeat.current !== undefined && seat != null && seat !== lastSeat.current && state?.phase === "lobby") playSeatMove();
+    lastSeat.current = seat;
+  }, [me?.seat, state?.phase]);
 
   const lastEmote = useRef(0);
   useEffect(() => {
@@ -266,12 +359,6 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
     } catch {}
   }, []);
   const qualityDrop = useCallback(() => setQuality((current) => (current === "high" ? "low" : current)), []);
-  const changeCamera = (next: CameraMode) => {
-    setCameraMode(next);
-    try {
-      window.localStorage.setItem(CAMERA_KEY, next);
-    } catch {}
-  };
   const changeMute = (next: boolean) => {
     setMuted(next);
     setMutedState(next);
@@ -309,7 +396,17 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
       if (iDraw) banner = { title: `🎯 Lượt bạn — rút 1 lá của ${nameOf(turn?.targetId)}`, hint: touch ? "Chạm chọn lá, chạm lần nữa để rút" : "Rê chuột chọn lá, bấm để rút · ← → Enter", tone: "mine" };
       else if (iAmTarget) banner = { title: `😬 ${nameOf(turn?.drawerId)} đang rút bài của BẠN`, hint: "Bấm 1 lá để nhử · 🔀 Xào để đánh lừa", tone: "danger" };
       else if (turn) banner = { title: `${nameOf(turn.drawerId)} đang rút bài của ${nameOf(turn.targetId)}`, tone: "calm" };
-      else banner = { title: "…", tone: "calm" };
+      else if (state.pending) {
+        const { drawerId, targetId } = state.pending;
+        if (drawerId === playerId) banner = { title: "🔍 Dò xem có thành đôi không…", tone: "mine" };
+        else if (targetId === playerId) banner = { title: `😮 ${nameOf(drawerId)} đã rút 1 lá của bạn`, hint: "Đang dò bài…", tone: "danger" };
+        else banner = { title: `🔍 ${nameOf(drawerId)} đang dò bài…`, tone: "calm" };
+      } else if (settled) {
+        const who = settled.drawerId === playerId ? "Bạn" : nameOf(settled.drawerId);
+        banner = settled.pair
+          ? { title: `🃏 ${who} bỏ đôi ${RANKS[rankOf(settled.pair[0])]} xuống bàn!`, tone: settled.drawerId === playerId ? "mine" : "calm" }
+          : { title: `🤐 ${who} cất lá vào tay`, tone: "calm" };
+      } else banner = { title: "…", tone: "calm" };
     } else if (state.lastRound) banner = { title: state.lastRound.pigId === playerId ? "🐷 Bạn là HEO!" : `🐷 ${state.lastRound.pigName} là HEO!`, tone: "danger" };
   }
   const turnTotal = (state?.config.turnSeconds ?? 15) * 1000;
@@ -331,14 +428,12 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
           <Table3D
             state={state}
             myId={playerId}
-            myHandCount={hand.round === state.round ? hand.cards.length : 0}
             highlight={highlight}
             onHover={onHover}
             onTap={onTap}
             events={events}
             emotes={emotes}
             quality={quality}
-            cameraMode={cameraMode}
             onQualityDrop={qualityDrop}
             lobby={lobby}
           />
@@ -382,7 +477,7 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
 
       {/* whose turn */}
       {banner && (
-        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex justify-center px-3 sm:top-3">
+        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex justify-center px-3 lg:top-3">
           <div
             key={banner.title}
             className={`om-pop w-full max-w-md rounded-2xl px-4 py-2.5 text-center shadow-xl ring-1 backdrop-blur ${
@@ -426,6 +521,9 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
               pointedSlot={iAmTarget ? remoteSlot : null}
               pointerName={pointerName}
               teasedSlot={state.teased[playerId] ?? null}
+              scan={scan}
+              pairRule={state.config.pairRule}
+              spotlight={iAmTarget}
               canTease={state.phase === "playing" && amActive}
               canArrange={inRound && amActive}
               onTease={tease}
@@ -476,7 +574,7 @@ export default function OldMaidRoom({ roomId, playerId, name, quickBots }: { roo
         </section>
       )}
       {panel === "settings" && (
-        <SettingsPanel quality={quality} cameraMode={cameraMode} muted={muted} onQuality={changeQuality} onCamera={changeCamera} onMute={changeMute} onClose={() => setPanel(null)} />
+        <SettingsPanel quality={quality} muted={muted} onQuality={changeQuality} onMute={changeMute} onClose={() => setPanel(null)} />
       )}
 
       {/* you drew the pig — only you see this */}

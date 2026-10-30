@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { JOKER, rankOf, type OldMaidHandCard } from "@shared/oldMaidTypes";
+import { JOKER, isPair, rankOf, type OldMaidHandCard, type PairRule } from "@shared/oldMaidTypes";
 import { CardFace } from "@/components/cards/PlayingCard";
 import { cardInfo } from "@/components/cards/deck";
 
 // Your own hand, face up along the bottom of the screen (crisp HTML cards, the
 // same art as Bà Đồng's table). Slot 0 is on your left, as on the table.
-// Tap a card to dangle it ("nhử"); drag sideways to re-order. While someone
-// draws from you, the card they're pointing at lights up live.
+// Tap a card to dangle it ("nhử": it bobs up and down); drag sideways to
+// re-order. While someone draws from you, the hand grows and the card they're
+// pointing at lights up live. After you draw, a hop runs along your cards
+// ("dò lá") and stops on the drawn card's mate, if you hold one.
 
 export function JokerFace({ className = "" }: { className?: string }) {
   return (
@@ -28,6 +30,11 @@ function Face({ card }: { card: number }) {
 
 const cardLabel = (card: number) => (card === JOKER ? "Joker — con heo" : cardInfo(card).name);
 
+/** When the check starts: as the drawn card arrives in front of your eyes. */
+export const SCAN_START_MS = 450;
+/** Time between hops of the check along a hand of `count` cards. */
+export const scanStepMs = (count: number) => (count ? Math.min(80, 650 / count) : 0);
+
 interface Ghost {
   key: string;
   card: number;
@@ -40,6 +47,9 @@ export function MyHand({
   pointedSlot,
   pointerName,
   teasedSlot,
+  scan,
+  pairRule,
+  spotlight,
   canTease,
   canArrange,
   onTease,
@@ -52,6 +62,11 @@ export function MyHand({
   pointedSlot: number | null;
   pointerName: string;
   teasedSlot: number | null;
+  /** The card you just drew, being checked against your hand. */
+  scan: { card: number; key: number } | null;
+  pairRule: PairRule;
+  /** You're being drawn from: the hand steps forward. */
+  spotlight: boolean;
   canTease: boolean;
   canArrange: boolean;
   onTease: (slot: number | null) => void;
@@ -73,7 +88,7 @@ export function MyHand({
     return () => observer.disconnect();
   }, []);
 
-  const cardW = Math.round(Math.max(54, Math.min(92, width / 5.2)));
+  const cardW = Math.round(Math.max(54, spotlight ? Math.min(104, width / 4.6) : Math.min(92, width / 5.2)));
   const cardH = Math.round(cardW * 1.4);
   const n = cards.length;
   const spacing = n > 1 ? Math.min(cardW * 0.78, (width - cardW - 8) / (n - 1)) : 0;
@@ -87,6 +102,15 @@ export function MyHand({
     order.splice(target, 0, drag.id);
   }
   const leftOf = (id: string) => startX + order.indexOf(id) * spacing;
+
+  // "Dò lá": the hop runs left to right and stops on the mate (or runs out). It belongs to the
+  // hand it started on: once the pair is thrown or the card slipped in, it's over (no replay).
+  const scanFor = useRef<{ key: number; cards: OldMaidHandCard[] } | null>(null);
+  if (scan && scanFor.current?.key !== scan.key) scanFor.current = { key: scan.key, cards };
+  const checking = !!scan && scanFor.current?.cards === cards;
+  const matchIndex = checking ? cards.findIndex((card) => isPair(card.card, scan.card, pairRule)) : -1;
+  const scanLast = checking ? (matchIndex >= 0 ? matchIndex : n - 1) : -1;
+  const scanStep = scanStepMs(n);
 
   // Cards that just left your hand (drawn from you, or paired off) fly away instead of vanishing.
   useEffect(() => {
@@ -103,12 +127,13 @@ export function MyHand({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards]);
 
+  // Not cancelled when the hand changes again (someone drawing from you right after),
+  // or the badge would stick on that card for good.
   useEffect(() => {
     if (!drawnId) return;
     setFresh(drawnId);
-    const timer = window.setTimeout(() => setFresh(null), 2600);
-    return () => window.clearTimeout(timer);
-  }, [drawnId, cards]);
+    window.setTimeout(() => setFresh((current) => (current === drawnId ? null : current)), 2600);
+  }, [drawnId]);
 
   const dragRef = useRef(drag);
   dragRef.current = drag;
@@ -165,12 +190,21 @@ export function MyHand({
         </div>
       )}
       <div ref={box} className="relative w-full max-w-3xl" style={{ height: cardH + 34 }}>
+        {spotlight && (
+          <span
+            aria-hidden
+            className="om-pop pointer-events-none absolute -inset-x-4 -top-10 bottom-0 rounded-[50%] bg-[radial-gradient(ellipse_at_50%_75%,rgba(236,72,153,0.38),transparent_70%)]"
+          />
+        )}
         {cards.map((card, index) => {
           const pointed = pointedSlot === index;
           const teased = teasedSlot === index;
+          const scanned = index <= scanLast;
+          const matched = index === matchIndex;
           const isDragged = drag?.id === card.id && drag.moved;
           const left = isDragged ? startX + drag!.from * spacing + drag!.dx : leftOf(card.id);
-          const lift = pointed ? -26 : teased ? -34 : 0;
+          const lift = pointed ? -26 : teased ? -8 : 0;
+          const motion = matched ? "om-match" : scanned ? "om-scan" : teased ? "om-teased" : "";
           return (
             <button
               key={card.id}
@@ -199,16 +233,24 @@ export function MyHand({
                 transition: isDragged ? "none" : undefined,
               }}
             >
-              <span className="relative block h-full w-full">
+              <span
+                className={`relative block h-full w-full ${motion}`}
+                style={scanned ? ({ "--d": `${Math.round(SCAN_START_MS + index * scanStep)}ms` } as React.CSSProperties) : undefined}
+              >
                 <Face card={card.card} />
+                {teased && !pointed && !scanned && (
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-pink-500 px-2 py-0.5 text-[10px] font-black text-white shadow">☝️ nhử</span>
+                )}
+                {matched && (
+                  <span className="om-match-badge absolute -top-8 left-1/2 whitespace-nowrap rounded-full bg-emerald-400 px-2.5 py-1 text-[11px] font-black text-emerald-950 shadow-lg">
+                    🎯 Thành đôi!
+                  </span>
+                )}
               </span>
               {pointed && (
                 <span className="om-banner absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2.5 py-1 text-[11px] font-black text-amber-950 shadow-lg">
                   👀 {pointerName} đang nhắm
                 </span>
-              )}
-              {teased && !pointed && (
-                <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-pink-500 px-2 py-0.5 text-[10px] font-black text-white shadow">☝️ nhử</span>
               )}
               {card.id === fresh && (
                 <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-400 px-2 py-0.5 text-[10px] font-black text-emerald-950 shadow">

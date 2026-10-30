@@ -4,14 +4,16 @@ import {
   DEAL_MS,
   DECK,
   DEFAULT_OLDMAID_CONFIG,
-  DRAW_RESOLVE_MS,
+  DRAW_PEEK_MS,
   EMOTE_COOLDOWN_MS,
+  KEEP_SETTLE_MS,
   JOKER,
   MAX_ROOM_PEOPLE,
   MAX_SEATS,
   MIN_PLAYERS,
   NEXT_ROUND_MS,
   OPENING_PAIRS_MS,
+  PAIR_THROW_MS,
   RECONNECT_GRACE_MS,
   ROUNDS_TO_PLAY,
   TURN_SECONDS,
@@ -86,6 +88,8 @@ export class OldMaidRoom extends Server<Env> {
   round = 0;
   dealerId: string | null = null;
   turn: OldMaidTurn | null = null;
+  /** The card between hands: drawn, not yet paired off or slipped in. */
+  pending: { drawerId: string; targetId: string; since: number; taken: OldMaidHandCard } | null = null;
   hoverSlot: number | null = null;
   teased = new Map<string, number>();
   discard: number[] = [];
@@ -352,6 +356,7 @@ export class OldMaidRoom extends Server<Env> {
     this.finishOrder = [];
     this.nextReady.clear();
     this.turn = null;
+    this.pending = null;
     this.hoverSlot = null;
     for (const player of seated) {
       player.finishedRank = null;
@@ -428,10 +433,9 @@ export class OldMaidRoom extends Server<Env> {
 
   private draw(drawerId: string, slot: number, timedOut: boolean) {
     const turn = this.turn;
-    if (this.phase !== "playing" || !turn || turn.drawerId !== drawerId) return;
+    if (this.phase !== "playing" || !turn || turn.drawerId !== drawerId || this.pending) return;
     const targetHand = this.hands.get(turn.targetId);
-    const drawerHand = this.hands.get(drawerId);
-    if (!targetHand || !drawerHand || !Number.isInteger(slot) || slot < 0 || slot >= targetHand.length) return;
+    if (!targetHand || !this.hands.get(drawerId) || !Number.isInteger(slot) || slot < 0 || slot >= targetHand.length) return;
     this.clearTurnTimer();
     this.clearBotTimers();
     this.turn = null;
@@ -444,31 +448,46 @@ export class OldMaidRoom extends Server<Env> {
     const target = this.players.get(turn.targetId)!;
     drawer.draws += 1;
     if (taken.card === JOKER) drawer.jokerDraws += 1;
+    // The card stays in the drawer's fingers for a moment: everyone watches them check it.
+    this.pending = { drawerId, targetId: target.id, since: Date.now(), taken };
 
-    let pair: [number, number] | null = null;
-    const mateIndex = drawerHand.findIndex((item) => isPair(item.card, taken.card, this.config.pairRule));
-    if (mateIndex >= 0) {
-      const [mate] = drawerHand.splice(mateIndex, 1);
-      pair = [mate.card, taken.card];
-      this.discard.push(...pair);
-    } else {
-      // Slipped in anywhere, so nobody watching can track where the new card sits.
-      drawerHand.splice(randomInt(drawerHand.length + 1), 0, taken);
-    }
-
-    const event: OldMaidEvent = { type: "drew", drawerId, targetId: target.id, slot, pair, timedOut };
+    const event: OldMaidEvent = { type: "drew", drawerId, targetId: target.id, slot, timedOut };
     for (const connection of this.getConnections()) {
       const privy = connection.id === drawerId || connection.id === target.id;
       connection.send(JSON.stringify({ type: "event", event: privy ? { ...event, card: taken.card } : event } satisfies OldMaidServerMessage));
     }
     if (!targetHand.length) this.finish(target);
-    if (!drawerHand.length) this.finish(drawer);
     this.broadcastState();
-    this.sendHand(drawerId, pair ? undefined : taken.id);
     this.sendHand(target.id);
+    this.flow(DRAW_PEEK_MS, () => this.resolveDraw());
+  }
 
-    const fromSeat = drawer.seat!;
-    this.flow(DRAW_RESOLVE_MS, () => {
+  /** The drawer has checked the card: throw down the pair it makes, or slip it into their hand. */
+  private resolveDraw() {
+    const pending = this.pending;
+    if (!pending || this.phase !== "playing") return;
+    this.pending = null;
+    const drawer = this.players.get(pending.drawerId);
+    const drawerHand = this.hands.get(pending.drawerId);
+    let pair: [number, number] | null = null;
+    if (drawerHand) {
+      const mateIndex = drawerHand.findIndex((item) => isPair(item.card, pending.taken.card, this.config.pairRule));
+      if (mateIndex >= 0) {
+        const [mate] = drawerHand.splice(mateIndex, 1);
+        pair = [mate.card, pending.taken.card];
+        this.discard.push(...pair);
+      } else {
+        // Slipped in anywhere, so nobody watching can track where the new card sits.
+        drawerHand.splice(randomInt(drawerHand.length + 1), 0, pending.taken);
+      }
+    }
+    this.broadcastEvent({ type: "resolved", drawerId: pending.drawerId, pair });
+    if (drawer && drawerHand && !drawerHand.length) this.finish(drawer);
+    this.broadcastState();
+    this.sendHand(pending.drawerId, pair ? undefined : pending.taken.id);
+
+    const fromSeat = drawer?.seat ?? this.players.get(pending.targetId)?.seat ?? 0;
+    this.flow(pair ? PAIR_THROW_MS : KEEP_SETTLE_MS, () => {
       if (this.active().length < MIN_PLAYERS) return this.endRound();
       this.startTurn(this.activeAfter(fromSeat).id);
     });
@@ -487,6 +506,10 @@ export class OldMaidRoom extends Server<Env> {
     this.clearTurnTimer();
     this.clearBotTimers();
     this.turn = null;
+    if (this.pending) {
+      this.hands.get(this.pending.drawerId)?.push(this.pending.taken);
+      this.pending = null;
+    }
     const seated = this.seated();
     // The last one holding cards holds the Joker.
     const pig =
@@ -562,6 +585,7 @@ export class OldMaidRoom extends Server<Env> {
     this.hands.clear();
     this.teased.clear();
     this.turn = null;
+    this.pending = null;
     this.discard = [];
     for (const player of this.players.values()) {
       player.ready = player.isBot;
@@ -582,6 +606,7 @@ export class OldMaidRoom extends Server<Env> {
     this.teased.clear();
     this.nextReady.clear();
     this.turn = null;
+    this.pending = null;
     this.discard = [];
     this.finishOrder = [];
     this.round = 0;
@@ -854,6 +879,7 @@ export class OldMaidRoom extends Server<Env> {
       })),
       round: this.round,
       turn: this.turn,
+      pending: this.pending && { drawerId: this.pending.drawerId, targetId: this.pending.targetId, since: this.pending.since },
       phaseEndsAt: this.phaseEndsAt,
       dealerId: this.dealerId,
       teased: Object.fromEntries(this.teased),

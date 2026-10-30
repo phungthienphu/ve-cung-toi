@@ -12,7 +12,7 @@ import {
   type OldMaidPlayer,
   type PublicOldMaidState,
 } from "@shared/oldMaidTypes";
-import type { CameraMode, Quality } from "./scene/Table3D";
+import type { Quality } from "./scene/Table3D";
 import { SEAT_COLORS } from "./scene/PigAvatar";
 
 // The HTML panels laid over the 3D table: lobby, round result, final podium,
@@ -146,6 +146,7 @@ export function LobbyPanel({
       <p className="mt-3 rounded-2xl bg-white/5 px-3 py-2 text-sm text-white/75">
         🪑 {seated.length}/{MAX_SEATS} ghế ·{" "}
         {me?.seat === null ? <b className="text-amber-200">bạn đang xem — bấm “＋ Ngồi đây” trên bàn</b> : "bấm “＋ Ngồi đây” trên bàn để đổi ghế"}
+        <span className="mt-1 block text-xs text-white/50">Ghế quyết định thứ tự: bạn rút bài người ngồi bên phải, người bên trái rút bài bạn.</span>
       </p>
 
       <div className="mt-4 space-y-3">
@@ -411,18 +412,14 @@ export function ChatPanel({ state, myId, onSend, onClose }: { state: PublicOldMa
 
 export function SettingsPanel({
   quality,
-  cameraMode,
   muted,
   onQuality,
-  onCamera,
   onMute,
   onClose,
 }: {
   quality: Quality;
-  cameraMode: CameraMode;
   muted: boolean;
   onQuality: (quality: Quality) => void;
-  onCamera: (mode: CameraMode) => void;
   onMute: (muted: boolean) => void;
   onClose: () => void;
 }) {
@@ -434,16 +431,6 @@ export function SettingsPanel({
           ✕
         </button>
       </div>
-      <Choice
-        label="Camera"
-        value={cameraMode}
-        options={[
-          { value: "follow", label: "🎥 Góc nhìn người rút" },
-          { value: "overview", label: "🗺️ Toàn cảnh" },
-        ]}
-        disabled={false}
-        onChange={onCamera}
-      />
       <Choice
         label="Đồ họa"
         value={quality}
@@ -464,7 +451,7 @@ export function SettingsPanel({
         disabled={false}
         onChange={onMute}
       />
-      <p className="text-xs text-white/45">Lượt rút của chính bạn luôn ở góc nhìn thứ nhất.</p>
+      <p className="text-xs text-white/45">Camera chỉ vào góc nhìn thứ nhất khi tới lượt bạn rút.</p>
     </section>
   );
 }

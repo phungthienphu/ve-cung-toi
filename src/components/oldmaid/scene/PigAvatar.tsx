@@ -1,11 +1,11 @@
 "use client";
 
-import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { EMOTES, type Emote } from "@shared/oldMaidTypes";
 import { SEAT_R, onCircle } from "./cards3d";
+import { Label } from "./Label";
 
 // A chibi pig sitting at the table, built from spheres and cones. Each seat has
 // its own shirt and hat so players are easy to tell apart. It never reacts on
@@ -144,15 +144,12 @@ export function PigAvatar({
   angle,
   status,
   emote,
-  hidden,
   lobby,
 }: {
   seat: number;
   angle: number;
   status: AvatarStatus;
   emote: { emote: Emote; at: number } | null;
-  /** The camera is looking out of this pig's eyes. */
-  hidden: boolean;
   lobby: React.ReactNode;
 }) {
   const root = useRef<THREE.Group>(null);
@@ -173,7 +170,8 @@ export function PigAvatar({
     }
     if (body.current) {
       const celebrating = status.place !== null && !status.shamed;
-      const lean = status.drawing ? 0.22 : status.shamed ? -0.12 : 0;
+      // Leaning in too far would push the snout through the cards it holds.
+      const lean = status.drawing ? 0.12 : status.shamed ? -0.12 : 0;
       body.current.rotation.x += (lean - body.current.rotation.x) * k;
       const hop = celebrating ? Math.max(0, Math.sin(t * 6)) * 0.12 : 0;
       body.current.position.y = Math.sin(t * 1.6) * 0.025 + hop;
@@ -199,7 +197,7 @@ export function PigAvatar({
         <cylinderGeometry args={[0.45, 0.5, 0.7, 20]} />
         <meshStandardMaterial color="#5a3418" roughness={0.85} />
       </mesh>
-      <group ref={body} visible={!hidden}>
+      <group ref={body}>
         {/* shirt */}
         <mesh position={[0, 1.05, -0.1]} scale={[0.62, 0.62, 0.52]} castShadow>
           <sphereGeometry args={[0.8, 24, 18]} />
@@ -289,9 +287,8 @@ export function PigAvatar({
         {status.crowned ? <PigCrown /> : <Hat style={seat} color={color} />}
       </group>
 
-      {/* name tag, status, emote (not while the camera looks out of this pig's eyes) */}
-      {!hidden && (
-      <Html position={[0, 2.95, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+      {/* name tag, status, emote */}
+      <Label position={[0, 2.95, 0]} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
         <div className="flex flex-col items-center gap-1 whitespace-nowrap select-none">
           {showEmote && (
             <span key={emote!.at} className="om-emote text-4xl drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
@@ -320,8 +317,7 @@ export function PigAvatar({
             </span>
           )}
         </div>
-      </Html>
-      )}
+      </Label>
       {lobby}
     </group>
   );

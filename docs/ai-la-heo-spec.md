@@ -389,8 +389,17 @@ v1 đã code theo mặc định dưới đây. Chủ dự án chưa xác nhận,
 4. **Ván có bot** là luyện tập, không tính vào lịch sử trận.
 
 **Khác với spec ở bản v1:**
-- Bài của chính bạn hiện ở đáy màn hình bằng HTML, chung kiểu vẽ với bài Bà Đồng, cho chữ sắc nét và dễ kéo thả. Trong 3D, bài của bạn chỉ hiện khi đang được chìa cho người khác rút.
-- Camera "góc nhìn thứ nhất" áp dụng cho **mọi lượt rút**: cả bàn được nhìn qua mắt người đang rút. Có thể chuyển sang "Toàn cảnh" trong ⚙️ Cài đặt; lượt của chính bạn thì luôn ở góc nhìn thứ nhất.
+- Bài của chính bạn chỉ hiện ở đáy màn hình bằng HTML (ngửa), chung kiểu vẽ với bài Bà Đồng, cho chữ sắc nét và dễ kéo thả. Trong 3D không có quạt bài của bạn.
+- Camera (sửa sau lần chơi thử đầu, 30/10/2026):
+  - **Góc nhìn thứ nhất chỉ khi chính bạn rút.**
+  - **Khi bị rút:** camera vẫn ở ghế bạn, nghiêng về phía người rút; tay bài ngửa của bạn to ra, lá đang bị nhắm sáng vàng.
+  - **Người khác rút của nhau:** camera nhìn từ phía bên kia bàn để thấy rõ cả hai con heo và quạt bài chìa ra giữa họ.
+  - Không còn tùy chọn camera trong ⚙️.
+- Ghế có vị trí cố định; đổi ghế thì camera lượn quanh bàn tới ghế mới (trước đây cả bàn xoay tức thì nên trông như không có gì xảy ra). Trên màn rộng, bàn được đẩy sang trái để panel sảnh không che ghế nào. Ở sảnh có nhãn "Bạn rút bài người này" / "Người này rút bài bạn" trên hai người ngồi cạnh.
+- Rút xong không sang lượt ngay mà chia thành 2 nhịp (server giữ `pending`):
+  - **Dò lá (1,6 giây):** lá bị rút nằm trên tay người rút. Nếu là bạn, lá lật ngửa trước mắt, một nhịp nhún chạy dọc tay bài và dừng ở lá thành đôi.
+  - **Kết quả:** nếu thành đôi, cả hai lá bay chậm xuống bàn và lật ngửa (thêm 1,3 giây); nếu không, lá được cất vào tay (thêm 0,6 giây).
+- Lá đang nhử nhấp nhả lên xuống liên tục (cả trên tay bạn lẫn trong 3D), không chỉ nhô lên.
 - Nút âm thanh nổi của web bị ẩn trong phòng chơi để không che bài; tắt/bật tiếng nằm trong ⚙️ Cài đặt.
 
 ## Nguồn tham khảo
