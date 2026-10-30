@@ -57,6 +57,17 @@ export default function MathQuestHome() {
         <>
           <NextStep open={open} progress={progress} />
           <ProgressStrip visible={visible} open={open} progress={progress} />
+          <Link
+            href="/math-quest/exercises"
+            className="group mt-4 flex items-center gap-4 rounded-2xl border-2 border-clay-500/25 bg-white p-4 shadow-sm transition hover:border-clay-500"
+          >
+            <span className="text-4xl">✨</span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-draw-display text-lg font-extrabold">Luyện đề với AI</span>
+              <span className="block text-sm text-ink/60">Chọn bài, AI soạn ngay đề mới cho bạn luyện. Đáp án do thầy/cô giữ.</span>
+            </span>
+            <span className="shrink-0 font-bold text-clay-600 transition group-hover:translate-x-1">▸</span>
+          </Link>
         </>
       )}
 

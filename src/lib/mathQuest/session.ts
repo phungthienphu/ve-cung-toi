@@ -67,6 +67,23 @@ export function checkTutorPassword(input: string) {
   return safeEqual(digest(input), digest(TUTOR_PASSWORD));
 }
 
+// The exercise maker's answers need the tutor's password typed on the page,
+// even on a device already logged in (a projector, a kid's phone). The page
+// keeps this key in memory only, so a reload locks the answers again.
+const ANSWER_KEY_MINUTES = 30;
+
+export function issueAnswerKey() {
+  const expiresAt = Date.now() + ANSWER_KEY_MINUTES * 60_000;
+  return `${expiresAt}.${mac(`answers|${expiresAt}`)}`;
+}
+
+export function checkAnswerKey(key: unknown) {
+  if (!isConfigured() || typeof key !== "string") return false;
+  const [expiresAt, signature] = key.split(".");
+  if (!expiresAt || !signature || Number(expiresAt) < Date.now()) return false;
+  return safeEqual(signature, mac(`answers|${expiresAt}`));
+}
+
 export function hashPin(pin: string, salt = randomBytes(16).toString("hex")) {
   return { salt, hash: scryptSync(pin, salt, 32).toString("hex") };
 }

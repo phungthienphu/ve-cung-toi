@@ -96,10 +96,11 @@ export function TopBar({ back, trail, right }: { back?: { href: string; label: s
   );
 }
 
-/** Switches between the tutor's two pages: lessons, and attendance & tuition. */
-export function TutorTabs({ active }: { active: "lessons" | "attendance" }) {
+/** Switches between the tutor's pages: lessons, the AI exercise maker, attendance & tuition. */
+export function TutorTabs({ active }: { active: "lessons" | "exercises" | "attendance" }) {
   const tabs = [
     { key: "lessons", href: "/math-quest/tutor", label: "📚 Bài học" },
+    { key: "exercises", href: "/math-quest/exercises", label: "✨ Soạn đề" },
     { key: "attendance", href: "/math-quest/tutor/attendance", label: "🗓️ Điểm danh", more: " & học phí" },
   ] as const;
   return (
