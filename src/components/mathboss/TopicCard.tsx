@@ -10,7 +10,7 @@ export function TopicCard({ topic, size = "lg" }: { topic: TopicInfo; size?: "lg
       <h2 className={`mt-1 font-draw-display font-extrabold leading-tight text-white ${lg ? "text-3xl sm:text-4xl" : "text-xl"}`}>
         {topic.icon} {topic.name}
       </h2>
-      <div className={`mt-3 space-y-1 font-mono font-bold text-amber-200 ${lg ? "text-2xl" : "text-base"}`}>
+      <div className={`mt-3 space-y-1 break-words font-mono font-bold text-amber-200 ${lg ? "text-lg sm:text-2xl" : "text-base"}`}>
         {topic.formulas.map((formula) => (
           <p key={formula}><MathText text={formula} /></p>
         ))}
@@ -18,7 +18,7 @@ export function TopicCard({ topic, size = "lg" }: { topic: TopicInfo; size?: "lg
       <p className={`mt-3 text-violet-100 ${lg ? "text-lg" : "text-sm"}`}>{topic.rule}</p>
       <div className={`mt-4 rounded-xl bg-black/30 ${lg ? "p-4" : "p-3"}`}>
         <p className={`font-semibold text-cyan-200 ${lg ? "text-xl" : "text-sm"}`}>Ví dụ: <MathText text={topic.example.prompt} /></p>
-        <ol className={`mt-2 space-y-1 font-mono text-white ${lg ? "text-xl" : "text-sm"}`}>
+        <ol className={`mt-2 space-y-1 break-words font-mono text-white ${lg ? "text-base sm:text-xl" : "text-sm"}`}>
           {topic.example.steps.map((step) => (
             <li key={step}><MathText text={step} /></li>
           ))}

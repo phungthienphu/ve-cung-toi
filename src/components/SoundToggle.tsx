@@ -11,9 +11,9 @@ export default function SoundToggle() {
   // would only be a confusing second "music" control there.
   const pathname = usePathname();
   const inWerewolf = pathname.startsWith("/werewolf");
-  // The tutor's admin pages have no game sounds; the floating buttons would
-  // only cover their content on a phone.
-  const inTutor = pathname.startsWith("/math-quest/tutor");
+  // The Math Quest notebook and the tutor's pages play no sounds; the floating
+  // buttons would only cover their bottom buttons on a phone.
+  const inMathQuest = pathname.startsWith("/math-quest");
   // Ai Là Heo rooms put your hand along the bottom; sound is in the room's ⚙️ settings.
   const inOldMaidRoom = /^\/ai-la-heo\/[^/]+/.test(pathname);
 
@@ -33,7 +33,7 @@ export default function SoundToggle() {
     setMusicOn(toggleMusic());
   }
 
-  if (inTutor || inOldMaidRoom) return null;
+  if (inMathQuest || inOldMaidRoom) return null;
   return (
     <div className="fixed bottom-4 right-4 z-40 flex gap-2">
       {!muted && !inWerewolf && (

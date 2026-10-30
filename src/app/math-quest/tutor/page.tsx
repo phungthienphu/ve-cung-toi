@@ -81,13 +81,15 @@ export default function TutorPage() {
         trail={[HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Trang gia sư" }]}
         right={
           <>
-            <Link href="/math-quest" className="rounded-lg border border-cream-200 bg-white px-3 py-1.5 text-sm font-semibold">📒 Xem trước sổ tay</Link>
+            <Link href="/math-quest" className="whitespace-nowrap rounded-lg border border-cream-200 bg-white px-3 py-1.5 text-sm font-semibold">
+              📒 <span className="hidden sm:inline">Xem trước </span>sổ tay
+            </Link>
             <button
               onClick={async () => {
                 await logout();
                 setState("login");
               }}
-              className="rounded-lg px-2 py-1 text-sm font-semibold text-ink/50 hover:text-ink"
+              className="whitespace-nowrap rounded-lg px-2 py-1 text-sm font-semibold text-ink/50 hover:text-ink"
             >
               Đăng xuất
             </button>

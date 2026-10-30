@@ -91,24 +91,25 @@ export function HostView({ state, send }: { state: PublicMathBossState; send: Se
   const multiplier = rage ? (state.questionIndex >= 8 ? 3 : state.questionIndex >= 5 ? 2 : 1) : 1;
 
   return (
-    <main className={`${drawFontClass} bg-mathboss flex min-h-app flex-col px-5 py-4 text-white sm:px-8`}>
-      <header className="flex items-center justify-between gap-6">
-        <div className="flex shrink-0 items-center gap-3">
+    <main className={`${drawFontClass} bg-mathboss flex min-h-app flex-col overflow-x-clip px-4 py-4 text-white sm:px-8`}>
+      {/* On a phone: back + room code on one row, the boss's HP bar on its own row below. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 items-center gap-3">
           <DarkBack
             href="/math-quest/tutor"
             label="Trang gia sư"
             confirmText={live ? "Rời màn hình chiếu? Trận vẫn được giữ — mở lại bằng nút \"Mở lại phòng\" ở trang gia sư, các bạn không phải nhập mã lại." : null}
           />
-          <div className="font-draw-display text-2xl font-extrabold tracking-tight">🧮 Quái Máy Tính</div>
+          <div className="hidden font-draw-display text-2xl font-extrabold tracking-tight sm:block">🧮 Quái Máy Tính</div>
         </div>
         {FIGHT_PHASES.has(state.phase) && state.bossMaxHp > 0 && (
-          <div className="w-full max-w-xl">
+          <div className="order-last w-full sm:order-none sm:w-auto sm:max-w-xl sm:flex-1">
             <HpBar hp={state.bossHp} maxHp={state.bossMaxHp} />
           </div>
         )}
         <div className="shrink-0 text-right">
           <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-violet-300">Mã phòng</div>
-          <div className="font-mono text-2xl font-black tracking-[0.2em] text-amber-300">{state.roomId}</div>
+          <div className="font-mono text-xl font-black tracking-[0.2em] text-amber-300 sm:text-2xl">{state.roomId}</div>
         </div>
       </header>
 
@@ -151,10 +152,10 @@ export function HostView({ state, send }: { state: PublicMathBossState; send: Se
         )}
       </section>
 
-      {/* pr-28 keeps the controls clear of the site's floating sound buttons. */}
-      <footer className="flex flex-wrap items-end justify-between gap-4 pr-28">
+      {/* Kept clear of the site's floating sound buttons: room below them on a phone, beside them wider. */}
+      <footer className="flex flex-wrap items-end justify-between gap-4 pb-14 sm:pb-0 sm:pr-28">
         <PlayerChips state={state} />
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {editable && !showSetup && (
             <button
               onClick={() => setSetupOpen(true)}
@@ -206,11 +207,11 @@ function LobbyStage({ state }: { state: PublicMathBossState }) {
   return (
     <div className="text-center">
       <Boss mood="idle" screen={<span>HELLO</span>} />
-      <h1 className="mt-10 font-draw-display text-5xl font-extrabold sm:text-6xl">Ai dám thách đấu Quái Máy Tính?</h1>
-      <p className="mt-5 text-2xl text-violet-100">
+      <h1 className="mt-6 font-draw-display text-3xl font-extrabold sm:mt-10 sm:text-5xl lg:text-6xl">Ai dám thách đấu Quái Máy Tính?</h1>
+      <p className="mt-5 text-lg text-violet-100 sm:text-2xl">
         Mở điện thoại, vào <b className="text-cyan-300">{host}/math-boss</b> rồi nhập mã
       </p>
-      <p className="mt-3 font-mono text-7xl font-black tracking-[0.3em] text-amber-300 sm:text-8xl">{state.roomId}</p>
+      <p className="mt-3 font-mono text-6xl font-black tracking-[0.3em] text-amber-300 sm:text-8xl">{state.roomId}</p>
     </div>
   );
 }
@@ -219,8 +220,8 @@ function PickHeading({ state }: { state: PublicMathBossState }) {
   const ready = state.players.filter((player) => player.hero).length;
   return (
     <div className="text-center">
-      <h2 className="font-draw-display text-5xl font-extrabold">Chọn nhân vật!</h2>
-      <p className="mt-2 text-xl text-violet-200">
+      <h2 className="font-draw-display text-3xl font-extrabold sm:text-5xl">Chọn nhân vật!</h2>
+      <p className="mt-2 text-base text-violet-200 sm:text-xl">
         {WEAPONS.map((weapon) => `${weapon.icon} ${weapon.name}`).join("  hay  ")} — chọn trên điện thoại · {ready}/{state.players.length} đã chọn
       </p>
     </div>
@@ -233,7 +234,7 @@ function ShowStage({ index, revealed }: { index: number; revealed: boolean }) {
   const [startedAt] = useState(() => Date.now());
   const demo = DEMOS[index];
   return (
-    <div className="grid w-full items-center gap-12 lg:grid-cols-[auto_1fr]">
+    <div className="grid w-full items-center gap-6 lg:grid-cols-[auto_1fr] lg:gap-12">
       <Boss
         mood={revealed ? "hit" : "idle"}
         speech={revealed ? "Ơ… ta còn chưa bấm xong!" : "Để ta bấm cho!"}
@@ -241,17 +242,17 @@ function ShowStage({ index, revealed }: { index: number; revealed: boolean }) {
       />
       <div className="text-center lg:text-left">
         <p className="text-lg font-bold uppercase tracking-[0.2em] text-amber-300">Màn thách đấu {index + 1}/{DEMOS.length}</p>
-        <h2 className="mt-2 font-draw-display text-4xl font-extrabold">Ai tính nhanh hơn: thầy/cô hay Quái Máy Tính?</h2>
-        <p className="mt-6 font-mono text-5xl font-black text-cyan-200 sm:text-6xl"><MathText text={demo.prompt} /></p>
+        <h2 className="mt-2 font-draw-display text-2xl font-extrabold sm:text-4xl">Ai tính nhanh hơn: thầy/cô hay Quái Máy Tính?</h2>
+        <p className="mt-6 break-words font-mono text-3xl font-black text-cyan-200 sm:text-5xl lg:text-6xl"><MathText text={demo.prompt} /></p>
         {revealed && (
           <div className="animate-bounce-in mt-6">
-            <p className="font-mono text-6xl font-black text-amber-300">= {formatNumber(demo.answer)}</p>
-            <ol className="mt-4 space-y-1.5 font-mono text-2xl text-violet-100">
+            <p className="font-mono text-4xl font-black text-amber-300 sm:text-6xl">= {formatNumber(demo.answer)}</p>
+            <ol className="mt-4 space-y-1.5 break-words font-mono text-lg text-violet-100 sm:text-2xl">
               {demo.steps.map((step, stepIndex) => (
                 <li key={step}><span className="text-amber-300">{stepIndex + 1}.</span> <MathText text={step} /></li>
               ))}
             </ol>
-            <p className="mt-4 text-xl text-violet-200">Bí mật là… hằng đẳng thức! Máy tính đâu có biết 😎</p>
+            <p className="mt-4 text-base text-violet-200 sm:text-xl">Bí mật là… hằng đẳng thức! Máy tính đâu có biết 😎</p>
           </div>
         )}
       </div>
@@ -285,7 +286,7 @@ function MixedReviewCard({ grade, topics }: { grade: Grade; topics: PublicMathBo
   return (
     <article className="rounded-2xl border-2 border-amber-300/70 bg-gradient-to-b from-violet-900/90 to-[#1a1240]/95 p-6 text-left">
       <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber-300">📜 Lớp {grade} · Ôn tổng hợp</p>
-      <h2 className="mt-1 font-draw-display text-3xl font-extrabold">Trộn các dạng đã học</h2>
+      <h2 className="mt-1 font-draw-display text-2xl font-extrabold sm:text-3xl">Trộn các dạng đã học</h2>
       <ul className="mt-3 space-y-1.5">
         {topics.map((id) => (
           <li key={id} className="rounded-lg bg-black/25 px-3 py-1.5 text-lg">{TOPIC_CATALOG[id].icon} {TOPIC_CATALOG[id].name}</li>
@@ -299,8 +300,8 @@ function RageStage({ state }: { state: PublicMathBossState }) {
   return (
     <div className="text-center">
       <Boss mood="rage" speech="Ta sẽ tung đủ mọi chiêu!" screen={<span>ERROR!!</span>} />
-      <h2 className="mt-10 font-draw-display text-6xl font-extrabold text-rose-300">Quái Máy Tính nổi giận!</h2>
-      <p className="mt-3 text-2xl text-violet-100">Đợt cuối: trộn cả 3 dạng. Hạ gục nó đi!</p>
+      <h2 className="mt-6 font-draw-display text-4xl font-extrabold text-rose-300 sm:mt-10 sm:text-6xl">Quái Máy Tính nổi giận!</h2>
+      <p className="mt-3 text-lg text-violet-100 sm:text-2xl">Đợt cuối: trộn cả 3 dạng. Hạ gục nó đi!</p>
       <div className="mt-6 flex flex-wrap justify-center gap-6">
         {gradesOf(state.players).map((grade) => (
           <ul key={grade} className="space-y-2 text-left">
@@ -342,9 +343,9 @@ function QuestionCards({ state }: { state: PublicMathBossState }) {
                 <p className="font-draw-display text-xl font-extrabold text-amber-300">🎯 {question.callout}</p>
                 <span className="shrink-0 rounded-full bg-white/10 px-3 py-0.5 text-sm font-bold">Lớp {question.grade}</span>
               </div>
-              <p className="mt-2 font-mono text-2xl font-bold leading-snug sm:text-3xl"><MathText text={question.prompt} /></p>
+              <p className="mt-2 break-words font-mono text-2xl font-bold leading-snug sm:text-3xl"><MathText text={question.prompt} /></p>
               {question.kind === "choice" ? (
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {question.options.map((option, index) => (
                     <p key={option} className="rounded-lg bg-black/25 px-3 py-1.5 font-mono text-lg">
                       <span className="mr-2 font-draw-display font-black text-amber-300">{LETTERS[index]}</span>
@@ -413,8 +414,8 @@ function ResultCards({ state }: { state: PublicMathBossState }) {
 function VictoryStage({ state }: { state: PublicMathBossState }) {
   return (
     <div className="text-center">
-      <h2 className="font-draw-display text-6xl font-extrabold text-amber-300">Hạ gục Quái Máy Tính! 🏆</h2>
-      <p className="mt-2 text-2xl text-violet-100">
+      <h2 className="font-draw-display text-4xl font-extrabold text-amber-300 sm:text-6xl">Hạ gục Quái Máy Tính! 🏆</h2>
+      <p className="mt-2 text-lg text-violet-100 sm:text-2xl">
         Cả đội bắn trúng <b className="text-white">{state.teamCorrect}</b>/{state.teamAnswered} phát
       </p>
       <p className="mt-6 text-lg font-bold uppercase tracking-[0.2em] text-violet-200">Thẻ công thức đầu tiên của các bạn</p>
@@ -442,8 +443,8 @@ function VoteStage({ state, send }: { state: PublicMathBossState; send: Send }) 
   const ideas = Object.entries(state.teamNameIdeas);
   return (
     <div className="w-full">
-      <h2 className="text-center font-draw-display text-5xl font-extrabold">Chọn thế giới cho Math Quest</h2>
-      <p className="mt-2 text-center text-xl text-violet-200">Bỏ phiếu trên điện thoại. Hòa phiếu thì thầy/cô bấm chọn.</p>
+      <h2 className="text-center font-draw-display text-3xl font-extrabold sm:text-5xl">Chọn thế giới cho Math Quest</h2>
+      <p className="mt-2 text-center text-base text-violet-200 sm:text-xl">Bỏ phiếu trên điện thoại. Hòa phiếu thì thầy/cô bấm chọn.</p>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         {THEMES.map((theme) => {
           const voters = Object.entries(state.themeVotes).filter(([, vote]) => vote === theme.id).map(([id]) => nameOf(id));
@@ -475,7 +476,7 @@ function VoteStage({ state, send }: { state: PublicMathBossState; send: Send }) 
             <button
               key={playerId}
               onClick={() => send({ type: "pick_team_name", name: idea })}
-              className={`rounded-xl border-2 px-5 py-3 text-2xl font-bold transition ${
+              className={`rounded-xl border-2 px-5 py-3 text-lg font-bold transition sm:text-2xl ${
                 state.chosenTeamName === idea ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-white/10 bg-white/5 hover:border-white/30"
               }`}
             >
@@ -492,10 +493,10 @@ function DoneStage({ state }: { state: PublicMathBossState }) {
   const theme = THEMES.find((option) => option.id === state.chosenTheme);
   return (
     <div className="text-center">
-      <div className="animate-bounce-in text-9xl">{theme?.icon ?? "🏆"}</div>
+      <div className="animate-bounce-in text-7xl sm:text-9xl">{theme?.icon ?? "🏆"}</div>
       <p className="mt-4 text-xl font-bold uppercase tracking-[0.25em] text-amber-300">{theme?.name}</p>
-      <h2 className="mt-2 font-draw-display text-7xl font-extrabold">{state.chosenTeamName}</h2>
-      <p className="mt-5 text-2xl text-violet-100">
+      <h2 className="mt-2 break-words font-draw-display text-4xl font-extrabold sm:text-7xl">{state.chosenTeamName}</h2>
+      <p className="mt-5 text-lg text-violet-100 sm:text-2xl">
         {state.players.map((player) => player.name).join(" & ")} — hẹn gặp lại ở Math Quest! ⚔️
       </p>
       <p className="mt-6 text-lg text-violet-200">Các bạn bấm “Ôn lại bài trong sổ tay” trên điện thoại để xem lại công thức.</p>
@@ -513,7 +514,7 @@ function PlayerChips({ state }: { state: PublicMathBossState }) {
       {state.players.map((player) => (
         <span
           key={player.id}
-          className={`animate-bounce-in flex items-center gap-2 rounded-full border px-4 py-2 text-lg font-bold ${
+          className={`animate-bounce-in flex items-center gap-2 rounded-full border px-4 py-2 text-base font-bold sm:text-lg ${
             player.connected ? "border-white/15 bg-white/10" : "border-white/5 bg-white/5 text-white/40"
           }`}
         >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { MathBossPhase, MathBossPlayer, Shot } from "@shared/mathBossTypes";
 import { playTankBigExplosion, playTankHit, playTankShoot, playUltimateReady, playWhoosh } from "@/lib/sound";
 import { HERO_PALETTE, HeroSprite, OUTLINE, Projectile } from "./HeroSprite";
@@ -19,6 +19,12 @@ const GROUND_PX = 52;
 const SHOT_BOTTOM_PX = GROUND_PX + 58;
 /** Middle of the monster's body, for impacts. */
 const IMPACT_BOTTOM_PX = GROUND_PX + 120;
+/**
+ * Narrowest the battlefield is laid out at (the monster's walk needs the room).
+ * On anything narrower — a phone — it's drawn at this width and zoomed down to
+ * fit, instead of the monster hanging off the right edge.
+ */
+const STAGE_MIN_W = 720;
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const heroLeft = (index: number, count: number) => 2 + index * (count <= 3 ? 11 : 33 / (count - 1));
 
@@ -75,6 +81,16 @@ export function Arena(props: ArenaProps) {
   const mood: MonsterMood = phase === "victory" ? "defeated" : phase === "question" ? "walk" : phase === "result" ? (hurt ? "hurt" : "laugh") : "idle";
   const secondsLeft = endsAt ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : 0;
   const screen = phase === "question" ? String(secondsLeft) : phase === "result" ? (hurt ? `-${roundDamage}` : "HAHA") : phase === "victory" ? "0" : "?";
+
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const observer = new ResizeObserver(([entry]) => setZoom(Math.min(1, entry.contentRect.width / STAGE_MIN_W)));
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
 
   // ---------- effects ----------
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -203,72 +219,77 @@ export function Arena(props: ArenaProps) {
   const hpPct = bossMaxHp > 0 ? clamp01(bossHp / bossMaxHp) * 100 : 100;
 
   return (
-    <div ref={sceneRef} className="relative h-[22rem] w-full">
-      <div className="absolute inset-0 overflow-hidden rounded-3xl border-4 shadow-[0_10px_0_rgba(43,29,58,0.35)]" style={{ borderColor: OUTLINE }}>
-        <Scenery />
-      </div>
+    <div ref={boxRef} className="w-full">
+      {/* zoom (not transform) so the scaled-down stage also takes up less room on the page */}
+      <div style={zoom < 1 ? { width: STAGE_MIN_W, zoom } : undefined}>
+        <div ref={sceneRef} className="relative h-[22rem] w-full">
+          <div className="absolute inset-0 overflow-hidden rounded-3xl border-4 shadow-[0_10px_0_rgba(43,29,58,0.35)]" style={{ borderColor: OUTLINE }}>
+            <Scenery />
+          </div>
 
-      {heroes.map((player, index) => (
-        <div key={player.id} className="absolute flex w-36 flex-col items-center" style={{ left: `${heroLeft(index, heroes.length)}%`, bottom: GROUND_PX }}>
-          <span
-            className="mb-0.5 max-w-[9rem] truncate rounded-full border-[3px] px-3 py-0.5 font-draw-display text-sm font-extrabold text-white"
-            style={{ borderColor: OUTLINE, backgroundColor: player.hero ? HERO_PALETTE[player.hero.color].main : "#94a3b8" }}
-          >
-            {player.name}
-          </span>
-          <div ref={(node) => { if (node) heroRefs.current.set(player.id, node); else heroRefs.current.delete(player.id); }}>
-            {player.hero ? (
-              <div className={phase === "victory" ? "mb-hero-cheer" : "mb-hero-idle"}>
-                <HeroSprite hero={player.hero} firing={firing.includes(player.id)} className="h-36 w-36" />
+          {heroes.map((player, index) => (
+            <div key={player.id} className="absolute flex w-36 flex-col items-center" style={{ left: `${heroLeft(index, heroes.length)}%`, bottom: GROUND_PX }}>
+              <span
+                className="mb-0.5 max-w-[9rem] truncate rounded-full border-[3px] px-3 py-0.5 font-draw-display text-sm font-extrabold text-white"
+                style={{ borderColor: OUTLINE, backgroundColor: player.hero ? HERO_PALETTE[player.hero.color].main : "#94a3b8" }}
+              >
+                {player.name}
+              </span>
+              <div ref={(node) => { if (node) heroRefs.current.set(player.id, node); else heroRefs.current.delete(player.id); }}>
+                {player.hero ? (
+                  <div className={phase === "victory" ? "mb-hero-cheer" : "mb-hero-idle"}>
+                    <HeroSprite hero={player.hero} firing={firing.includes(player.id)} className="h-36 w-36" />
+                  </div>
+                ) : (
+                  <div className="flex h-36 w-36 items-center justify-center font-draw-display text-6xl font-black text-white/70 drop-shadow">?</div>
+                )}
               </div>
-            ) : (
-              <div className="flex h-36 w-36 items-center justify-center font-draw-display text-6xl font-black text-white/70 drop-shadow">?</div>
+            </div>
+          ))}
+
+          <div
+            className="absolute"
+            style={{ left: `${monsterLeft}%`, bottom: GROUND_PX - 4, transition: `left ${phase === "question" ? "0.12s linear" : "0.7s ease-out"}` }}
+          >
+            <div ref={monsterRef}>
+              <div className={phase === "victory" ? "mb2-faint" : ""}>
+                {phase !== "victory" && (
+                  <div className="mx-auto mb-1 h-4 w-40 overflow-hidden rounded-full border-[3px] bg-[#3b0764]" style={{ borderColor: OUTLINE }}>
+                    <div className="h-full rounded-full bg-gradient-to-b from-[#fb7185] to-[#e11d48] transition-[width] duration-500" style={{ width: `${hpPct}%` }} />
+                  </div>
+                )}
+                <MonsterSprite mood={mood} rage={rage} screen={screen} className="h-[15rem] w-[13rem]" />
+              </div>
+            </div>
+            {speech && (
+              <div
+                className="animate-bounce-in absolute -top-12 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-2xl border-[3px] bg-white px-4 py-1.5 font-draw-display text-lg font-extrabold text-[#2b1d3a] shadow-lg"
+                style={{ borderColor: OUTLINE }}
+              >
+                {speech}
+              </div>
             )}
           </div>
-        </div>
-      ))}
 
-      <div
-        className="absolute"
-        style={{ left: `${monsterLeft}%`, bottom: GROUND_PX - 4, transition: `left ${phase === "question" ? "0.12s linear" : "0.7s ease-out"}` }}
-      >
-        <div ref={monsterRef}>
-          <div className={phase === "victory" ? "mb2-faint" : ""}>
-            {phase !== "victory" && (
-              <div className="mx-auto mb-1 h-4 w-40 overflow-hidden rounded-full border-[3px] bg-[#3b0764]" style={{ borderColor: OUTLINE }}>
-                <div className="h-full rounded-full bg-gradient-to-b from-[#fb7185] to-[#e11d48] transition-[width] duration-500" style={{ width: `${hpPct}%` }} />
+          {shots.map((shot) => {
+            const shooter = players.find((player) => player.id === shot.playerId);
+            if (!shooter?.hero) return null;
+            const from = heroLeft(indexOf.get(shot.playerId) ?? 0, heroes.length) + 9;
+            const target = targets.current.get(shot.id) ?? monsterLeft;
+            return (
+              <div
+                key={shot.id}
+                className={`pointer-events-none absolute z-20 ${shot.hit ? "mb-shot-hit" : "mb-shot-miss"}`}
+                style={{ "--from": `${from}%`, "--to": `${shot.hit ? target + 3 : target - 6}%`, "--dur": `${FLIGHT_MS}ms`, bottom: SHOT_BOTTOM_PX } as CSSProperties}
+              >
+                <Projectile weapon={shooter.hero.weapon} color={shooter.hero.color} />
               </div>
-            )}
-            <MonsterSprite mood={mood} rage={rage} screen={screen} className="h-[15rem] w-[13rem]" />
-          </div>
+            );
+          })}
+
+          {effects.map((effect) => <EffectView key={effect.id} effect={effect} />)}
         </div>
-        {speech && (
-          <div
-            className="animate-bounce-in absolute -top-12 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-2xl border-[3px] bg-white px-4 py-1.5 font-draw-display text-lg font-extrabold text-[#2b1d3a] shadow-lg"
-            style={{ borderColor: OUTLINE }}
-          >
-            {speech}
-          </div>
-        )}
       </div>
-
-      {shots.map((shot) => {
-        const shooter = players.find((player) => player.id === shot.playerId);
-        if (!shooter?.hero) return null;
-        const from = heroLeft(indexOf.get(shot.playerId) ?? 0, heroes.length) + 9;
-        const target = targets.current.get(shot.id) ?? monsterLeft;
-        return (
-          <div
-            key={shot.id}
-            className={`pointer-events-none absolute z-20 ${shot.hit ? "mb-shot-hit" : "mb-shot-miss"}`}
-            style={{ "--from": `${from}%`, "--to": `${shot.hit ? target + 3 : target - 6}%`, "--dur": `${FLIGHT_MS}ms`, bottom: SHOT_BOTTOM_PX } as CSSProperties}
-          >
-            <Projectile weapon={shooter.hero.weapon} color={shooter.hero.color} />
-          </div>
-        );
-      })}
-
-      {effects.map((effect) => <EffectView key={effect.id} effect={effect} />)}
     </div>
   );
 }

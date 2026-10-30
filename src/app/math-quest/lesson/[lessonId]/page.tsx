@@ -111,7 +111,7 @@ export default function LessonPage({ params }: { params: Promise<{ lessonId: str
           {lesson.remember.map((point) => (
             <div key={point.text} className="rounded-xl border border-cream-200 bg-white p-4">
               {point.formula && (
-                <p className="rounded-lg bg-gold-100/60 px-3 py-2 font-mono text-xl font-bold text-ink"><MathText text={point.formula} /></p>
+                <p className="break-words rounded-lg bg-gold-100/60 px-3 py-2 font-mono text-lg font-bold text-ink sm:text-xl"><MathText text={point.formula} /></p>
               )}
               <p className={`${point.formula ? "mt-2" : ""} text-ink/80`}>{point.text}</p>
             </div>
@@ -147,30 +147,31 @@ export default function LessonPage({ params }: { params: Promise<{ lessonId: str
         </Section>
       )}
 
-      {/* Always one tap from the next thing to do. pr-28 on phones keeps the
-          buttons clear of the site's floating sound toggles. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-cream-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2.5 pr-28 sm:px-6 md:pr-6">
+      {/* Always one tap from the next thing to do: previous lesson, practice, next lesson. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-cream-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2.5 sm:px-6">
           {prevLesson ? (
-            <Link href={`/math-quest/lesson/${prevLesson.id}`} className="rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60" title={prevLesson.title}>
+            <Link href={`/math-quest/lesson/${prevLesson.id}`} className="shrink-0 whitespace-nowrap rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60" title={prevLesson.title}>
               ‹ Bài {prevLesson.number}
             </Link>
           ) : (
-            <Link href="/math-quest" className="rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60">
+            <Link href="/math-quest" className="shrink-0 whitespace-nowrap rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60">
               ‹ Sổ tay
             </Link>
           )}
-          {lesson.practice.length > 0 && (
-            <a href="#practice" className="rounded-xl bg-clay-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-clay-500/30">
+          {lesson.practice.length > 0 ? (
+            <a href="#practice" className="min-w-0 flex-1 truncate whitespace-nowrap rounded-xl bg-clay-500 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm shadow-clay-500/30">
               🎯 Luyện 5 câu
             </a>
+          ) : (
+            <span className="flex-1" />
           )}
           {nextLesson ? (
-            <Link href={`/math-quest/lesson/${nextLesson.id}`} className="rounded-xl border-2 border-clay-500 px-3 py-2 text-sm font-bold text-clay-600" title={nextLesson.title}>
+            <Link href={`/math-quest/lesson/${nextLesson.id}`} className="shrink-0 whitespace-nowrap rounded-xl border-2 border-clay-500 px-3 py-2 text-sm font-bold text-clay-600" title={nextLesson.title}>
               Bài {nextLesson.number} ›
             </Link>
           ) : (
-            <Link href="/math-quest" className="rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60">
+            <Link href="/math-quest" className="shrink-0 whitespace-nowrap rounded-xl border-2 border-cream-200 px-3 py-2 text-sm font-bold text-ink/60">
               Sổ tay ›
             </Link>
           )}
@@ -297,7 +298,7 @@ function Practice({ lesson, record, nextLesson }: { lesson: Lesson; record: bool
   return (
     <div className="rounded-xl border border-cream-200 bg-white p-4">
       <p className="text-xs font-bold uppercase tracking-wider text-ink/40">Câu {index + 1}/{PRACTICE_ROUND}</p>
-      <p className="mt-1 font-mono text-xl font-bold"><MathText text={question.prompt} /></p>
+      <p className="mt-1 break-words font-mono text-lg font-bold sm:text-xl"><MathText text={question.prompt} /></p>
 
       {question.kind === "choice" ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">

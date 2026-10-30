@@ -2,15 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { seanceFontClass } from "@/components/cards/fonts";
 import { Candle, Medium } from "@/components/cards/Medium";
-import { CardBack } from "@/components/cards/PlayingCard";
 import { MonsterSprite } from "@/components/mathboss/MonsterSprite";
-import { JokerFace } from "@/components/oldmaid/MyHand";
 import { drawFontClass } from "@/lib/drawFonts";
 
-// The game hub: a hero, a spotlight on the newest game, and a bento grid of
+// The game hub: a hero, a spotlight on the newest games, and a bento grid of
 // every game with its own cover art (games without art get a drawn scene).
 
-type Cover = { image: string; position: string } | { scene: "sea" | "math" | "seance" | "heo" };
+type Cover = { image: string; position: string } | { scene: "sea" | "math" | "seance" };
 
 interface Game {
   href: string;
@@ -49,7 +47,7 @@ const GAMES: Game[] = [
     description: "Rút bài 3D cùng hội bạn: nhử nhau, đọc nhau — ai ôm lá Joker cuối cùng là HEO!",
     tag: "Rút bài 3D",
     players: "2–6 · có bot",
-    cover: { scene: "heo" },
+    cover: { image: "/ai-la-heo.png", position: "50% 38%" },
     size: "wide",
     isNew: true,
   },
@@ -150,26 +148,6 @@ function SeanceScene({ candle = 12 }: { candle?: number }) {
 }
 
 /** A Battleship board: two ships, hits and misses. */
-/** A felt table with a fan of card backs and the pig Joker sticking up out of it. */
-function HeoScene() {
-  return (
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_62%_58%,#22a35a_0%,#146c3b_45%,#0b3d22_100%)]">
-      <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:4px_4px]" />
-      <div className="absolute left-[70%] top-[78%] h-0 w-0 sm:left-[72%]">
-        {[-34, -20, -6, 8, 22].map((deg) => (
-          <span key={deg} className="absolute bottom-0 left-0 block origin-bottom" style={{ width: 62, height: 87, fontSize: 12.4, transform: `translateX(-50%) rotate(${deg}deg)` }}>
-            <CardBack />
-          </span>
-        ))}
-        <span className="absolute bottom-0 left-0 block origin-bottom transition duration-500 group-hover:-translate-y-4" style={{ width: 62, height: 87, fontSize: 12.4, transform: "translateX(-50%) rotate(34deg)" }}>
-          <JokerFace className="shadow-[0_0_24px_rgba(255,120,170,0.7)]" />
-        </span>
-      </div>
-      <span className="absolute right-[5%] top-[10%] text-4xl drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)] transition duration-500 group-hover:-rotate-12 group-hover:scale-125">🐷</span>
-    </div>
-  );
-}
-
 function SeaScene() {
   return (
     <div className="tile-sea absolute inset-0">
@@ -219,7 +197,6 @@ function TileCover({ game }: { game: Game }) {
     );
   }
   if (cover.scene === "seance") return <SeanceScene />;
-  if (cover.scene === "heo") return <HeoScene />;
   if (cover.scene === "sea") return <SeaScene />;
   return <MathScene />;
 }
@@ -280,20 +257,23 @@ export default function GamePickerPage() {
     <main className={`${drawFontClass} ${seanceFontClass} bg-hub min-h-app text-white`}>
       <header className="sticky top-0 z-30 border-b border-white/5 bg-[#0a0812]/70 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 font-draw-display text-xl font-extrabold tracking-tight">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap font-draw-display text-xl font-extrabold tracking-tight">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#ff9ec4] to-[#ff8a5b] text-lg shadow-[0_4px_16px_rgba(255,138,91,0.45)]">🐷</span>
             Chơi Cùng Tôi
           </Link>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link href="/ai-la-heo" className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white">
+          {/* On a phone the links are icons only, "NEW" shrinks to a dot, so the name stays on one line. */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link href="/ai-la-heo" aria-label="Ai Là Heo (mới)" className="relative flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
               🐷 <span className="hidden sm:inline">Ai Là Heo</span>
-              <NewBadge className="!px-2 !py-0.5 text-[10px]" />
+              <NewBadge className="hidden !px-2 !py-0.5 text-[10px] sm:inline" />
+              <span aria-hidden className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff5ea8] ring-2 ring-[#0a0812] sm:hidden" />
             </Link>
-            <Link href="/card-draw" className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white">
+            <Link href="/card-draw" aria-label="Bà Đồng (mới)" className="relative flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
               🔮 <span className="hidden sm:inline">Bà Đồng</span>
-              <NewBadge className="!px-2 !py-0.5 text-[10px]" />
+              <NewBadge className="hidden !px-2 !py-0.5 text-[10px] sm:inline" />
+              <span aria-hidden className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff5ea8] ring-2 ring-[#0a0812] sm:hidden" />
             </Link>
-            <Link href="/leaderboard" className="rounded-full px-3 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white">
+            <Link href="/leaderboard" aria-label="Lịch sử trận" className="rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
               🏆 <span className="hidden sm:inline">Lịch sử trận</span>
             </Link>
           </div>
@@ -348,29 +328,63 @@ export default function GamePickerPage() {
           </div>
         </section>
 
-        {/* Spotlight on the newest game */}
-        <Link
-          href="/card-draw"
-          className="group relative isolate mt-6 grid overflow-hidden rounded-[2rem] bg-[#12040a] ring-1 ring-[#e0b84a]/30 transition duration-300 hover:ring-2 hover:ring-[#e0b84a]/70 sm:grid-cols-[1.15fr_1fr]"
-        >
-          <div className="bg-seance absolute inset-0 -z-10" />
-          <div className="flex flex-col justify-center p-6 sm:p-10">
-            <div className="flex items-center gap-2.5">
-              <NewBadge />
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#f3d27a]/80">Vừa ra mắt</span>
+        {/* Spotlight on the newest games: side by side on a wide screen, stacked on a phone */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <Link
+            href="/ai-la-heo"
+            className="group relative isolate grid overflow-hidden rounded-[2rem] bg-[#1d0f08] ring-1 ring-[#ff9ec4]/30 transition duration-300 hover:ring-2 hover:ring-[#ff9ec4]/70 sm:grid-cols-[1.15fr_1fr] lg:grid-cols-1"
+          >
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_20%_30%,#4a2614_0%,#24120a_55%,#140904_100%)]" />
+            <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-8">
+              <div className="flex items-center gap-2.5">
+                <NewBadge />
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffc6dc]/80">Vừa ra mắt</span>
+              </div>
+              <h2 className="mt-3 font-draw-display text-4xl font-extrabold leading-none text-[#ffe4ee] drop-shadow-[0_0_18px_rgba(255,120,170,0.45)] sm:text-6xl lg:text-5xl">Ai Là Heo</h2>
+              <p className="mt-3 max-w-md leading-relaxed text-[#f6e3d3]/80">
+                Bàn bài 3D cho 2–6 người: rút bài của nhau, nhử, xào, đọc mặt nhau mà né lá Joker. Ai ôm con heo tới cuối thì… làm heo 🐷 Thiếu người thì gọi bot vào.
+              </p>
+              <span className="mt-6 inline-flex w-fit items-center gap-2 rounded-2xl bg-gradient-to-b from-[#ffc2da] to-[#ff5ea8] px-6 py-3 font-draw-display text-xl font-extrabold text-[#4a0b26] shadow-[0_5px_0_#9d174d] transition group-hover:brightness-110">
+                🐷 Vào bàn chơi <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
+              </span>
             </div>
-            <h2 className="mt-3 font-seance text-4xl font-extrabold leading-none text-[#f3d27a] drop-shadow-[0_0_18px_rgba(224,184,74,0.4)] sm:text-6xl">Bà Đồng Xem Bài</h2>
-            <p className="mt-3 max-w-md leading-relaxed text-[#f3e6c4]/80">
-              Bà đồng hỏi chuyện, cho cả bộ bài bay lên mà xào, xòe 52 lá cho bạn rút — rồi luận quẻ và cho tải ảnh quẻ về khoe. Hơi rợn đấy 👁️
-            </p>
-            <span className="mt-6 inline-flex w-fit items-center gap-2 rounded-2xl bg-gradient-to-b from-[#ffd36e] to-[#e0951a] px-6 py-3 font-seance text-xl font-bold text-[#3b0a0f] shadow-[0_5px_0_#7a3b06] transition group-hover:brightness-110">
-              🔮 Vào xem bói <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
-            </span>
-          </div>
-          <div className="relative h-60 sm:h-auto sm:min-h-[320px]">
-            <SeanceScene candle={18} />
-          </div>
-        </Link>
+            <div className="relative h-60 overflow-hidden sm:h-auto sm:min-h-[320px] lg:h-64 lg:min-h-0">
+              <Image
+                src="/ai-la-heo.png"
+                alt="Bầy heo chơi bài quanh bàn, lá Joker con heo nằm giữa bàn"
+                fill
+                sizes="(min-width: 1024px) 560px, (min-width: 640px) 45vw, 100vw"
+                className="object-cover transition duration-700 ease-out group-hover:scale-105"
+                style={{ objectPosition: "50% 42%" }}
+              />
+              {/* Melts into the text side: above it on a phone and two-up, to its left in between. */}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#1d0f08] via-transparent via-25% sm:bg-gradient-to-r lg:bg-gradient-to-b" />
+            </div>
+          </Link>
+
+          <Link
+            href="/card-draw"
+            className="group relative isolate grid overflow-hidden rounded-[2rem] bg-[#12040a] ring-1 ring-[#e0b84a]/30 transition duration-300 hover:ring-2 hover:ring-[#e0b84a]/70 sm:grid-cols-[1.15fr_1fr] lg:grid-cols-1"
+          >
+            <div className="bg-seance absolute inset-0 -z-10" />
+            <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-8">
+              <div className="flex items-center gap-2.5">
+                <NewBadge />
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#f3d27a]/80">Vừa ra mắt</span>
+              </div>
+              <h2 className="mt-3 font-seance text-4xl font-extrabold leading-none text-[#f3d27a] drop-shadow-[0_0_18px_rgba(224,184,74,0.4)] sm:text-6xl lg:text-5xl">Bà Đồng Xem Bài</h2>
+              <p className="mt-3 max-w-md leading-relaxed text-[#f3e6c4]/80">
+                Bà đồng hỏi chuyện, cho cả bộ bài bay lên mà xào, xòe 52 lá cho bạn rút — rồi luận quẻ và cho tải ảnh quẻ về khoe. Hơi rợn đấy 👁️
+              </p>
+              <span className="mt-6 inline-flex w-fit items-center gap-2 rounded-2xl bg-gradient-to-b from-[#ffd36e] to-[#e0951a] px-6 py-3 font-seance text-xl font-bold text-[#3b0a0f] shadow-[0_5px_0_#7a3b06] transition group-hover:brightness-110">
+                🔮 Vào xem bói <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
+              </span>
+            </div>
+            <div className="relative h-60 sm:h-auto sm:min-h-[320px] lg:h-64 lg:min-h-0">
+              <SeanceScene candle={18} />
+            </div>
+          </Link>
+        </div>
 
         {/* Every game */}
         <section id="games" className="mt-14 scroll-mt-24">

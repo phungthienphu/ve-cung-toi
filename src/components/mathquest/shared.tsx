@@ -91,7 +91,7 @@ export function TopBar({ back, trail, right }: { back?: { href: string; label: s
           </li>
         ))}
       </ol>
-      {right && <div className="ml-auto flex shrink-0 items-center gap-2">{right}</div>}
+      {right && <div className="ml-auto flex min-w-0 items-center gap-2">{right}</div>}
     </nav>
   );
 }
@@ -125,7 +125,7 @@ export function TutorTabs({ active }: { active: "lessons" | "attendance" }) {
 /** Light "notebook paper" frame shared by the Math Quest pages. */
 export function Paper({ children }: { children: React.ReactNode }) {
   return (
-    <main className={`${drawFontClass} min-h-app bg-cream-50 px-4 pb-24 pt-6 text-ink sm:px-6`}>
+    <main className={`${drawFontClass} min-h-app overflow-x-clip bg-cream-50 px-4 pb-24 pt-6 text-ink sm:px-6`}>
       <div className="mx-auto w-full max-w-3xl">{children}</div>
     </main>
   );

@@ -33,8 +33,12 @@ export default function MathQuestHome() {
         trail={tutor ? [HOME_CRUMB, MATH_QUEST_CRUMB, TUTOR_CRUMB, { label: "Xem trước sổ tay" }] : [HOME_CRUMB, MATH_QUEST_CRUMB, { label: "Sổ tay" }]}
         right={
           <>
-            {!tutor && <span className="rounded-full bg-ink/10 px-3 py-1 text-sm font-bold">{me.student.name} · Lớp {me.student.grade}</span>}
-            <button onClick={signOut} className="rounded-lg px-2 py-1 text-sm font-semibold text-ink/50 hover:text-ink">Đăng xuất</button>
+            {!tutor && (
+              <span className="min-w-0 truncate rounded-full bg-ink/10 px-3 py-1 text-sm font-bold">
+                {me.student.name}<span className="hidden sm:inline"> · Lớp {me.student.grade}</span>
+              </span>
+            )}
+            <button onClick={signOut} className="shrink-0 whitespace-nowrap rounded-lg px-2 py-1 text-sm font-semibold text-ink/50 hover:text-ink">Đăng xuất</button>
           </>
         }
       />

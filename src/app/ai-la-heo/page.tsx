@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -56,13 +57,27 @@ export default function OldMaidHomePage() {
         <Link href="/" className="text-sm text-white/55 hover:text-white">
           ‹ Trang chủ
         </Link>
-        <header className="mt-4 text-center">
-          <div className="text-7xl drop-shadow-[0_10px_30px_rgba(255,120,170,0.35)]">🐷</div>
-          <h1 className="mt-2 font-draw-display text-5xl font-extrabold tracking-tight sm:text-6xl">
-            Ai Là{" "}
-            <span className="bg-gradient-to-r from-[#ffb3cb] via-[#ff7aa0] to-[#ffd36e] bg-clip-text text-transparent">Heo</span>
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-white/70">Rút bài 3D cùng hội bạn: nhử nhau, đọc nhau, ai giữ lá Joker cuối cùng là HEO!</p>
+        {/* The poster: the art fills the banner, the title sits on its lower edge fading into the room. */}
+        <header className="relative mt-4 overflow-hidden rounded-[2rem] text-center ring-1 ring-white/10 shadow-[0_30px_80px_-30px_rgba(255,120,170,0.45)]">
+          <div className="relative aspect-[4/3] sm:aspect-[2/1]">
+            <Image
+              src="/ai-la-heo.png"
+              alt="Bầy heo chơi bài quanh bàn, lá Joker con heo nằm giữa bàn"
+              fill
+              priority
+              sizes="(min-width: 1024px) 1024px, 100vw"
+              className="object-cover"
+              style={{ objectPosition: "50% 40%" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#170e09] via-[#170e09]/35 via-40% to-transparent" />
+          </div>
+          <div className="absolute inset-x-0 bottom-0 px-5 pb-5 sm:pb-8">
+            <h1 className="font-draw-display text-5xl font-extrabold tracking-tight drop-shadow-[0_4px_18px_rgba(0,0,0,0.65)] sm:text-6xl">
+              Ai Là{" "}
+              <span className="bg-gradient-to-r from-[#ffb3cb] via-[#ff7aa0] to-[#ffd36e] bg-clip-text text-transparent">Heo</span>
+            </h1>
+            <p className="mx-auto mt-2 max-w-xl text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">Rút bài 3D cùng hội bạn: nhử nhau, đọc nhau, ai giữ lá Joker cuối cùng là HEO!</p>
+          </div>
         </header>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
