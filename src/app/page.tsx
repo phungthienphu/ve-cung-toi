@@ -2,13 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { seanceFontClass } from "@/components/cards/fonts";
 import { Candle, Medium } from "@/components/cards/Medium";
+import { CardBack } from "@/components/cards/PlayingCard";
 import { MonsterSprite } from "@/components/mathboss/MonsterSprite";
+import { JokerFace } from "@/components/oldmaid/MyHand";
 import { drawFontClass } from "@/lib/drawFonts";
 
 // The game hub: a hero, a spotlight on the newest game, and a bento grid of
 // every game with its own cover art (games without art get a drawn scene).
 
-type Cover = { image: string; position: string } | { scene: "sea" | "math" | "seance" };
+type Cover = { image: string; position: string } | { scene: "sea" | "math" | "seance" | "heo" };
 
 interface Game {
   href: string;
@@ -42,13 +44,23 @@ const GAMES: Game[] = [
     size: "wide",
   },
   {
+    href: "/ai-la-heo",
+    title: "Ai Là Heo",
+    description: "Rút bài 3D cùng hội bạn: nhử nhau, đọc nhau — ai ôm lá Joker cuối cùng là HEO!",
+    tag: "Rút bài 3D",
+    players: "2–6 · có bot",
+    cover: { scene: "heo" },
+    size: "wide",
+    isNew: true,
+  },
+  {
     href: "/tank-game",
     title: "Đại Chiến Xe Tăng",
     description: "Bắn nhau loạn xạ, ai đủ điểm hạ gục trước thì thắng.",
     tag: "Bắn tăng",
     players: "2–8 người",
-    cover: { image: "/tank/tank-bg.png", position: "20% 45%" },
-    size: "small",
+    cover: { image: "/tank/tank-bg.png", position: "28% 42%" },
+    size: "wide",
   },
   {
     href: "/soccer",
@@ -56,8 +68,8 @@ const GAMES: Game[] = [
     description: "Đá bóng 1vs1 đến 4vs4: xoạc, sút, thẻ đỏ.",
     tag: "Bóng đá",
     players: "1–8 · có bot",
-    cover: { image: "/soccer/bg-soccer.png", position: "34% 50%" },
-    size: "small",
+    cover: { image: "/soccer/bg-soccer.png", position: "40% 45%" },
+    size: "wide",
   },
   {
     href: "/battleship",
@@ -138,6 +150,26 @@ function SeanceScene({ candle = 12 }: { candle?: number }) {
 }
 
 /** A Battleship board: two ships, hits and misses. */
+/** A felt table with a fan of card backs and the pig Joker sticking up out of it. */
+function HeoScene() {
+  return (
+    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_62%_58%,#22a35a_0%,#146c3b_45%,#0b3d22_100%)]">
+      <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:4px_4px]" />
+      <div className="absolute left-[70%] top-[78%] h-0 w-0 sm:left-[72%]">
+        {[-34, -20, -6, 8, 22].map((deg) => (
+          <span key={deg} className="absolute bottom-0 left-0 block origin-bottom" style={{ width: 62, height: 87, fontSize: 12.4, transform: `translateX(-50%) rotate(${deg}deg)` }}>
+            <CardBack />
+          </span>
+        ))}
+        <span className="absolute bottom-0 left-0 block origin-bottom transition duration-500 group-hover:-translate-y-4" style={{ width: 62, height: 87, fontSize: 12.4, transform: "translateX(-50%) rotate(34deg)" }}>
+          <JokerFace className="shadow-[0_0_24px_rgba(255,120,170,0.7)]" />
+        </span>
+      </div>
+      <span className="absolute right-[5%] top-[10%] text-4xl drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)] transition duration-500 group-hover:-rotate-12 group-hover:scale-125">🐷</span>
+    </div>
+  );
+}
+
 function SeaScene() {
   return (
     <div className="tile-sea absolute inset-0">
@@ -187,6 +219,7 @@ function TileCover({ game }: { game: Game }) {
     );
   }
   if (cover.scene === "seance") return <SeanceScene />;
+  if (cover.scene === "heo") return <HeoScene />;
   if (cover.scene === "sea") return <SeaScene />;
   return <MathScene />;
 }
@@ -252,6 +285,10 @@ export default function GamePickerPage() {
             Chơi Cùng Tôi
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <Link href="/ai-la-heo" className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white">
+              🐷 <span className="hidden sm:inline">Ai Là Heo</span>
+              <NewBadge className="!px-2 !py-0.5 text-[10px]" />
+            </Link>
             <Link href="/card-draw" className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white">
               🔮 <span className="hidden sm:inline">Bà Đồng</span>
               <NewBadge className="!px-2 !py-0.5 text-[10px]" />
@@ -278,7 +315,7 @@ export default function GamePickerPage() {
               Chơi Cùng <span className="bg-gradient-to-r from-[#ffd36e] via-[#ff8a5b] to-[#ff5ea8] bg-clip-text text-transparent">Tôi</span>
             </h1>
             <p className="mt-4 max-w-lg text-base leading-relaxed text-white/75 sm:text-lg">
-              Tạo phòng, gửi link, cả hội vào chơi — vẽ đoán chữ, Ma Sói, bắn tăng, đá bóng, hải chiến, và giờ có cả bà đồng xem bói.
+              Tạo phòng, gửi link, cả hội vào chơi — vẽ đoán chữ, Ma Sói, bắn tăng, đá bóng, hải chiến, rút bài Ai Là Heo, và cả bà đồng xem bói.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a

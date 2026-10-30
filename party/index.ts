@@ -19,6 +19,8 @@ export { WerewolfDirectory } from "./werewolf-directory";
 export { BattleshipRoom } from "./battleship-server";
 export { BattleshipDirectory } from "./battleship-directory";
 export { MathBossRoom } from "./mathboss-server";
+export { OldMaidRoom } from "./oldmaid-server";
+export { OldMaidDirectory } from "./oldmaid-directory";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

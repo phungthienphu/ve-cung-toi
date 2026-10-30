@@ -512,6 +512,72 @@ body {
   .pc-zoom, .pc-pop, .md-head, .md-sigil, .md-smoke, .md-shake, .md-hand.is-chant > svg { animation: none !important; }
 }
 
+/* ---------- Ai Là Heo (components/oldmaid) ---------- */
+.bg-heo-room {
+  background-color: #170e09;
+  background-image: radial-gradient(ellipse at 50% 30%, #3b2416 0%, #170e09 70%);
+}
+.om-hand-card {
+  transition: left 0.28s cubic-bezier(0.22, 0.9, 0.24, 1), transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease;
+  transform-origin: 50% 100%;
+}
+@media (hover: hover) {
+  .om-hand-card:hover { filter: brightness(1.08); }
+  .om-hand-card:hover .pc-side { box-shadow: 0 0 0 0.08em #fff6dc, 0 0 1.2em 0.25em rgba(255, 240, 200, 0.55); }
+}
+/* The card a drawer is pointing at in your hand: gold glow, like Bà Đồng's table. */
+.om-pointed .pc-side {
+  box-shadow: 0 0 0 0.1em #ffe08a, 0 0 1.1em 0.3em rgba(255, 214, 102, 0.9), 0 0 2.4em 0.7em rgba(255, 140, 40, 0.5);
+}
+.om-pointed { filter: brightness(1.1); }
+.om-fresh { animation: om-fresh 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes om-fresh {
+  0% { translate: 0 -60px; scale: 1.25; }
+  100% { translate: 0 0; scale: 1; }
+}
+.om-leave { animation: om-leave 0.55s ease-in both; pointer-events: none; }
+@keyframes om-leave {
+  to { transform: translateY(-140px) rotate(-12deg) scale(0.7); opacity: 0; }
+}
+.om-emote { display: inline-block; animation: om-emote 2.4s ease-out both; }
+@keyframes om-emote {
+  0% { transform: scale(0.2) translateY(10px); opacity: 0; }
+  12% { transform: scale(1.25) translateY(0); opacity: 1; }
+  22% { transform: scale(1); }
+  80% { opacity: 1; }
+  100% { transform: translateY(-14px); opacity: 0; }
+}
+.om-tease { display: inline-block; animation: om-tease 0.9s ease-in-out infinite alternate; }
+@keyframes om-tease { to { transform: translateY(-4px); } }
+.om-banner { animation: om-banner 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes om-banner {
+  from { transform: translate(-50%, 6px) scale(0.8); opacity: 0; }
+  to { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+.om-pop { animation: om-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes om-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.om-shake { animation: md-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.om-joker-flash {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 60, 120, 0.15), rgba(120, 0, 40, 0.75));
+  animation: md-flash 1.6s ease-out both;
+}
+.om-joker-card { animation: om-joker-card 2s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+@keyframes om-joker-card {
+  0% { transform: rotateY(180deg) scale(0.4); opacity: 0; }
+  25% { transform: rotateY(0) scale(1.15); opacity: 1; }
+  35% { transform: scale(1); }
+  85% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9) translateY(30px); }
+}
+.om-timer { transition: width 0.25s linear; }
+@media (prefers-reduced-motion: reduce) {
+  .om-hand-card { transition-duration: 0.01s !important; }
+  .om-fresh, .om-leave, .om-emote, .om-tease, .om-banner, .om-pop, .om-shake, .om-joker-card { animation-duration: 0.01s !important; }
+}
+
 /* ---------- Celebration banner (CelebrationBanner.tsx) ---------- */
 @keyframes celebration-pop {
   0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }

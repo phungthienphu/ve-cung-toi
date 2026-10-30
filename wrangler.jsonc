@@ -21,7 +21,9 @@
       { "name": "Werewolflobby", "class_name": "WerewolfDirectory" },
       { "name": "Battleship", "class_name": "BattleshipRoom" },
       { "name": "Battleshiplobby", "class_name": "BattleshipDirectory" },
-      { "name": "Mathboss", "class_name": "MathBossRoom" }
+      { "name": "Mathboss", "class_name": "MathBossRoom" },
+      { "name": "Oldmaid", "class_name": "OldMaidRoom" },
+      { "name": "Oldmaidlobby", "class_name": "OldMaidDirectory" }
     ]
   },
   "migrations": [
@@ -31,7 +33,8 @@
         "GameRoom", "DrawDirectory", "TankRoom", "TankDirectory", "BrawlerRoom", "SoccerRoom",
         "SoccerDirectory", "WerewolfRoom", "WerewolfDirectory", "BattleshipRoom", "BattleshipDirectory", "MathBossRoom"
       ]
-    }
+    },
+    { "tag": "v2", "new_sqlite_classes": ["OldMaidRoom", "OldMaidDirectory"] }
   ],
   "observability": { "enabled": true }
 }

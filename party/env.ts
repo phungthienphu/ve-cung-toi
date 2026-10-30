@@ -3,6 +3,8 @@ import type { BattleshipRoom } from "./battleship-server";
 import type { BrawlerRoom } from "./brawler-server";
 import type { DrawDirectory } from "./draw-directory";
 import type { MathBossRoom } from "./mathboss-server";
+import type { OldMaidDirectory } from "./oldmaid-directory";
+import type { OldMaidRoom } from "./oldmaid-server";
 import type { GameRoom } from "./server";
 import type { SoccerDirectory } from "./soccer-directory";
 import type { SoccerRoom } from "./soccer-server";
@@ -31,4 +33,6 @@ export interface Env {
   Battleship: DurableObjectNamespace<BattleshipRoom>;
   Battleshiplobby: DurableObjectNamespace<BattleshipDirectory>;
   Mathboss: DurableObjectNamespace<MathBossRoom>;
+  Oldmaid: DurableObjectNamespace<OldMaidRoom>;
+  Oldmaidlobby: DurableObjectNamespace<OldMaidDirectory>;
 }

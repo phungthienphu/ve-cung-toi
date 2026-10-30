@@ -68,16 +68,19 @@ async function portraitImage(svg: SVGSVGElement | null): Promise<HTMLImageElemen
   }
 }
 
-function drawCard(ctx: CanvasRenderingContext2D, id: number, cx: number, cy: number, w: number, angle: number) {
+/** A playing card (0–51) centred on (cx, cy), `w` wide, turned `angle` degrees. Also paints the Ai Là Heo card textures. */
+export function drawCard(ctx: CanvasRenderingContext2D, id: number, cx: number, cy: number, w: number, angle: number, shadow = true) {
   const h = w * 1.4;
   const info = cardInfo(id);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((angle * Math.PI) / 180);
 
-  ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-  ctx.shadowBlur = 26;
-  ctx.shadowOffsetY = 12;
+  if (shadow) {
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 12;
+  }
   const paper = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
   paper.addColorStop(0, "#fffdf6");
   paper.addColorStop(1, "#ece3cb");

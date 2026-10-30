@@ -15,12 +15,13 @@ export interface GameSeo {
 }
 
 export const GAMES_SEO = {
-  home: { title: SITE_NAME, description: "Game nhiều người chơi ngay trên trình duyệt, không cần tài khoản: vẽ đoán chữ, Ma Sói, xe tăng, bóng đá, Hải Chiến và Bà Đồng xem bói.", path: "", image: "/og/home.jpg" },
+  home: { title: SITE_NAME, description: "Game nhiều người chơi ngay trên trình duyệt, không cần tài khoản: vẽ đoán chữ, Ma Sói, xe tăng, bóng đá, Hải Chiến, Ai Là Heo và Bà Đồng xem bói.", path: "", image: "/og/home.jpg" },
   draw: { title: "Vẽ Cùng Tôi", description: "Vẽ và đoán chữ cùng hội bạn, không cần tài khoản.", path: "/draw-guess", image: "/og/draw.jpg", roomPath: "/room" },
   werewolf: { title: "Ma Sói", description: "Suy luận, giấu vai và bỏ phiếu. Ai là sói trong đêm nay?", path: "/werewolf", image: "/og/werewolf.jpg" },
   tank: { title: "Đại Chiến Xe Tăng", description: "Bắn xe tăng cùng hội bạn, tối đa 8 người.", path: "/tank-game", image: "/og/tank.jpg" },
   soccer: { title: "Sân Cỏ Đẫm Máu", description: "Đá bóng 2 đội, 1vs1 đến 4vs4, có bot lấp chỗ.", path: "/soccer", image: "/og/soccer.jpg" },
   battleship: { title: "Hải Chiến", description: "Giấu hạm đội, đoán tọa độ, nã pháo. Solo, Hỗn chiến hoặc Đồng đội.", path: "/battleship", image: "/og/battleship.jpg" },
+  oldmaid: { title: "Ai Là Heo", description: "Rút bài 3D cùng hội bạn: nhử nhau, đọc nhau, ai giữ lá Joker cuối cùng là HEO!", path: "/ai-la-heo", image: "/og/home.jpg" },
   cards: { title: "Bà Đồng Xem Bài", description: "Rút bài Tây ngẫu nhiên kiểu xem bói: bà đồng lật, xào, xòe 52 lá, bạn rút .", path: "/card-draw", image: "/og/home.jpg" },
   leaderboard: { title: "Lịch sử trận đấu", description: "Các trận gần nhất của mọi game trên Chơi Cùng Tôi.", path: "/leaderboard", image: "/og/home.jpg" },
 } satisfies Record<string, GameSeo>;

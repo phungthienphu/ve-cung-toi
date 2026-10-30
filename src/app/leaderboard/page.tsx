@@ -10,7 +10,7 @@ import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/compone
 // leaderboard, which quietly merged their scores into one row. A per-match
 // history (what actually happened, when) doesn't have that problem: every
 // entry is its own game, nothing to conflate.
-type GameType = "draw" | "tank" | "soccer" | "werewolf" | "battleship";
+type GameType = "draw" | "tank" | "soccer" | "werewolf" | "battleship" | "oldmaid";
 
 const TABS: { id: GameType; label: string; emptyText: string }[] = [
   { id: "draw", label: "🎨 Vẽ Cùng Tôi", emptyText: "Chưa có ván vẽ nào được lưu lại." },
@@ -18,6 +18,7 @@ const TABS: { id: GameType; label: string; emptyText: string }[] = [
   { id: "soccer", label: "⚽ Bóng đá", emptyText: "Chưa có trận bóng nào được lưu lại." },
   { id: "werewolf", label: "🐺 Ma Sói", emptyText: "Chưa có ván Ma Sói nào được lưu lại." },
   { id: "battleship", label: "🚢 Hải Chiến", emptyText: "Chưa có trận Hải Chiến nào được lưu lại." },
+  { id: "oldmaid", label: "🐷 Ai Là Heo", emptyText: "Chưa có ván Ai Là Heo nào được lưu lại (ván có bot không tính)." },
 ];
 
 interface DrawDetail {
@@ -53,7 +54,7 @@ interface HistoryEntry {
   winnerName?: string | null;
   winningTeam?: "A" | "B" | WerewolfTeam | null;
   teamScores?: { A: number; B: number };
-  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[] | WerewolfHistoryDetailData | BattleshipDetail[];
+  detail?: TankDetail[] | SoccerDetail[] | DrawDetail[] | WerewolfHistoryDetailData | BattleshipDetail[] | OldMaidDetail[];
   playedAt: string;
 }
 
@@ -75,6 +76,10 @@ function summarize(e: HistoryEntry): string {
     if (e.winningTeam) return `${mode} · Đội ${e.winningTeam === "A" ? "Xanh" : "Đỏ"} thắng`;
     return e.winnerName ? `${mode} · ${e.winnerName} thắng` : `${mode} · hòa (${e.players.length} người)`;
   }
+  if (e.gameType === "oldmaid") {
+    const pig = (e.detail as OldMaidDetail[] | undefined)?.find((row) => row.pig);
+    return `🐷 ${pig?.name ?? "?"} làm heo · ${e.winnerName ?? "?"} thoát đầu · ${e.players.length} người`;
+  }
   if (e.gameType === "werewolf") {
     const winner = e.winningTeam === "village" ? "Phe Dân" : "Phe Sói";
     const detail = e.detail as WerewolfHistoryDetailData | undefined;
@@ -84,6 +89,14 @@ function summarize(e: HistoryEntry): string {
   const a = e.teamScores?.A ?? 0;
   const b = e.teamScores?.B ?? 0;
   return e.winningTeam ? `Đội ${e.winningTeam === "A" ? "Xanh" : "Đỏ"} thắng ${a} - ${b}` : `Hòa ${a} - ${b}`;
+}
+
+interface OldMaidDetail {
+  name: string;
+  place: number;
+  pig: boolean;
+  draws: number;
+  jokerDraws: number;
 }
 
 interface BattleshipDetail {
@@ -96,6 +109,34 @@ interface BattleshipDetail {
 }
 
 function DetailTable({ entry }: { entry: HistoryEntry }) {
+  if (entry.gameType === "oldmaid") {
+    const rows = (entry.detail as OldMaidDetail[] | undefined) ?? [];
+    if (rows.length === 0) return <SimpleScoreList players={entry.players} />;
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-slate-400">
+            <tr>
+              <th className="py-1 pr-3">Hạng</th>
+              <th className="py-1 pr-3">Người chơi</th>
+              <th className="py-1 pr-3 text-right">Lá đã rút</th>
+              <th className="py-1 pr-3 text-right">Bốc trúng heo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rows].sort((a, b) => a.place - b.place).map((p) => (
+              <tr key={p.name} className="border-t border-slate-100">
+                <td className="py-1.5 pr-3">{p.pig ? "🐷" : p.place}</td>
+                <td className="py-1.5 pr-3 font-medium">{p.name}</td>
+                <td className="py-1.5 pr-3 text-right text-slate-500">{p.draws}</td>
+                <td className="py-1.5 pr-3 text-right font-semibold text-pink-600">{p.jokerDraws}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
   if (entry.gameType === "battleship") {
     const rows = (entry.detail as BattleshipDetail[] | undefined) ?? [];
     if (rows.length === 0) return <SimpleScoreList players={entry.players} />;

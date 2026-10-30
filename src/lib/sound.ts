@@ -746,3 +746,49 @@ export function stopCrowdMurmur() {
   crowdMurmurNodes?.stop();
   crowdMurmurNodes = null;
 }
+
+// ---------- Ai Là Heo ----------
+
+/** A card snapped off a hand or onto the table. */
+export function playCardFlick() {
+  tone(1500 + Math.random() * 500, 0, 0.045, 0.05, "triangle");
+  tone(650, 0.01, 0.05, 0.025, "square");
+}
+
+/** A riffle of cards. */
+export function playCardShuffle() {
+  for (let i = 0; i < 12; i++) tone(900 + Math.random() * 900, i * 0.028, 0.03, 0.028, "square");
+}
+
+/** A pair thrown to the middle. */
+export function playPairDing() {
+  [880, 1320].forEach((f, i) => tone(f, i * 0.08, 0.28, 0.07, "sine"));
+}
+
+/** You just drew the pig. Only you hear it. */
+export function playJokerSting() {
+  tone(116, 0, 0.9, 0.15, "sawtooth");
+  tone(98, 0.14, 1.0, 0.13, "sawtooth");
+  tone(69, 0.32, 1.3, 0.12, "square");
+}
+
+/** "Ụt ịt": two nasal grunts with a falling pitch. */
+export function playOink() {
+  const audio = getCtx();
+  if (!audio || isMuted()) return;
+  for (const offset of [0, 0.24]) {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = "square";
+    const t0 = audio.currentTime + offset;
+    osc.frequency.setValueAtTime(330, t0);
+    osc.frequency.exponentialRampToValueAtTime(150, t0 + 0.17);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.08, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.19);
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.22);
+  }
+}

@@ -14,6 +14,8 @@ export default function SoundToggle() {
   // The tutor's admin pages have no game sounds; the floating buttons would
   // only cover their content on a phone.
   const inTutor = pathname.startsWith("/math-quest/tutor");
+  // Ai Là Heo rooms put your hand along the bottom; sound is in the room's ⚙️ settings.
+  const inOldMaidRoom = /^\/ai-la-heo\/[^/]+/.test(pathname);
 
   useEffect(() => {
     setMutedState(isMuted());
@@ -31,7 +33,7 @@ export default function SoundToggle() {
     setMusicOn(toggleMusic());
   }
 
-  if (inTutor) return null;
+  if (inTutor || inOldMaidRoom) return null;
   return (
     <div className="fixed bottom-4 right-4 z-40 flex gap-2">
       {!muted && !inWerewolf && (
