@@ -19,7 +19,7 @@ let formatUnsupported = false;
 
 export class AiFailure extends Error {}
 
-type Effort = "low" | "medium";
+type Effort = "low";
 
 /** One AI call that must come back as JSON. `onText` sees the reply growing (for progress). */
 async function callJson(options: {
@@ -285,8 +285,6 @@ function readDrafts(raw: unknown) {
   return { drafts, noteIgnored: body.noteIgnored === true };
 }
 
-const STATEMENT_KEY = /"statement"\s*:/g;
-const countStatements = (text: string) => text.match(STATEMENT_KEY)?.length ?? 0;
 const maxTokensFor = (count: number) => Math.min(32000, 8000 + count * 2000);
 
 export interface ExerciseRequest {
@@ -302,26 +300,78 @@ export interface ExerciseRequest {
   note: string;
 }
 
-function requestMessage(request: ExerciseRequest) {
-  const kindLine = request.mix
-    ? `Dạng bài: trộn các dạng sau, mỗi câu một dạng, lần lượt từng dạng:\n${request.kinds.map((kind) => `- ${kind.label}: ${kind.hint}`).join("\n")}`
-    : `Dạng bài: ${request.kinds[0].label} — ${request.kinds[0].hint}`;
-  const styleLine =
-    request.style === "basic"
-      ? "Kiểu bài: cơ bản — bài tập thuần toán, không có bối cảnh thực tế."
-      : request.contexts.length
-        ? `Kiểu bài: bài toán thực tế, chia đều các câu cho các bối cảnh: ${request.contexts.join("; ")}.${request.mix ? " Dạng nào không ra được bài thực tế thì ra bài cơ bản." : ""}`
-        : `Kiểu bài: bài toán thực tế; tự chọn bối cảnh phù hợp, mỗi câu một bối cảnh khác nhau.${request.mix ? " Dạng nào không ra được bài thực tế thì ra bài cơ bản." : ""}`;
-  const levelLine =
-    request.level === "mixed" ? "Mức độ: tăng dần, câu đầu Nhận biết, câu cuối Vận dụng hoặc Vận dụng cao." : `Mức độ: tất cả các câu ở mức ${levelLabel(request.level)}.`;
-  return `Soạn ${request.count} bài tập.
-${lessonLines(request.lesson, request.chapter)}
-${kindLine}
-${styleLine}
-${levelLine}
-<ghi_chu>${request.note || "(không có)"}</ghi_chu>
-Trả về đúng ${request.count} bài trong "exercises".`;
+/** What one exercise of the set is about: each is written by its own AI call, so they're told apart up front. */
+interface Slot {
+  kind: ExerciseKind;
+  level: ExerciseLevel;
+  /** Real-world setting; "" = the AI picks one; null = a basic exercise. */
+  context: string | null;
+  /** Numbers to build around, so parallel calls don't all reach for the same textbook values. */
+  seeds: [number, number];
 }
+
+function shuffled<T>(items: T[]) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index--) {
+    const other = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[other]] = [copy[other], copy[index]];
+  }
+  return copy;
+}
+
+function planSlots(request: ExerciseRequest): Slot[] {
+  const kinds = request.mix ? shuffled(request.kinds) : request.kinds;
+  // Without picked contexts, each kind's own list is dealt out in a random order: a different setting per exercise.
+  const dealt = new Map(kinds.map((kind) => [kind.id, shuffled(kind.contexts)]));
+  const used = new Map<string, number>();
+  return Array.from({ length: request.count }, (_, index) => {
+    const kind = kinds[index % kinds.length];
+    // "Từ dễ đến khó": spread over the four levels in order.
+    const level = request.level === "mixed" ? (request.count === 1 ? "th" : LEVELS[Math.floor((index * LEVELS.length) / request.count)].id) : request.level;
+    let context: string | null = null;
+    if (request.style === "real" && kind.real) {
+      const picked = request.contexts.filter((item) => kind.contexts.includes(item));
+      const pool = picked.length ? picked : dealt.get(kind.id) ?? [];
+      const turn = used.get(kind.id) ?? 0;
+      used.set(kind.id, turn + 1);
+      context = pool.length ? pool[turn % pool.length] : "";
+    }
+    const seed = () => 2 + Math.floor(Math.random() * 58);
+    return { kind, level, context, seeds: [seed(), seed()] };
+  });
+}
+
+function slotMessage(request: ExerciseRequest, slot: Slot, index: number) {
+  const styleLine =
+    slot.context === null
+      ? "Kiểu bài: cơ bản — bài tập thuần toán, không có bối cảnh thực tế."
+      : slot.context
+        ? `Kiểu bài: bài toán thực tế, bối cảnh: ${slot.context}.`
+        : "Kiểu bài: bài toán thực tế, tự chọn một bối cảnh phù hợp.";
+  return `Soạn 1 bài tập (câu ${index + 1} trong bộ ${request.count} câu).
+${lessonLines(request.lesson, request.chapter)}
+Dạng bài: ${slot.kind.label} — ${slot.kind.hint}
+${styleLine}
+Mức độ: ${levelLabel(slot.level)}.
+Để không trùng các câu khác trong bộ: chọn tên người, tình huống và số liệu khác những gì hay gặp; nếu hợp lý, cho số liệu xoay quanh ${slot.seeds[0]} và ${slot.seeds[1]}.
+<ghi_chu>${request.note || "(không có)"}</ghi_chu>
+Trả về đúng 1 bài trong "exercises".`;
+}
+
+/** Runs `run` over the items with at most `limit` at a time. */
+async function eachLimited<T>(items: T[], limit: number, run: (item: T, index: number) => Promise<void>) {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        await run(items[index], index);
+      }
+    }),
+  );
+}
+
+const PARALLEL_CALLS = 5;
 
 const CHANGE_INSTRUCTIONS: Record<ExerciseChange, string> = {
   new: "Soạn một câu KHÁC HẲN (số liệu và tình huống mới), cùng dạng toán, cùng kiểu bài và cùng mức độ.",
@@ -355,7 +405,7 @@ ${bad.map((index, order) => `Bài ${order + 1}: ${draftJson(drafts[index])}\nMá
 Trả về đúng ${bad.length} bài trong "exercises", theo đúng thứ tự trên.`,
         name: "exercises",
         schema: EXERCISES_SCHEMA,
-        effort: "medium",
+        effort: "low",
         maxTokens: maxTokensFor(bad.length),
         signal,
       });
@@ -379,31 +429,59 @@ Trả về đúng ${bad.length} bài trong "exercises", theo đúng thứ tự t
   });
 }
 
+/**
+ * Writes the set one exercise per AI call, several at once, each checked
+ * (and repaired) on its own — `onDraft` gets each as soon as it's done, or
+ * null if that one failed. Returns the finished ones in order.
+ */
 export async function writeExercises(
   request: ExerciseRequest,
   signal: AbortSignal,
-  onProgress: (done: number) => void,
-  onStage: (stage: Stage) => void,
+  onDraft: (index: number, draft: CheckedDraft | null) => void,
 ): Promise<{ exercises: CheckedDraft[]; noteIgnored: boolean }> {
-  let reported = 0;
-  const raw = await callJson({
-    instructions: EXERCISE_INSTRUCTIONS,
-    input: requestMessage(request),
-    name: "exercises",
-    schema: EXERCISES_SCHEMA,
-    effort: "medium",
-    maxTokens: maxTokensFor(request.count),
-    signal,
-    onText: (text) => {
-      const done = Math.min(request.count, Math.max(0, countStatements(text) - 1));
-      if (done > reported) onProgress((reported = done));
-    },
-  });
-  const { drafts, noteIgnored } = readDrafts(raw);
-  if (drafts.length === 0) throw new AiFailure("AI chưa soạn được câu nào — thử lại nhé.");
-  onProgress(drafts.length);
   const header = lessonLines(request.lesson, request.chapter);
-  return { exercises: await checkAndRepair(drafts.slice(0, request.count), header, signal, onStage), noteIgnored };
+  const results: (CheckedDraft | null)[] = Array(request.count).fill(null);
+  let noteIgnored = false;
+  let firstError: unknown = null;
+
+  const writeOne = async (slot: Slot, index: number, retry: boolean): Promise<CheckedDraft> => {
+    try {
+      const raw = await callJson({
+        instructions: EXERCISE_INSTRUCTIONS,
+        input: slotMessage(request, slot, index),
+        name: "exercises",
+        schema: EXERCISES_SCHEMA,
+        effort: "low",
+        maxTokens: maxTokensFor(1),
+        signal,
+      });
+      const { drafts, noteIgnored: ignored } = readDrafts(raw);
+      if (!drafts[0]) throw new AiFailure("AI chưa soạn được câu nào — thử lại nhé.");
+      noteIgnored ||= ignored;
+      return (await checkAndRepair([drafts[0]], header, signal, () => {}))[0];
+    } catch (error) {
+      // One more go for a hiccup (busy router, broken JSON), not for a refusal or a cancel.
+      if (!retry || signal.aborted || (error instanceof AiFailure && error.message.startsWith("AI từ chối"))) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      return writeOne(slot, index, false);
+    }
+  };
+
+  await eachLimited(planSlots(request), PARALLEL_CALLS, async (slot, index) => {
+    if (signal.aborted) return;
+    try {
+      results[index] = await writeOne(slot, index, true);
+    } catch (error) {
+      if (signal.aborted) return;
+      console.error("[exercises] one exercise failed", error);
+      firstError ??= error;
+    }
+    onDraft(index, results[index]);
+  });
+
+  const exercises = results.filter((draft): draft is CheckedDraft => draft !== null);
+  if (exercises.length === 0) throw firstError instanceof AiFailure ? firstError : new AiFailure("AI chưa soạn được câu nào — thử lại nhé.");
+  return { exercises, noteIgnored };
 }
 
 export async function reviseExercise(
@@ -426,7 +504,7 @@ Giữ đúng lớp, bài và dạng toán.
 Trả về đúng 1 bài trong "exercises".`,
     name: "exercises",
     schema: EXERCISES_SCHEMA,
-    effort: "medium",
+    effort: "low",
     maxTokens: maxTokensFor(1),
     signal,
   });

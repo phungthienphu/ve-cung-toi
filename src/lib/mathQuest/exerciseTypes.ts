@@ -93,9 +93,15 @@ export type Viewer = { role: "tutor"; id: "tutor"; name: string } | { role: "stu
 /** After writing: the machine checks the answers, and sends failures back to the AI once. */
 export type GenerateStage = "checking" | "repairing";
 
+/** An exercise shown while the rest of its set is still being written: no id or tools until the set is saved. */
+export type DraftView = Pick<ExerciseView, "title" | "level" | "statement" | "verified">;
+
 /** One line of the generate stream (NDJSON). */
 export type GenerateEvent =
   | { type: "progress"; done: number; total: number }
+  /** Generating: one exercise is ready (null: the AI failed on that one). */
+  | { type: "draft"; index: number; exercise: DraftView | null }
+  /** Rewriting one exercise: the machine check, and the repair if it failed. */
   | { type: "stage"; stage: GenerateStage }
   | { type: "set"; set: ExerciseSetView; quota: Quota }
   | { type: "exercise"; setId: string; index: number; exercise: ExerciseView; quota: Quota }

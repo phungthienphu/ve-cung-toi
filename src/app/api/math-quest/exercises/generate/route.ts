@@ -14,9 +14,9 @@ export const maxDuration = 300;
 // POST { action: "generate", lessonId, kindId, style, contexts, level, count, note }
 //    | { action: "revise", exerciseId, change }
 // The AI writes; the reply streams back as NDJSON lines (GenerateEvent):
-// progress while it writes, a stage while the machine checks (and repairs),
-// then the new set or exercise — never its answers, which need the tutor's
-// password (../route.ts "answers"). Every choice must come from the pickers:
+// each exercise of a set as soon as it's written and checked (or the stage
+// of a rewrite), then the saved set or exercise — never answers, which need
+// the tutor's password (../route.ts "answers"). Every choice must come from the pickers:
 // contexts from the lesson's list, never free text; only the note is typed.
 
 export async function POST(req: Request) {
@@ -50,7 +50,11 @@ export async function POST(req: Request) {
 
     job = async (signal, send, quota) => {
       send({ type: "progress", done: 0, total: count });
-      const result = await writeExercises(request, signal, (done) => send({ type: "progress", done, total: count }), (stage) => send({ type: "stage", stage }));
+      let done = 0;
+      const result = await writeExercises(request, signal, (index, draft) => {
+        send({ type: "draft", index, exercise: draft && { title: draft.title, level: draft.level, statement: draft.statement, verified: draft.verified } });
+        send({ type: "progress", done: ++done, total: count });
+      });
       const set = await MqExerciseSet.create({
         owner: viewer.id,
         ownerName: viewer.name,

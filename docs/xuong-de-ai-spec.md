@@ -63,9 +63,14 @@ No figures in v1. Like đề thi vào 10, students draw them.
   - Uses the Responses API with structured output.
   - Falls back to prompt-only JSON if the router rejects `text.format`.
   - Claude is not wired for this feature.
+- **Generation is fast by being parallel.**
+  - Each exercise of a set is its own AI call, at most 5 at once, all at low reasoning effort.
+  - Each call is given its own type (when mixing), level ("Từ dễ đến khó" is spread over the four levels), context (picked contexts dealt in turn, otherwise the type's own list shuffled) and two seed numbers, so parallel calls don't write the same problem.
+  - A failed call is retried once. If a call still fails, the set is saved with the exercises that did succeed.
 - **`POST /api/math-quest/exercises/generate`** streams NDJSON:
-  - `progress` events while writing (counted from the streamed `"statement"` keys);
-  - `stage` events for checking and repairing;
+  - a `draft` event per exercise as soon as it is written and checked, which the page shows right away without tools;
+  - `progress` events;
+  - `stage` events, for rewriting one exercise only;
   - then a `set` or `exercise` event, or an `error` event.
 - **`/api/math-quest/exercises`** handles the rest: problem types, unlock, answers, edit, save, delete.
 - **Data:** `MqExerciseSet` keeps every generated set with answers, its check, the note, the owner and the model. `MqExerciseKinds` is the cache of problem types.

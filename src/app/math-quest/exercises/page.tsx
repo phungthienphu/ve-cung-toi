@@ -7,7 +7,7 @@ import { Builder, type BuilderRequest } from "@/components/mathquest/exercises/B
 import { ExerciseCard, PrintMenu, SetCard, UnlockDialog, lessonGrade, lessonName, type PrintMode, type ReviseStage } from "@/components/mathquest/exercises/ExerciseCards";
 import { PrintSheet, type PrintJob } from "@/components/mathquest/exercises/PrintSheet";
 import { postExercises, streamGenerate } from "@/components/mathquest/exercises/api";
-import type { ExerciseAnswer, ExerciseChange, ExerciseSetView, ExerciseView, GenerateStage, LibraryItem, Quota, Viewer } from "@/lib/mathQuest/exerciseTypes";
+import type { DraftView, ExerciseAnswer, ExerciseChange, ExerciseSetView, ExerciseView, LibraryItem, Quota, Viewer } from "@/lib/mathQuest/exerciseTypes";
 
 // "Xưởng đề AI" (docs/xuong-de-ai-spec.md): pick a lesson and a problem type,
 // the AI writes fresh exercises, the machine checks the answers. Students
@@ -24,9 +24,9 @@ interface PageData {
 
 type Tab = "make" | "recent" | "library";
 interface Generating {
-  done: number;
-  total: number;
-  stage: GenerateStage | null;
+  request: BuilderRequest;
+  /** Per exercise: undefined while being written, null if the AI failed on it. */
+  drafts: (DraftView | null | undefined)[];
   startedAt: number;
 }
 
@@ -141,16 +141,16 @@ export default function ExercisesPage() {
     abort.current = controller;
     setGenerateError(null);
     setCurrentId(null);
-    setGenerating({ done: 0, total: request.count, stage: null, startedAt: Date.now() });
+    setGenerating({ request, drafts: Array(request.count).fill(undefined), startedAt: Date.now() });
     window.setTimeout(() => results.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     await streamGenerate(
       { action: "generate", ...request },
       (event) => {
-        if (event.type === "progress") setGenerating((current) => current && { ...current, done: event.done, total: event.total });
-        else if (event.type === "stage") setGenerating((current) => current && { ...current, stage: event.stage });
+        if (event.type === "draft") setGenerating((current) => current && { ...current, drafts: current.drafts.map((draft, index) => (index === event.index ? event.exercise : draft)) });
         else if (event.type === "set") {
           setData((current) => current && { ...current, sets: [event.set, ...current.sets], quota: event.quota });
           setCurrentId(event.set.id);
+          if (event.set.exercises.length < request.count) flash(`AI soạn được ${event.set.exercises.length}/${request.count} câu — soạn thêm nếu cần nhé.`);
         } else if (event.type === "error") setGenerateError({ error: event.error, request });
       },
       controller.signal,
@@ -379,7 +379,7 @@ export default function ExercisesPage() {
             <>
               <Builder viewer={viewer} ai={data.ai} quota={data.quota} busy={Boolean(generating)} onGenerate={generate} onQuota={(quota) => setData((value) => value && { ...value, quota })} />
               <div ref={results} className="scroll-mt-20">
-                {generating && <Progress progress={generating} onCancel={cancel} />}
+                {generating && <LiveSet generating={generating} onCancel={cancel} />}
                 {!generating && generateError && (
                   <section className="mt-6 rounded-3xl border-2 border-red-200 bg-red-50 p-5 text-center">
                     <div className="text-4xl">😵</div>
@@ -472,35 +472,63 @@ export default function ExercisesPage() {
   );
 }
 
-function Progress({ progress, onCancel }: { progress: Generating; onCancel: () => void }) {
+/** The set while it's being written: each exercise appears as soon as it's ready. */
+function LiveSet({ generating, onCancel }: { generating: Generating; onCancel: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  const { done, total, stage } = progress;
-  const seconds = Math.max(0, Math.round((now - progress.startedAt) / 1000));
-  const text =
-    stage === "checking"
-      ? "🔎 Máy đang kiểm đáp án…"
-      : stage === "repairing"
-        ? "🛠️ Có câu chưa khớp — AI đang sửa lại…"
-        : done === 0
-          ? "💭 AI đang nghĩ đề…"
-          : `✍️ AI đang viết câu ${Math.min(done + 1, total)}/${total}…`;
-  // Thinking gets a slow creep so the bar never looks stuck; then one step per exercise.
-  const percent = stage ? 96 : done === 0 ? Math.min(25, 4 + seconds * 0.6) : 25 + (done / total) * 70;
+  const { request, drafts } = generating;
+  const done = drafts.filter((draft) => draft !== undefined).length;
+  const seconds = Math.max(0, Math.round((now - generating.startedAt) / 1000));
   return (
-    <section className="mt-6 rounded-3xl border-2 border-clay-500/25 bg-white p-5 text-center shadow-sm" aria-live="polite">
-      <div className="text-4xl motion-safe:animate-bounce">{stage ? "🔎" : "✍️"}</div>
-      <p className="mt-2 font-draw-display text-lg font-extrabold">{text}</p>
-      <div className="mx-auto mt-3 h-2.5 max-w-sm overflow-hidden rounded-full bg-cream-100">
-        <div className="h-full rounded-full bg-clay-500 transition-all duration-700" style={{ width: `${percent}%` }} />
+    <section className="mt-6" aria-live="polite">
+      <div className="rounded-2xl bg-ink px-4 py-3 text-cream-50 shadow-md sm:px-5">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-draw-display text-lg font-extrabold">{lessonName(request.lessonId)}</h2>
+            <p className="text-xs text-cream-50/70">
+              ✍️ AI đang soạn · xong {done}/{drafts.length} câu · {seconds} giây
+            </p>
+          </div>
+          <button onClick={onCancel} className="shrink-0 rounded-xl bg-cream-50/15 px-3 py-1.5 text-sm font-bold text-cream-50 hover:bg-cream-50/25">
+            Huỷ
+          </button>
+        </div>
+        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-cream-50/15">
+          <div className="h-full rounded-full bg-gold-500 transition-all duration-500" style={{ width: `${Math.max(6, (done / drafts.length) * 100)}%` }} />
+        </div>
       </div>
-      <p className="mt-2 text-xs text-ink/50">{seconds} giây · thường mất 20–60 giây, cứ để trang mở nhé</p>
-      <button onClick={onCancel} className="mt-2 rounded-lg px-3 py-1.5 text-sm font-bold text-ink/45 hover:text-ink">
-        Huỷ
-      </button>
+      <div className="mt-3 space-y-3">
+        {drafts.map((draft, index) =>
+          draft ? (
+            <ExerciseCard
+              key={index}
+              exercise={{ ...draft, id: `draft-${index}`, saved: false }}
+              number={index + 1}
+              style={request.style}
+              showAnswer={false}
+              revising={null}
+              actions={{}}
+            />
+          ) : (
+            <article key={index} className="rounded-2xl border border-dashed border-cream-200 bg-white/70 p-4 sm:p-5">
+              <p className="font-draw-display text-lg font-extrabold text-clay-600/60">Câu {index + 1}</p>
+              {draft === null ? (
+                <p className="mt-2 text-sm text-ink/50">😵 AI chưa soạn được câu này — sẽ bỏ qua.</p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <span className="block h-3 w-full animate-pulse rounded-full bg-cream-100" />
+                  <span className="block h-3 w-5/6 animate-pulse rounded-full bg-cream-100" />
+                  <span className="block h-3 w-2/3 animate-pulse rounded-full bg-cream-100" />
+                  <p className="pt-1 text-xs font-semibold text-ink/40">✍️ đang soạn…</p>
+                </div>
+              )}
+            </article>
+          ),
+        )}
+      </div>
     </section>
   );
 }
