@@ -1,5 +1,5 @@
 import { hillDeckPoints, hillHeight, hillSkyRoads, hillWater, type HillSkyRoad } from "@shared/hillTerrain";
-import { HILL_VEHICLES, HILL_MAPS, type HillMapId, type HillSnapshot, type HillFlag } from "@shared/hillTypes";
+import { HILL_JEEP, HILL_VEHICLES, HILL_MAPS, type HillMapId, type HillSnapshot, type HillFlag } from "@shared/hillTypes";
 
 
 import { drawVehicle, drawWheel } from "./drawVehicle";
@@ -115,7 +115,7 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
   ctx.restore();
   if (state.overturnRemaining !== null) {
     ctx.strokeStyle = "#e55542"; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(sx(c.x), sy(c.y) - 45, 23, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * state.overturnRemaining / 3); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx(c.x), sy(c.y) - 45, 23, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * state.overturnRemaining / HILL_JEEP.overturnSeconds); ctx.stroke();
     ctx.fillStyle = "#922e21"; ctx.font = "bold 20px sans-serif"; ctx.textAlign = "center"; ctx.fillText(String(Math.ceil(state.overturnRemaining)), sx(c.x), sy(c.y) - 38);
   }
 }

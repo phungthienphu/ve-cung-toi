@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { HILL_MAPS, HILL_VEHICLES, type HillBoard, type HillSnapshot, type HillVehicleId, type HillWallet } from "@shared/hillTypes";
+import { HILL_JEEP, HILL_MAPS, HILL_VEHICLES, type HillBoard, type HillSnapshot, type HillVehicleId, type HillWallet } from "@shared/hillTypes";
 import { fireworks } from "@/lib/confetti";
 import { playMatchWin } from "@/lib/sound";
 import { VehicleArt } from "./HillArt";
@@ -139,7 +139,7 @@ export function HillPause({ onResume, onRetry, onGarage }: { onResume: () => voi
           ["Ga / Phanh", "→ D  ·  ← A"],
           ["Nhảy · bật lật", "↑ W · 35⚡"],
           ["Lao tới", "Space · 25⚡"],
-          ["Lật ngửa", "3 giây để cứu xe"],
+          ["Lật ngửa", `${HILL_JEEP.overturnSeconds} giây để cứu xe`],
         ].map(([label, keys]) => (
           <div key={label} className="rounded-xl bg-white/5 px-3 py-2">
             <dt className="font-bold text-amber-200">{label}</dt>

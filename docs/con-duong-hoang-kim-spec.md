@@ -651,3 +651,4 @@ Trước đó xe con bọ (150 xu) vừa nhanh nhất vừa leo tốt nhất, c�
 - Hồi sinh khi Đua về đích được đổ ít nhất 30% xăng, để xe cầm cự không kẹt mãi dưới cùng một con dốc.
 - **Chơi một mình** và **Ai đi xa nhất** giữ luật cũ: hết xăng là hết lượt.
 - Nút "Hồi sinh" không còn hiện khi lượt đã xong. Trước đây nó vẫn hiện nhưng bấm không có tác dụng.
+- **Thời gian cứu xe khi lật ngửa tăng từ 3 lên 10 giây** theo ý chủ dự án (02/11/2026). Áp dụng cho mọi xe, mọi chế độ. Con số nằm duy nhất ở `HILL_JEEP.overturnSeconds` (`shared/hillTypes.ts`); vòng đếm ngược, phần khôi phục trạng thái khi đua online và các dòng hướng dẫn đều đọc từ đó. Những chỗ ghi "3 giây" ở phía trên spec là con số cũ.

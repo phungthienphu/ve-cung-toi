@@ -11,7 +11,8 @@ export const HILL_JEEP = {
   recoveryTorque: 28,
   idleFuelPerSecond: 1.3,
   gasFuelPerSecond: 1.2,
-  overturnSeconds: 3,
+  /** Seconds to right a car that lands on its roof before it counts as "Chổng vó!" (all vehicles). */
+  overturnSeconds: 10,
 } as const;
 export interface HillInput { gas: boolean; brake: boolean; jump?: boolean; dash?: boolean }
 export interface HillPose { x: number; y: number; angle: number }

@@ -1,6 +1,6 @@
 'use client';
 
-import { HILL_MAPS, HILL_VEHICLES, type HillVehicleId } from '@shared/hillTypes';
+import { HILL_JEEP, HILL_MAPS, HILL_VEHICLES, type HillVehicleId } from '@shared/hillTypes';
 import type { HillRaceCar, HillRaceConfig, HillRaceState } from '@shared/hillRaceTypes';
 import { VehicleArt } from './HillArt';
 import { MapPicker, Segmented, StatBars, VehiclePicker } from './HillUi';
@@ -167,7 +167,7 @@ export function HillLobby({
       </div>
 
       <p className="mt-4 rounded-2xl bg-black/20 px-4 py-3 text-xs leading-relaxed text-emerald-100/70">
-        🗼 Xuất phát chồng tháp, mỗi xe 35⚡ · Bàn đạp trái/phải để lái (A/D) · ↑ / W nhảy hoặc bật lật · Space lao tới húc xe · Lật ngửa có 3 giây cứu xe, hồi sinh mỗi 150 m.
+        🗼 Xuất phát chồng tháp, mỗi xe 35⚡ · Bàn đạp trái/phải để lái (A/D) · ↑ / W nhảy hoặc bật lật · Space lao tới húc xe · Lật ngửa có {HILL_JEEP.overturnSeconds} giây cứu xe, hồi sinh mỗi 150 m.
       </p>
     </>
   );

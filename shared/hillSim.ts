@@ -224,7 +224,7 @@ export class HillSim {
     this.jumpHeld = state.held?.jump ?? false; this.dashHeld = state.held?.dash ?? false;
     this.tick = state.tick; this.fuel = state.fuel; this.energy = state.energy; this.coins = state.coins;
     this.distance = state.distance; this.skillCoins = state.skillCoins; this.finished = state.finished;
-    this.overturned = state.overturnRemaining !== null; this.overturn = this.overturned ? 3 - state.overturnRemaining! : 0;
+    this.overturned = state.overturnRemaining !== null; this.overturn = this.overturned ? J.overturnSeconds - state.overturnRemaining! : 0;
     this.lastDash = this.tick - 120 + state.dashCooldown / HILL_DT;
     this.lastJump = this.tick - 36 + state.jumpCooldown / HILL_DT;
     this.lastGrounded = state.grounded ? this.tick : this.tick - 10;
