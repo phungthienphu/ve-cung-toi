@@ -11,6 +11,7 @@ import HillBotRace, { DEFAULT_BOT_SETUP, type HillBotSetup } from "./HillBotRace
 import HillGarage, { type HillMode } from "./HillGarage";
 import { HillPause, HillResults } from "./HillResults";
 import { drawHill, hillProject, type HillCamera, type HillView } from "./drawHill";
+import { HillAudio } from "./hillAudio";
 import { HillFx } from "./hillFx";
 import { formatNumber } from "./hillUiData";
 
@@ -62,7 +63,6 @@ export default function HillGame() {
   const previewTicks = useRef(0);
   const fx = useRef<HillFx | null>(null);
   const [bests, setBests] = useState<Partial<Record<HillMapId, number>>>({});
-  const audioNodes = useRef<{ oscillator: OscillatorNode; gain: GainNode; filter: BiquadFilterNode } | null>(null);
 
   function changePhase(next: Phase) { phaseRef.current = next; setPhase(next); }
   function clearInput() { pressed.current.clear(); pendingActions.current.clear(); setGas(false); setBrake(false); }
@@ -101,15 +101,7 @@ export default function HillGame() {
     if (phaseRef.current !== "ready") camera.current = { x: 5, y: 1.5, scale: 24 };
     clearInput(); countdownTime.current = 3; setCountdown(3); setNotice("");
     setSnapshot(sim.current.snapshot()); changePhase("countdown");
-    const audio = getAudioContext();
-    if (audio && !audioNodes.current) {
-      const oscillator = audio.createOscillator(); oscillator.type = "sawtooth";
-      const filter = audio.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 350;
-      const gain = audio.createGain(); gain.gain.value = 0;
-      oscillator.connect(filter); filter.connect(gain); gain.connect(audio.destination); oscillator.start();
-      audioNodes.current = { oscillator, gain, filter };
-    }
-    playClockTick();
+    getAudioContext();
   }
   function pause() {
     clearInput();
@@ -162,6 +154,7 @@ export default function HillGame() {
     sim.current ??= new HillSim(SEED);
     fx.current ??= new HillFx();
     const effects = fx.current;
+    const sounds = new HillAudio();
     updateMuted(isMuted());
     let raf = 0, last = 0, accumulator = 0, hudTime = 0, warningSecond = -1, noticeUntil = 0;
     const keys = (event: KeyboardEvent) => {
@@ -186,7 +179,7 @@ export default function HillGame() {
     const blur = () => {
       pressed.current.clear(); pendingActions.current.clear(); setGas(false); setBrake(false);
       if (phaseRef.current === "running" || phaseRef.current === "countdown") { phaseRef.current = "paused"; setPhase("paused"); }
-      if (audioNodes.current) audioNodes.current.gain.gain.value = 0;
+      sounds.silence();
       accumulator = 0; last = 0;
     };
     const visibility = () => { if (document.hidden) blur(); };
@@ -195,13 +188,12 @@ export default function HillGame() {
     const frame = (now: number) => {
       const elapsed = last ? Math.min((now - last) / 1000, 0.1) : 0;
       last = now;
-      if (phaseRef.current === "bots") { raf = requestAnimationFrame(frame); return; }
+      if (phaseRef.current === "bots") { sounds.silence(); raf = requestAnimationFrame(frame); return; }
       const simulation = sim.current!;
       if (phaseRef.current === "countdown") {
         countdownTime.current -= elapsed;
         const next = Math.max(1, Math.ceil(countdownTime.current));
         setCountdown(old => old === next ? old : next);
-        if (Math.ceil(countdownTime.current + elapsed) !== next) playClockTick();
         if (countdownTime.current <= 0) { phaseRef.current = "running"; setPhase("running"); }
       }
       if (phaseRef.current === "running") {
@@ -244,13 +236,11 @@ export default function HillGame() {
       }
       if (noticeUntil && now > noticeUntil) { setNotice(""); noticeUntil = 0; }
       if (state.fuel < 20 && state.fuel > 0 && phaseRef.current === "running" && Math.floor(now / 1000) !== warningSecond) { playClockTick(); warningSecond = Math.floor(now / 1000); }
-      const nodes = audioNodes.current;
-      if (nodes) {
-        const audio = nodes.oscillator.context;
-        const pitch = state.vehicle === "beetle" ? 1.5 : state.vehicle === "monster" ? 0.65 : state.vehicle === "bus" ? 0.8 : 1;
-        nodes.oscillator.frequency.setTargetAtTime((35 + Math.min(120, state.speed * 4) + (pressed.current.size ? 25 : 0)) * pitch, audio.currentTime, 0.08);
-        nodes.gain.gain.setTargetAtTime(phaseRef.current === "running" && state.fuel > 0 && !isMuted() ? 0.025 : 0, audio.currentTime, 0.03);
-      }
+      sounds.update(state, {
+        gas: Array.from(pressed.current).some(k => KEYS[k] === "gas" || k.startsWith("gas:")),
+        brake: Array.from(pressed.current).some(k => KEYS[k] === "brake" || k.startsWith("brake:")),
+      }, simulation.seed, phaseRef.current === "countdown" ? -countdownTime.current * 60 : state.tick,
+      phaseRef.current === "countdown" || phaseRef.current === "running", phaseRef.current === "running");
       const el = canvas.current;
       if (el) {
         const rect = el.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -276,8 +266,7 @@ export default function HillGame() {
     return () => {
       cancelAnimationFrame(raf); window.removeEventListener("keydown", keys); window.removeEventListener("keyup", keys);
       window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", visibility);
-      const nodes = audioNodes.current;
-      if (nodes) { nodes.oscillator.stop(); nodes.oscillator.disconnect(); nodes.filter.disconnect(); nodes.gain.disconnect(); audioNodes.current = null; }
+      sounds.dispose();
     };
   }, [refreshProgress]);
 

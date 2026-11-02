@@ -5,11 +5,14 @@ import type { HillInput, HillSnapshot } from '@shared/hillTypes';
 import { HillSim } from '@shared/hillSim';
 import { HILL_DT, HILL_VEHICLES } from '@shared/hillTypes';
 import { drawHill, hillProject, type HillCamera } from './drawHill';
+import { HillAudio } from './hillAudio';
 import { HillFx } from './hillFx';
 import { drawVehicle, drawWheel } from './drawVehicle';
 /** `pull`: a race simulated in this browser (bots) — draw its latest frame as is, no interpolation or prediction. */
-export default function HillRaceCanvas({ frame, id, players, input, seq, finishDistance, pull }: { frame: HillRaceFrame; id: string; players: HillRacer[]; finishDistance?: number; input: React.RefObject<HillInput>; seq: React.RefObject<number>; pull?: () => HillRaceFrame | null }) {
+export default function HillRaceCanvas({ frame, id, players, input, seq, finishDistance, pull, audioActive = true }: { frame: HillRaceFrame; id: string; players: HillRacer[]; finishDistance?: number; input: React.RefObject<HillInput>; seq: React.RefObject<number>; pull?: () => HillRaceFrame | null; audioActive?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const audible = useRef(audioActive);
+  useEffect(() => { audible.current = audioActive; }, [audioActive]);
   const latest = useRef(frame); const names = useRef(players);
   useEffect(() => { latest.current = frame; names.current = players; }, [frame, players]);
   useEffect(() => {
@@ -22,6 +25,7 @@ export default function HillRaceCanvas({ frame, id, players, input, seq, finishD
     const history: { seq: number; input: HillInput }[] = [];
     const camera: HillCamera = { x: 5, y: 3, scale: 20 };
     const fx = new HillFx();
+    const audio = new HillAudio();
     const mix = (a: HillSnapshot, b: HillSnapshot, t: number): HillSnapshot => {
       const pose = (x: typeof a.chassis, y: typeof a.chassis) => ({ x: x.x + (y.x - x.x) * t, y: x.y + (y.y - x.y) * t, angle: x.angle + Math.atan2(Math.sin(y.angle - x.angle), Math.cos(y.angle - x.angle)) * t });
       return { ...b, chassis: pose(a.chassis, b.chassis), wheels: b.wheels.map((w, i) => pose(a.wheels[i], w)) };
@@ -30,7 +34,8 @@ export default function HillRaceCanvas({ frame, id, players, input, seq, finishD
       const dt = Math.min(.1, (now - last) / 1000); last = now;
       const local = !!pull;
       const f = pull?.() ?? latest.current, own = f.cars.find(c => c.id === id) ?? f.cars[0];
-      if (!own) { raf = requestAnimationFrame(draw); return; }
+      if (own) audio.update(own.state, input.current, f.seed, f.tick, audible.current, audible.current && f.tick >= 0 && !own.done && !own.respawning);
+      if (!own) { audio.silence(); raf = requestAnimationFrame(draw); return; }
       if (f !== seen && local) { previous = seen; seen = f; received = now; }
       else if (f !== seen) {
         previous = seen; seen = f; received = now;
@@ -95,7 +100,7 @@ export default function HillRaceCanvas({ frame, id, players, input, seq, finishD
       if (f.tick < 0) { ctx.font = 'bold 80px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(String(Math.ceil(-f.tick / 60)), w / 2, h * .4); }
       raf = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw); return () => cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(draw); return () => { cancelAnimationFrame(raf); audio.dispose(); };
   }, [id, input, seq, finishDistance, pull]);
   return <canvas ref={canvas} className="absolute inset-0 h-full w-full" aria-label="Đường đua nhiều người" />;
 }

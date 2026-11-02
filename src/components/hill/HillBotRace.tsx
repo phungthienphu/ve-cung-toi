@@ -187,7 +187,7 @@ export default function HillBotRace({ setup, map, vehicle, name, onExit }: { set
     <div className="fixed inset-0 z-30 touch-none select-none overflow-hidden bg-emerald-950 text-white">
       {hud && (
         <>
-          <HillRaceCanvas key={run} frame={hud} id={ME} players={players} finishDistance={finish ?? undefined} input={input} seq={seq} pull={pull} />
+          <HillRaceCanvas key={run} frame={hud} id={ME} players={players} finishDistance={finish ?? undefined} input={input} seq={seq} pull={pull} audioActive={!paused && !result} />
           {!result && (
             <HillRaceHud
               frame={hud}

@@ -70,7 +70,7 @@ export default function HillRoom({ room }: { room: string }) {
   if (state?.phase === 'race' && frame) {
     const finish = state.config.mode === 'race' ? state.config.length : null;
     return <main className={`${drawFontClass} fixed inset-0 overflow-hidden bg-emerald-950 text-white select-none`}>
-      <HillRaceCanvas frame={frame} id={identity.id} players={state.players} finishDistance={finish ?? undefined} input={input} seq={seq} />
+      <HillRaceCanvas frame={frame} id={identity.id} players={state.players} finishDistance={finish ?? undefined} input={input} seq={seq} audioActive={connected} />
       <HillRaceHud frame={frame} myId={identity.id} names={id => state.players.find(p => p.id === id)?.name ?? ''} finish={finish}
         label={`Ván ${state.round}/${state.config.rounds}`} connected={connected} held={held} onPress={press} onRespawn={() => send({ type: 'respawn' })}
         leave={<Link className="rounded-lg bg-emerald-950/80 px-2.5 py-2 font-bold" href="/con-duong-hoang-kim/friends">Rời phòng</Link>} muted={muted} onMute={toggleMute} />
