@@ -48,7 +48,7 @@
 |---|---|---|
 | Ga | Bàn đạp to góc phải dưới | → / D |
 | Phanh / lùi | Bàn đạp to góc trái dưới | ← / A |
-| Nhảy (xe đang ngửa thì thành **↻ Bật lật**, §2.6) | Nút tròn phía trên bàn đạp ga | Space / ↑ / W |
+| Nhảy (xe đang ngửa thì thành **↻ Bật lật**, §2.6) | Nút tròn phía trên bàn đạp ga | ↑ / W |
 | Dùng vật phẩm (chế độ đua) | Nút phía trên bàn đạp phanh | E / Shift |
 
 - **Bàn đạp:**
@@ -58,6 +58,13 @@
 - **Khi đang bay:**
   - Ga làm xe xoay ngửa ra sau, phanh làm xe chúc đầu.
   - Phần này đến từ phản lực của động cơ trong mô phỏng, cộng thêm một lực xoay nhỏ cho dễ điều khiển.
+
+### 2.1.1 Lao tới (bổ sung 02/11/2026)
+- Máy tính: **Space**; điện thoại: nút **💨 Lao tới** phía trên bàn đạp phanh.
+- Tốn **25⚡**, chờ **2 giây** giữa hai cú lao; giữ phím không tự lặp.
+- Đẩy cả thân và bánh về phía trước, tăng tối đa **8 m/s**, giới hạn vận tốc tiến **30 m/s**. Không dùng được khi hết xăng hoặc xe đang úp.
+- Chơi một mình: dùng để lấy đà vượt dốc. Giai đoạn 3: lực đẩy truyền qua va chạm vật lý để húc xe phía trước; chỉnh độ mạnh sau khi thử đua thật.
+- Nhảy / bật lật chuyển sang **↑ / W**; vẫn có nút riêng trên điện thoại.
 
 ### 2.2 Mô hình xe
 - **Thân xe:** một khối đặc (hình đa giác theo dáng xe).
@@ -159,7 +166,7 @@ Có thể thêm sau: ruộng bậc thang, tuyết Sa Pa (trơn), công trường
 | 🛻 **Xe tải quái vật** | ●●○○ | ●●●● | ●●●● | Bánh to vượt gồ ghề, khó lật, ủi được xe khác, tốn xăng |
 | 🚌 **Xe buýt** (cho vui) | ●●○○ | ●○○○ | ●●●○ | Dài, dễ kẹt đỉnh dốc, nhưng nóc rộng nên khó bị giẫm đổ |
 
-- **Mở khóa:** Jeep có sẵn, ba xe còn lại mở bằng xu (§5.3).
+- **Mở khóa:** Jeep có sẵn, ba xe còn lại mở bằng xu (§5.3). Giá khởi điểm giai đoạn 2: con bọ 150, tải quái vật 350, xe buýt 500 xu; chỉnh sau khi chơi thử.
 - **Khi đua:** xe nào cũng đã mở sẵn; chủ phòng có thể ép cả phòng đi cùng một loại xe.
 - **Nâng cấp** (động cơ, giảm xóc, lốp…) như Hill Climb Racing: **chưa làm**.
   - Trang không có đăng nhập nên không có chỗ giữ tiến trình lâu dài.

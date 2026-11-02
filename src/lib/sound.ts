@@ -926,3 +926,8 @@ export function playSkillResult(bad: boolean) {
   if (bad) glide(466, 233, 0, 0.4, 0.07, "triangle");
   else [880, 1174.7].forEach((f, i) => tone(f, i * 0.07, 0.25, 0.07, "sine"));
 }
+
+// ---------- Con Đường Hoàng Kim ----------
+export function playHillJump() { glide(180, 640, 0, 0.16, 0.07, "triangle"); }
+export function playHillDash() { noiseSweep(0, 0.28, 0.09, 350, 2200); glide(85, 210, 0, 0.22, 0.06, "sawtooth"); }
+export function playHillLanding() { noiseBurst(0.12, 0.08, 600); tone(75, 0, 0.12, 0.07, "sine"); }

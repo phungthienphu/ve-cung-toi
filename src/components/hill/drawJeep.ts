@@ -74,8 +74,9 @@ export function drawJeepBody(ctx: CanvasRenderingContext2D, state: HillSnapshot)
   }
 }
 
-export function drawJeepWheel(ctx: CanvasRenderingContext2D) {
+export function drawJeepWheel(ctx: CanvasRenderingContext2D, radius: number = HILL_JEEP.wheelRadius) {
   const r = HILL_JEEP.wheelRadius;
+  ctx.save(); ctx.scale(radius / r, radius / r);
   const tire = ctx.createRadialGradient(-0.13, 0.15, 0.04, 0, 0, r);
   tire.addColorStop(0, "#526167"); tire.addColorStop(0.62, "#2c383d"); tire.addColorStop(1, "#15252b");
   ctx.fillStyle = tire; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
@@ -95,4 +96,5 @@ export function drawJeepWheel(ctx: CanvasRenderingContext2D) {
   ctx.restore();
   ctx.beginPath(); ctx.arc(0, 0, 0.1, 0, Math.PI * 2); ctx.fillStyle = "#e5d3a1"; ctx.fill();
   ctx.strokeStyle = "#6a7a75"; ctx.lineWidth = 0.025; ctx.stroke();
+  ctx.restore();
 }

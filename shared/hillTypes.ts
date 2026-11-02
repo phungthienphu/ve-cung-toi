@@ -13,12 +13,19 @@ export const HILL_JEEP = {
   gasFuelPerSecond: 1.2,
   overturnSeconds: 3,
 } as const;
-export interface HillInput { gas: boolean; brake: boolean }
+export interface HillInput { gas: boolean; brake: boolean; jump?: boolean; dash?: boolean }
 export interface HillPose { x: number; y: number; angle: number }
-export interface HillPickup { id: string; x: number; y: number; kind: "coin" | "fuel" }
-export type HillEvent = "coin" | "fuel" | "overturned" | "recovered" | "finished";
+export interface HillPickup { id: string; x: number; y: number; kind: "coin" | "fuel" | "energy" }
+export type HillEvent = "coin" | "fuel" | "overturned" | "recovered" | "finished" | "energy" | "jump" | "flip" | "backflip" | "airtime" | "landing" | "dash";
 export interface HillSnapshot {
   tick: number;
+  map: HillMapId;
+  vehicle: HillVehicleId;
+  energy: number;
+  jumpReady: boolean;
+  dashReady: boolean;
+  dashCooldown: number;
+  skillCoins: number;
   chassis: HillPose;
   wheels: HillPose[];
   speed: number;
@@ -30,3 +37,41 @@ export interface HillSnapshot {
   finished: "overturned" | "fuel" | null;
   pickups: HillPickup[];
 }
+
+export type HillVehicleId = "jeep" | "beetle" | "monster" | "bus";
+export type HillMapId = "tea" | "sand" | "mountain" | "moon";
+export interface HillVehicle {
+  name: string; icon: string; price: number; description: string;
+  halfWidth: number; cabinWidth: number; wheelRadius: number; wheelbase: number;
+  density: number; motorSpeed: number; motorTorque: number; springHz: number; damping: number;
+  airTorque: number; recoveryTorque: number; fuelRate: number;
+}
+export const HILL_VEHICLES: Record<HillVehicleId, HillVehicle> = {
+  jeep: { ...HILL_JEEP, name: "Jeep", icon: "🚙", price: 0, description: "Cân bằng, dễ lái", halfWidth: 1.65, cabinWidth: 0.95, density: 1.5, fuelRate: 1 },
+  beetle: { name: "Xe con bọ", icon: "🚗", price: 150, description: "Nhẹ, nhanh, dễ lật", halfWidth: 1.35, cabinWidth: 0.8, wheelRadius: 0.45, wheelbase: 2, density: 0.9, motorSpeed: 43, motorTorque: 6, springHz: 4.5, damping: 0.7, airTorque: 6, recoveryTorque: 16, fuelRate: 0.9 },
+  monster: { name: "Tải quái vật", icon: "🛻", price: 350, description: "Bánh lớn, leo khỏe, hao xăng", halfWidth: 1.9, cabinWidth: 1, wheelRadius: 0.8, wheelbase: 2.9, density: 2.7, motorSpeed: 22, motorTorque: 27, springHz: 3.5, damping: 0.8, airTorque: 24, recoveryTorque: 65, fuelRate: 1.35 },
+  bus: { name: "Xe buýt", icon: "🚌", price: 500, description: "Thân dài, nặng, dễ kẹt dốc", halfWidth: 2.65, cabinWidth: 2.25, wheelRadius: 0.6, wheelbase: 4.1, density: 2, motorSpeed: 25, motorTorque: 17, springHz: 4, damping: 0.8, airTorque: 35, recoveryTorque: 90, fuelRate: 1.15 },
+};
+export const HILL_MAPS: Record<HillMapId, { name: string; icon: string; description: string; gravity: number; friction: number; fuelRate: number; amplitude: number; sky: [string, string]; hills: string[]; ground: string; edge: string }> = {
+  tea: { name: "Đồi chè", icon: "🌾", description: "Đồi thoai thoải, dễ làm quen", gravity: 9.8, friction: 1, fuelRate: 1, amplitude: 1, sky: ["#79c8e4", "#eaf6ca"], hills: ["#9cc9a0", "#77ad89", "#519574"], ground: "#9b6d43", edge: "#94bb52" },
+  sand: { name: "Đồi cát Mũi Né", icon: "🏜️", description: "Bám đường kém, hao xăng hơn", gravity: 9.8, friction: 0.5, fuelRate: 1.2, amplitude: 1.3, sky: ["#f3ba83", "#fff2c6"], hills: ["#e9c290", "#dcb17a", "#c79960"], ground: "#ce9d5b", edge: "#ffe3a3" },
+  mountain: { name: "Đèo Mã Pí Lèng", icon: "🏔️", description: "Dốc gắt và những bậc đá", gravity: 9.8, friction: 1.1, fuelRate: 1, amplitude: 2, sky: ["#8aa8ce", "#e2e7eb"], hills: ["#abb9c4", "#819ca5", "#5e7e86"], ground: "#68777d", edge: "#b4c5af" },
+  moon: { name: "Mặt trăng", icon: "🌕", description: "Trọng lực thấp, bay xa", gravity: 1.6, friction: 0.8, fuelRate: 1, amplitude: 1.2, sky: ["#101d43", "#3a4674"], hills: ["#535c83", "#707796", "#85899f"], ground: "#797c92", edge: "#c5c9de" },
+};
+export interface HillOptions { map?: HillMapId; vehicle?: HillVehicleId }
+export interface HillFlag { distance: number; name: string; kind: "personal" | "leader" | "nearby" }
+export interface HillLeaderboardEntry { playerId: string; name: string; distance: number; rank: number }
+export interface HillWallet { coins: number; unlocked: HillVehicleId[] }
+export interface HillBoard { leaders: HillLeaderboardEntry[]; personal: HillLeaderboardEntry | null; nearby: HillLeaderboardEntry[] }
+export interface HillRunSubmission {
+  runId: string; playerId: string; name: string; map: HillMapId; vehicle: HillVehicleId;
+  seed: number; day: string | null; distance: number; coins: number; duration: number;
+}
+export const HILL_DASH = { energy: 25, cooldownTicks: 120, speedBoost: 8, maxSpeed: 30 } as const;
+export const HILL_BASE_SEED = 20261102;
+export function hillDay(at = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+}
+export function hillDailySeed(day: string): number { return Number(day.replaceAll("-", "")); }
+export function isHillMap(value: unknown): value is HillMapId { return typeof value === "string" && Object.hasOwn(HILL_MAPS, value); }
+export function isHillVehicle(value: unknown): value is HillVehicleId { return typeof value === "string" && Object.hasOwn(HILL_VEHICLES, value); }
