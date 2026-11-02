@@ -645,3 +645,9 @@ Trước đó xe con bọ (150 xu) vừa nhanh nhất vừa leo tốt nhất, c�
 - **Lưu ý:**
   - Các con số độ cao mới tính trên giấy, **cần lái thử** xem cầu phóng có quá dễ hoặc quá khó lên không.
   - Kỷ lục cũ trên bảng xếp hạng được lập khi chưa có lối tắt.
+
+**Hết xăng khi đua (sửa sau lần chơi thử 02/11/2026):**
+- Ở chế độ **Đua về đích**, hết xăng không còn bị tính là xong lượt. Xe **chạy cầm cự** (35% tốc độ, 60% lực kéo, không lao tới được) cho tới can xăng kế tiếp, mỗi 60 m. HUD báo "⛽ Cầm cự".
+- Hồi sinh khi Đua về đích được đổ ít nhất 30% xăng, để xe cầm cự không kẹt mãi dưới cùng một con dốc.
+- **Chơi một mình** và **Ai đi xa nhất** giữ luật cũ: hết xăng là hết lượt.
+- Nút "Hồi sinh" không còn hiện khi lượt đã xong. Trước đây nó vẫn hiện nhưng bấm không có tác dụng.

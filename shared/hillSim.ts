@@ -6,6 +6,9 @@ import { HillPhysicsWorld, isHillDeck } from "./hillWorld";
 
 /** Water slows a car by this fraction of its speed per second (the owner asked for 1–2%). */
 const WATER_DRAG = 0.02;
+/** Racing to a finish line on an empty tank: the car limps on at this share of its top speed and pull until the next can, instead of stopping for good. */
+const LIMP_SPEED = 0.35;
+const LIMP_TORQUE = 0.6;
 
 /** Owns physics only. Call step exactly once per fixed tick on any runtime. */
 export class HillSim {
@@ -103,9 +106,10 @@ export class HillSim {
     const V = this.config;
     const direction = Number(input.gas) - Number(input.brake);
     const grounded = this.anyWheelDown(); this.wasGrounded = grounded;
+    const limp = this.raceFuel && this.fuel === 0, powered = this.fuel > 0 || limp;
     this.joints.forEach(j => {
-      j.setMotorSpeed(this.fuel > 0 ? -direction * V.motorSpeed : 0);
-      j.setMaxMotorTorque((this.fuel > 0 && direction !== 0) || (this.fuel === 0 && input.brake) ? V.motorTorque * Math.max(0.2, HILL_MAPS[this.map].gravity / 9.8) : 0);
+      j.setMotorSpeed(powered ? -direction * V.motorSpeed * (limp ? LIMP_SPEED : 1) : 0);
+      j.setMaxMotorTorque((powered && direction !== 0) || (this.fuel === 0 && input.brake) ? V.motorTorque * Math.max(0.2, HILL_MAPS[this.map].gravity / 9.8) * (limp ? LIMP_TORQUE : 1) : 0);
     });
     if (!grounded || this.overturned) this.chassis.applyTorque(direction * (this.overturned ? V.recoveryTorque : V.airTorque), true);
     if (grounded) this.lastGrounded = this.tick;
@@ -191,7 +195,8 @@ export class HillSim {
         if (this.overturn >= J.overturnSeconds) this.finished = "overturned";
       }
     }
-    this.stopped = this.fuel === 0 && this.chassis.getLinearVelocity().length() < 0.35 ? this.stopped + HILL_DT : 0;
+    // Out of fuel ends a solo run and an "ai đi xa nhất" race; a race to the finish limps on instead.
+    this.stopped = this.fuel === 0 && !this.raceFuel && this.chassis.getLinearVelocity().length() < 0.35 ? this.stopped + HILL_DT : 0;
     if (this.stopped >= 3) this.finished = "fuel";
     if (this.finished) this.events.push("finished");
   }

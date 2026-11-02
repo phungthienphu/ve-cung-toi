@@ -46,6 +46,8 @@ export function HillRaceHud({
   const rank = ranked.findIndex((item) => item.id === myId) + 1;
   const locked = !connected || !!car?.done;
   const overturned = car?.state.overturnRemaining != null;
+  /** Racing to a finish on an empty tank: the car limps on (HillSim) until the next can. */
+  const limping = finish !== null && !!car && !car.done && car.state.fuel <= 0;
   // "Ai đi xa nhất" has no finish: the map reaches a bit past the leader and grows in 100 m steps.
   const furthest = Math.max(0, ...frame.cars.map((item) => item.state.distance));
   const course = finish ?? Math.max(300, Math.ceil((furthest + 150) / 100) * 100);
@@ -92,7 +94,11 @@ export function HillRaceHud({
           />
         </div>
         <div className="w-24 shrink-0 space-y-1.5 rounded-2xl bg-emerald-950/80 p-2 text-[11px] font-bold backdrop-blur sm:w-32">
-          <Meter label="⛽" value={car?.state.fuel ?? 0} color={(car?.state.fuel ?? 100) < 20 ? 'bg-red-400' : 'bg-amber-300'} />
+          {limping ? (
+            <p className="animate-pulse text-center text-red-300">⛽ Cầm cự</p>
+          ) : (
+            <Meter label="⛽" value={car?.state.fuel ?? 0} color={(car?.state.fuel ?? 100) < 20 ? 'bg-red-400' : 'bg-amber-300'} />
+          )}
           <Meter label="⚡" value={car?.state.energy ?? 0} color="bg-cyan-300" />
         </div>
       </div>
@@ -106,8 +112,9 @@ export function HillRaceHud({
       {!connected && <Toast tone="red">Mất kết nối, đang nối lại…</Toast>}
       {car?.squash && <Toast tone="red">🥞 Bị giẫm bẹp! Nhảy (W) hoặc lao tới (Space) để gỡ lại</Toast>}
       {car?.respawning && <Toast>↺ Đang hồi sinh tại checkpoint…</Toast>}
-      {car?.done && <Toast>🏁 Xong lượt! Đang chờ các xe khác…</Toast>}
-      {car?.stuck && (
+      {limping && !car?.squash && <Toast tone="red">⛽ Hết xăng! Đang chạy cầm cự — nhặt can xăng phía trước</Toast>}
+      {car?.done && <Toast>{car.finishTick !== null ? '🏁 Về đích! Đang chờ các xe khác…' : '⛽ Hết xăng! Đang chờ các xe khác…'}</Toast>}
+      {car?.stuck && !car.done && (
         <GameButton className="absolute bottom-[15.5rem] left-1/2 -translate-x-1/2 px-5 py-2.5 text-lg" onClick={onRespawn}>
           ↺ Hồi sinh
         </GameButton>
