@@ -33,7 +33,8 @@ export default function SoundToggle() {
     setMusicOn(toggleMusic());
   }
 
-  if (inMathQuest || inOldMaidRoom) return null;
+  // Hill has its own HUD controls; keep the floating buttons off its pedals.
+  if (inMathQuest || inOldMaidRoom || pathname.startsWith("/con-duong-hoang-kim")) return null;
   return (
     <div className="fixed bottom-4 right-4 z-40 flex gap-2">
       {!muted && !inWerewolf && (

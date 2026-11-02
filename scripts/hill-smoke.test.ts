@@ -1,0 +1,47 @@
+/** Run: node --import tsx scripts/hill-smoke.test.ts */
+import assert from "node:assert/strict";
+import { Vec2 } from "planck";
+import { HillSim } from "../shared/hillSim";
+import { hillHeight, hillPickups } from "../shared/hillTerrain";
+import { HILL_DT } from "../shared/hillTypes";
+
+const idle = { gas: false, brake: false };
+const gas = { gas: true, brake: false };
+const step = (s: HillSim, count: number, input = idle) => { for (let i = 0; i < count; i++) s.step(input); };
+assert.equal(HILL_DT, 1 / 60);
+for (let x = -30; x <= 40; x++) assert.equal(hillHeight(17, x), 0);
+assert.deepEqual(hillPickups(17, 50, 500), hillPickups(17, 50, 500));
+assert.notEqual(hillHeight(17, 100), hillHeight(18, 100));
+const a = new HillSim(20261102), b = new HillSim(20261102);
+step(a, 1200, gas); step(b, 1200, gas);
+assert.deepEqual(a.snapshot(), b.snapshot(), "same seed and input reproduce the simulation");
+assert.ok(a.snapshot().distance > 100, "Jeep must drive past the flat starting area");
+assert.ok(a.snapshot().coins > 0, "driving collects coins");
+assert.ok(a.drainEvents().includes("fuel"), "fuel pickup refills the tank");
+assert.ok(a.world.getBodyCount() < 20, "terrain streaming bounds physics bodies");
+const reverse = new HillSim(1); step(reverse, 300, { gas: false, brake: true });
+assert.ok(reverse.snapshot().chassis.x < 0, "brake reverses on flat ground");
+const empty = new HillSim(1); step(empty, 5100);
+assert.equal(empty.snapshot().finished, "fuel", "empty tank ends after stopping for three seconds");
+const ended = empty.snapshot(); step(empty, 60, gas); assert.deepEqual(empty.snapshot(), ended);
+const crash = new HillSim(1);
+// Drop the complete assembly upside down, retaining relative wheel positions.
+crash.chassis.setTransform(Vec2(5, 1.2), Math.PI);
+crash.wheels[0].setTransform(Vec2(6.25, 2.1), Math.PI);
+crash.wheels[1].setTransform(Vec2(3.75, 2.1), Math.PI);
+step(crash, 100);
+assert.ok(crash.snapshot().overturnRemaining !== null, "roof-ground contact starts recovery timer");
+assert.equal(crash.snapshot().finished, null, "roof impact does not immediately end a run");
+step(crash, 240);
+assert.equal(crash.snapshot().finished, "overturned");
+const recover = new HillSim(1);
+recover.chassis.setTransform(Vec2(5, 1.2), Math.PI);
+recover.wheels[0].setTransform(Vec2(6.25, 2.1), Math.PI);
+recover.wheels[1].setTransform(Vec2(3.75, 2.1), Math.PI);
+step(recover, 60);
+recover.chassis.setTransform(Vec2(5, 1.55), 0); recover.chassis.setLinearVelocity(Vec2(0, 0)); recover.chassis.setAngularVelocity(0);
+recover.wheels.forEach((w, i) => { w.setTransform(Vec2(i ? 6.25 : 3.75, 0.65), 0); w.setLinearVelocity(Vec2(0, 0)); w.setAngularVelocity(0); });
+step(recover, 60);
+assert.ok(recover.drainEvents().includes("recovered"));
+assert.equal(recover.snapshot().overturnRemaining, null);
+console.log("Hill smoke passed: deterministic terrain/physics, driving, reverse, pickups, streaming, fuel, roof timer and recovery.");

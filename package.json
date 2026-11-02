@@ -25,6 +25,7 @@
     "openai": "^7.45.1",
     "partyserver": "0.5.10",
     "partysocket": "^1.0.2",
+    "planck": "~1.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.186.1"
