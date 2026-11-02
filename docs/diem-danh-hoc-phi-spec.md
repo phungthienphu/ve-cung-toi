@@ -94,6 +94,18 @@ Tháng 10 · 01/10 → 31/10                     1.600.000đ   ● Chưa trả
 
   Đợt có hai mức giá thì tin nhắn tách thành từng dòng (ví dụ "5 buổi × 140.000đ + 4 buổi × 200.000đ"). Đợt có buổi nghỉ thì thêm dòng "Nghỉ: 08/11 (lễ)".
 
+### 6b. Phiếu học phí (ảnh) — thêm 02/11/2026
+
+Mỗi đợt đã chốt có nút **🧾 Phiếu học phí**. Bấm vào sẽ mở bản xem trước, và ảnh xem trước chính là file PNG tải về.
+
+- **Đầu phiếu:** "Gia sư <tên>", tiêu đề **PHIẾU BÁO HỌC PHÍ**, tên đợt kèm khoảng ngày, **số phiếu** (`HP-<yymm>-<4 ký tự cuối id>`) và **ngày lập** (ngày chốt đợt).
+- **Thông tin:** học sinh/lớp, lịch học kèm số giờ/buổi, kỳ thu, đơn giá.
+- **Bảng buổi học:** STT · Ngày (thứ, dd/mm/yyyy) · Nội dung (Buổi học / Buổi học bù / Dạy thử (miễn phí) / Nghỉ · lý do (không tính phí), kèm ghi chú buổi) · Thành tiền.
+- **Tổng kết:** số buổi, số giờ, số buổi nghỉ / dạy thử; từng dòng "n buổi × giá"; ô **TỔNG CỘNG**; dòng **bằng chữ** (ví dụ "Hai triệu đồng chẵn").
+- **Đã trả:** thêm dấu **ĐÃ THANH TOÁN** kèm ngày và dòng "Đã nhận đủ …", nên phiếu dùng luôn làm biên nhận.
+- **Ghi chú cuối phiếu:** tùy chọn, ví dụ số tài khoản. Phần này và tên gia sư được lưu một lần trên server (`mq_tuition_settings`) và dùng cho mọi phiếu.
+- **Nút:** ⬇️ **Tải ảnh**; 📤 **Gửi qua Zalo…** (bảng chia sẻ của điện thoại, chỉ hiện khi máy hỗ trợ); 📋 chép tin nhắn chữ như cũ.
+
 ## 7. Thống kê
 
 - **Theo tháng** (mọi lớp): số buổi dạy, số giờ, tổng tiền đã thu và chưa thu.

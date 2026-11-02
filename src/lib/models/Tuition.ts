@@ -45,6 +45,14 @@ export interface InvoiceDoc {
   createdAt: Date;
 }
 
+/** What the tuition bill image shows besides the numbers; one document, key "bill". */
+export interface TuitionSettingsDoc {
+  key: string;
+  tutorName: string;
+  /** Free text at the bottom of the bill (bank account, reminders…). */
+  note: string;
+}
+
 const ClassSchema = new Schema<ClassDoc>(
   {
     name: { type: String, required: true },
@@ -84,6 +92,15 @@ const InvoiceSchema = new Schema<InvoiceDoc>(
   { timestamps: true, collection: "mq_invoices" }
 );
 
+const TuitionSettingsSchema = new Schema<TuitionSettingsDoc>(
+  {
+    key: { type: String, required: true, unique: true },
+    tutorName: { type: String, default: "" },
+    note: { type: String, default: "" },
+  },
+  { timestamps: true, collection: "mq_tuition_settings" }
+);
+
 // Reused across hot reloads in dev, where this module re-runs but mongoose keeps its registry.
 export const MqClass: Model<ClassDoc> =
   (mongoose.models.MqClass as Model<ClassDoc> | undefined) ?? mongoose.model<ClassDoc>("MqClass", ClassSchema);
@@ -91,3 +108,6 @@ export const MqSession: Model<SessionDoc> =
   (mongoose.models.MqSession as Model<SessionDoc> | undefined) ?? mongoose.model<SessionDoc>("MqSession", SessionSchema);
 export const MqInvoice: Model<InvoiceDoc> =
   (mongoose.models.MqInvoice as Model<InvoiceDoc> | undefined) ?? mongoose.model<InvoiceDoc>("MqInvoice", InvoiceSchema);
+export const MqTuitionSettings: Model<TuitionSettingsDoc> =
+  (mongoose.models.MqTuitionSettings as Model<TuitionSettingsDoc> | undefined) ??
+  mongoose.model<TuitionSettingsDoc>("MqTuitionSettings", TuitionSettingsSchema);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HOME_CRUMB, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, TutorLogin, TutorTabs, logout } from "@/components/mathquest/shared";
 import { AttendanceCalendar } from "@/components/mathquest/attendance/Calendar";
 import { ClassCard, NewClassForm } from "@/components/mathquest/attendance/Classes";
+import { BillButton } from "@/components/mathquest/attendance/Bill";
 import { CopyMessage, type AttendanceData } from "@/components/mathquest/attendance/ui";
 import { WEEK, formatVnd, missedDays, parentMessage, shortDay, todayKey, weekdayOf } from "@/lib/mathQuest/tuition";
 
@@ -154,7 +155,8 @@ function Reminders({ data, today, onJump, act }: { data: AttendanceData; today: 
                   </span>
                   <span className="font-bold">{formatVnd(invoice.total)}</span>
                   <div className="flex w-full flex-wrap items-center gap-1.5">
-                    <CopyMessage text={parentMessage(cls, invoice.title, sessions)} primary />
+                    <BillButton cls={cls} invoice={invoice} sessions={sessions} settings={data.billSettings} act={act} primary />
+                    <CopyMessage text={parentMessage(cls, invoice.title, sessions)} />
                     <button onClick={() => act({ action: "set_paid", invoiceId: invoice.id, paid: true })} className="rounded-lg bg-sage-500 px-2.5 py-1 text-xs font-bold text-white">
                       ✓ Đã trả
                     </button>

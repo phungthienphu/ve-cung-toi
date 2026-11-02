@@ -35,6 +35,12 @@ export interface TuitionInvoice {
   to: string;
   total: number;
   paidAt: string | null;
+  createdAt: string;
+}
+
+export interface BillSettings {
+  tutorName: string;
+  note: string;
 }
 
 export const DATE_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -143,4 +149,37 @@ export function parentMessage(cls: TuitionClass, title: string, sessions: Tuitio
   lines.push(`- Học phí: ${breakdown ? `${breakdown} = ` : ""}${formatVnd(total)}`);
   lines.push("Anh/chị thanh toán giúp em nhé. Em cảm ơn ạ!");
   return lines.join("\n");
+}
+
+const DIGITS = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+
+/** One group of three digits; `full` reads leading zeros ("không trăm lẻ năm") as a non-leading group must. */
+function readTriple(value: number, full: boolean) {
+  const [hundreds, tens, units] = [Math.floor(value / 100), Math.floor(value / 10) % 10, value % 10];
+  const words: string[] = [];
+  if (full || hundreds > 0) words.push(DIGITS[hundreds], "trăm");
+  if (tens === 0) {
+    if (units > 0 && words.length) words.push("lẻ");
+  } else if (tens === 1) words.push("mười");
+  else words.push(DIGITS[tens], "mươi");
+  if (units === 1 && tens > 1) words.push("mốt");
+  else if (units === 5 && tens > 0) words.push("lăm");
+  else if (units > 0) words.push(DIGITS[units]);
+  return words.join(" ");
+}
+
+/** 2_050_000 → "Hai triệu không trăm năm mươi nghìn đồng chẵn" — the "bằng chữ" line of a bill. */
+export function vndInWords(amount: number) {
+  if (amount === 0) return "Không đồng";
+  const scales = ["", "nghìn", "triệu", "tỷ", "nghìn tỷ"];
+  const groups: number[] = [];
+  for (let rest = Math.round(Math.abs(amount)); rest > 0; rest = Math.floor(rest / 1000)) groups.push(rest % 1000);
+  const words: string[] = [];
+  for (let index = groups.length - 1; index >= 0; index -= 1) {
+    if (groups[index] === 0) continue;
+    words.push(readTriple(groups[index], index < groups.length - 1));
+    if (scales[index]) words.push(scales[index]);
+  }
+  const text = `${words.join(" ")} đồng${amount % 1000 === 0 ? " chẵn" : ""}`;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

@@ -19,6 +19,7 @@ import {
   type TuitionInvoice,
   type TuitionSession,
 } from "@/lib/mathQuest/tuition";
+import { BillButton } from "./Bill";
 import { settledUntil } from "./Calendar";
 import { Card, CopyMessage, MoneyInput, STATUS_STYLE, WeekdayPicker, scheduleLabel, type Act, type AttendanceData } from "./ui";
 
@@ -198,7 +199,8 @@ function InvoiceRow({ cls, invoice, data, act, latest }: { cls: TuitionClass; in
         </span>
       </button>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <CopyMessage text={parentMessage(cls, invoice.title, sessions)} primary={!invoice.paidAt} />
+        <BillButton cls={cls} invoice={invoice} sessions={sessions} settings={data.billSettings} act={act} primary={!invoice.paidAt} />
+        <CopyMessage text={parentMessage(cls, invoice.title, sessions)} />
         <button
           onClick={() => act({ action: "set_paid", invoiceId: invoice.id, paid: !invoice.paidAt })}
           className={`rounded-lg px-2.5 py-1 text-xs font-bold ${invoice.paidAt ? "border border-cream-200 bg-white text-ink/60" : "bg-sage-500 text-white"}`}

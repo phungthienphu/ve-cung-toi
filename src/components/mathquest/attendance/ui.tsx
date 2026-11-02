@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { WEEK, type SessionStatus, type TuitionClass, type TuitionInvoice, type TuitionSession } from "@/lib/mathQuest/tuition";
+import { WEEK, type BillSettings, type SessionStatus, type TuitionClass, type TuitionInvoice, type TuitionSession } from "@/lib/mathQuest/tuition";
 
 // Building blocks shared by the attendance tab (docs/diem-danh-hoc-phi-spec.md).
 
@@ -9,6 +9,7 @@ export interface AttendanceData {
   classes: TuitionClass[];
   sessions: TuitionSession[];
   invoices: TuitionInvoice[];
+  billSettings: BillSettings;
 }
 
 export type Act = (payload: Record<string, unknown>) => Promise<boolean>;

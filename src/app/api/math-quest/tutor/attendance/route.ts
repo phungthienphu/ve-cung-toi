@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { MqClass, MqInvoice, MqSession, type ClassDoc } from "@/lib/models/Tuition";
+import { MqClass, MqInvoice, MqSession, MqTuitionSettings, type ClassDoc } from "@/lib/models/Tuition";
 import { isId, tutorGuard } from "@/lib/mathQuest/tutorApi";
 import { DATE_PATTERN, OFF_REASONS, sessionAmount, type OffReason } from "@/lib/mathQuest/tuition";
 
@@ -11,10 +11,11 @@ import { DATE_PATTERN, OFF_REASONS, sessionAmount, type OffReason } from "@/lib/
 export async function GET() {
   const denied = await tutorGuard();
   if (denied) return denied;
-  const [classes, sessions, invoices] = await Promise.all([
+  const [classes, sessions, invoices, settings] = await Promise.all([
     MqClass.find().sort({ createdAt: 1 }).lean(),
     MqSession.find().sort({ date: 1 }).lean(),
     MqInvoice.find().sort({ to: 1 }).lean(),
+    MqTuitionSettings.findOne({ key: "bill" }).lean(),
   ]);
   return NextResponse.json({
     classes: classes.map((cls) => ({
@@ -44,7 +45,9 @@ export async function GET() {
       to: invoice.to,
       total: invoice.total,
       paidAt: invoice.paidAt,
+      createdAt: invoice.createdAt,
     })),
+    billSettings: { tutorName: settings?.tutorName ?? "", note: settings?.note ?? "" },
   });
 }
 
@@ -211,6 +214,14 @@ export async function POST(req: Request) {
     case "set_paid": {
       if (!isId(body.invoiceId)) return fail("Không tìm thấy đợt thu.");
       await MqInvoice.updateOne({ _id: body.invoiceId }, { $set: { paidAt: body.paid ? new Date() : null } });
+      return ok();
+    }
+
+    case "save_bill_settings": {
+      const tutorName = cleanText(body.tutorName, 60);
+      // The note keeps its line breaks (an account number on its own line).
+      const note = String(body.note ?? "").replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 300);
+      await MqTuitionSettings.updateOne({ key: "bill" }, { $set: { tutorName, note } }, { upsert: true });
       return ok();
     }
 
