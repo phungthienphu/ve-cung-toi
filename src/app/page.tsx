@@ -5,8 +5,9 @@ import { Candle, Medium } from "@/components/cards/Medium";
 import { MonsterSprite } from "@/components/mathboss/MonsterSprite";
 import { drawFontClass } from "@/lib/drawFonts";
 
-// The game hub: a hero, a spotlight on the newest games, and a bento grid of
-// every game with its own cover art (games without art get a drawn scene).
+// The game hub: a hero, the newest games (the very newest big, the two before
+// it side by side), and a bento grid of every game with its own cover art
+// (games without art get a drawn scene).
 
 type Cover = { image: string; position: string } | { scene: "sea" | "math" | "seance" };
 
@@ -26,10 +27,10 @@ const GAMES: Game[] = [
   {
     href: "/con-duong-hoang-kim",
     title: "Con Đường Hoàng Kim",
-    description: "Lao qua dốc hiểm, nhảy qua đầu xe và húc nhau cùng hội bạn. Lái solo hoặc đua chồng tháp 2–6 người.",
+    description: "Lao qua dốc hiểm, bay lên cầu trên không, húc và giẫm đầu nhau. Phá kỷ lục một mình, đua với bot hoặc rủ cả hội.",
     tag: "Đua xe địa hình",
-    players: "1–6 người",
-    cover: { image: "/hill/cover.svg", position: "60% 45%" },
+    players: "1–6 · có bot",
+    cover: { image: "/racing-with-me.png", position: "42% 50%" },
     size: "hero",
     isNew: true,
   },
@@ -262,6 +263,54 @@ function GameTile({ game, index }: { game: Game; index: number }) {
   );
 }
 
+const HILL_MODES = ["🏆 Phá kỷ lục", "🗓️ Đường hôm nay", "🤖 Đua với bot", "👥 Đua 2–6 người"];
+
+/** The newest game, full width: its cover art and the four ways to play. */
+function HillSpotlight() {
+  return (
+    <Link
+      href="/con-duong-hoang-kim"
+      className="group relative isolate grid overflow-hidden rounded-[2rem] ring-1 ring-amber-300/30 transition duration-300 hover:ring-2 hover:ring-amber-300/70 lg:grid-cols-[1fr_1.15fr]"
+    >
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_15%_25%,#166534_0%,#052e16_55%,#02160b_100%)]" />
+      <div className="order-2 flex flex-col justify-center p-6 sm:p-10 lg:order-1">
+        <div className="flex items-center gap-2.5">
+          <NewBadge />
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-amber-200/80">Vừa ra mắt · đua xe địa hình</span>
+        </div>
+        <h2 className="mt-3 bg-gradient-to-r from-[#fde68a] via-[#fbbf24] to-[#f59e0b] bg-clip-text font-draw-display text-4xl font-extrabold leading-none text-transparent drop-shadow-[0_0_18px_rgba(251,191,36,0.3)] sm:text-6xl">
+          Con Đường Hoàng Kim
+        </h2>
+        <p className="mt-3 max-w-lg leading-relaxed text-emerald-50/80">
+          Vật lý thật: leo dốc, bay qua vực, lấy đà nhảy lên cầu trên không, húc và giẫm đầu nhau ngay từ tháp xuất phát. Bốn xe, mỗi xe một tài: Jeep, VF3, VinBus và tải quái vật.
+        </p>
+        <ul className="mt-4 flex flex-wrap gap-2">
+          {HILL_MODES.map((mode) => (
+            <li key={mode} className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-emerald-50/90 ring-1 ring-white/10">
+              {mode}
+            </li>
+          ))}
+        </ul>
+        <span className="mt-6 inline-flex w-fit items-center gap-2 rounded-2xl bg-gradient-to-b from-[#fde68a] to-[#f59e0b] px-6 py-3 font-draw-display text-xl font-extrabold text-[#3f1d04] shadow-[0_5px_0_#92400e] transition group-hover:brightness-110">
+          🏁 Vào đường đua <span aria-hidden className="transition-transform group-hover:translate-x-1">→</span>
+        </span>
+      </div>
+      <div className="relative order-1 h-56 overflow-hidden sm:h-72 lg:order-2 lg:h-auto lg:min-h-[360px]">
+        <Image
+          src="/racing-with-me.png"
+          alt="Bầy heo lái xe địa hình lao về cổng đích, bụi tung mù mịt"
+          fill
+          sizes="(min-width: 1024px) 640px, 100vw"
+          className="object-cover transition duration-700 ease-out group-hover:scale-105"
+          style={{ objectPosition: "40% 50%" }}
+        />
+        {/* Melts into the text: below it on a phone, to its left on a wide screen. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#052e16] via-transparent via-40% lg:bg-gradient-to-r lg:via-20%" />
+      </div>
+    </Link>
+  );
+}
+
 export default function GamePickerPage() {
   return (
     <main className={`${drawFontClass} ${seanceFontClass} bg-hub min-h-app text-white`}>
@@ -273,15 +322,16 @@ export default function GamePickerPage() {
           </Link>
           {/* On a phone the links are icons only, "NEW" shrinks to a dot, so the name stays on one line. */}
           <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/ai-la-heo" aria-label="Ai Là Heo (mới)" className="relative flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
-              🐷 <span className="hidden sm:inline">Ai Là Heo</span>
+            <Link href="/con-duong-hoang-kim" aria-label="Con Đường Hoàng Kim (mới)" className="relative flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
+              🚙 <span className="hidden sm:inline">Hoàng Kim</span>
               <NewBadge className="hidden !px-2 !py-0.5 text-[10px] sm:inline" />
               <span aria-hidden className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff5ea8] ring-2 ring-[#0a0812] sm:hidden" />
             </Link>
-            <Link href="/card-draw" aria-label="Bà Đồng (mới)" className="relative flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
+            <Link href="/ai-la-heo" aria-label="Ai Là Heo" className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
+              🐷 <span className="hidden sm:inline">Ai Là Heo</span>
+            </Link>
+            <Link href="/card-draw" aria-label="Bà Đồng" className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
               🔮 <span className="hidden sm:inline">Bà Đồng</span>
-              <NewBadge className="hidden !px-2 !py-0.5 text-[10px] sm:inline" />
-              <span aria-hidden className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff5ea8] ring-2 ring-[#0a0812] sm:hidden" />
             </Link>
             <Link href="/leaderboard" aria-label="Lịch sử trận" className="rounded-full px-2.5 py-1.5 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-white sm:px-3">
               🏆 <span className="hidden sm:inline">Lịch sử trận</span>
@@ -305,7 +355,7 @@ export default function GamePickerPage() {
               Chơi Cùng <span className="bg-gradient-to-r from-[#ffd36e] via-[#ff8a5b] to-[#ff5ea8] bg-clip-text text-transparent">Tôi</span>
             </h1>
             <p className="mt-4 max-w-lg text-base leading-relaxed text-white/75 sm:text-lg">
-              Tạo phòng, gửi link, cả hội vào chơi — vẽ đoán chữ, Ma Sói, bắn tăng, đá bóng, hải chiến, rút bài Ai Là Heo, và cả bà đồng xem bói.
+              Tạo phòng, gửi link, cả hội vào chơi — đua xe địa hình, vẽ đoán chữ, Ma Sói, bắn tăng, đá bóng, hải chiến, rút bài Ai Là Heo, và cả bà đồng xem bói.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a
@@ -314,14 +364,11 @@ export default function GamePickerPage() {
               >
                 🎮 Chọn trò chơi
               </a>
-              <Link href="/con-duong-hoang-kim" className="flex items-center gap-2 rounded-2xl bg-amber-300 px-5 py-3 font-draw-display text-lg font-extrabold text-emerald-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-200">
-                🚙 Con Đường Hoàng Kim <span aria-hidden>→</span>
-              </Link>
               <Link
-                href="/card-draw"
+                href="/con-duong-hoang-kim"
                 className="flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-draw-display text-lg font-extrabold ring-1 ring-white/20 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15"
               >
-                🔮 Xem bói <NewBadge />
+                🚙 Đua xe mới <NewBadge />
               </Link>
             </div>
             <dl className="mt-9 flex flex-wrap gap-x-8 gap-y-3">
@@ -341,8 +388,11 @@ export default function GamePickerPage() {
           </div>
         </section>
 
-        {/* Spotlight on the newest games: side by side on a wide screen, stacked on a phone */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {/* The newest games: the newest full width, the two before it side by side (stacked on a phone). */}
+        <div className="mt-6">
+          <HillSpotlight />
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Link
             href="/ai-la-heo"
             className="group relative isolate grid overflow-hidden rounded-[2rem] bg-[#1d0f08] ring-1 ring-[#ff9ec4]/30 transition duration-300 hover:ring-2 hover:ring-[#ff9ec4]/70 sm:grid-cols-[1.15fr_1fr] lg:grid-cols-1"
@@ -351,7 +401,7 @@ export default function GamePickerPage() {
             <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-8">
               <div className="flex items-center gap-2.5">
                 <NewBadge />
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffc6dc]/80">Vừa ra mắt</span>
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffc6dc]/80">Mới ra mắt</span>
               </div>
               <h2 className="mt-3 font-draw-display text-4xl font-extrabold leading-none text-[#ffe4ee] drop-shadow-[0_0_18px_rgba(255,120,170,0.45)] sm:text-6xl lg:text-5xl">Ai Là Heo</h2>
               <p className="mt-3 max-w-md leading-relaxed text-[#f6e3d3]/80">
@@ -383,7 +433,7 @@ export default function GamePickerPage() {
             <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-8">
               <div className="flex items-center gap-2.5">
                 <NewBadge />
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#f3d27a]/80">Vừa ra mắt</span>
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#f3d27a]/80">Mới ra mắt</span>
               </div>
               <h2 className="mt-3 font-seance text-4xl font-extrabold leading-none text-[#f3d27a] drop-shadow-[0_0_18px_rgba(224,184,74,0.4)] sm:text-6xl lg:text-5xl">Bà Đồng Xem Bài</h2>
               <p className="mt-3 max-w-md leading-relaxed text-[#f3e6c4]/80">

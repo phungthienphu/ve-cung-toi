@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { drawFontClass } from '@/lib/drawFonts';
@@ -16,8 +17,7 @@ export default function Page() {
   return (
     <main className={`${drawFontClass} min-h-dvh bg-emerald-950 text-emerald-50`}>
       <div className="relative h-44 overflow-hidden sm:h-56">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hill/cover.svg" alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <Image src="/racing-with-me.png" alt="" fill priority sizes="100vw" className="object-cover" style={{ objectPosition: '50% 42%' }} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-emerald-950" />
         <Link
           href="/con-duong-hoang-kim"
