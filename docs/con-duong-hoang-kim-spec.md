@@ -562,3 +562,86 @@ Spec đang theo các mặc định dưới đây. Muốn đổi thì nói lại.
 10. ~~Gói Cloudflare~~ → **Free** (đã chốt 02/11/2026). Giới hạn chính là số message gửi lên mỗi ngày (§11.5).
 11. **Bóng ma kỷ lục** để ở giai đoạn 4. Muốn có sớm hơn không?
 12. **Thứ tự trong tháp xuất phát:** đang bốc thăm ngẫu nhiên mỗi ván. Chơi thử xong mới quyết có ép người dẫn điểm lên đỉnh tháp (hoặc xuống đáy) cho cân không.
+
+## 16. Cập nhật sau bản 1: sảnh, cân bằng xe, đua bot (02/11/2026)
+
+**Sảnh game (thay cho hộp thoại chọn xe cũ):**
+- **Garage xem trước thật.** Ở sảnh, màn chơi phóng to vào xe đang chọn, đậu trên đúng bản đồ (hoặc đường hôm nay) đang chọn. Đổi xe thì xe mới rơi xuống nảy nhún; bấm CHẠY thì camera lùi ra rồi đếm ngược. Ý từ garage của Hill Climb Racing 2.
+- **4 chế độ ngang hàng** ở trên cùng: 🏆 Phá kỷ lục · 🗓️ Đường hôm nay · 🤖 Đua với bot · 👥 Đua cùng bạn. Bảng bên dưới đổi theo chế độ: điện thoại dọc thì ở đáy, màn ngang và máy tính thì ở cạnh phải.
+- **Chọn xe:**
+  - dải thẻ vuốt ngang có hình xe thật, xe chưa mở hiện bóng tối kèm giá;
+  - 5 thanh chỉ số kiểu Mario Kart;
+  - dòng "Hợp nhất" bấm được để nhảy sang bản đồ hợp với xe đó.
+- **Chọn đường:** thẻ bưu thiếp vẽ đúng dáng đường của bản đồ, có độ khó và đặc điểm, kèm cờ kỷ lục của bạn trên từng bản đồ.
+- **Nút CHẠY:** to, dày, bấm có độ lún. Khi xe chưa mở, nút đổi thành "Mở khoá · giá" kèm số xu còn thiếu.
+- **Màn kết quả:**
+  - quãng đường đếm lên;
+  - pháo hoa khi phá kỷ lục;
+  - xu kiếm được tách theo nguồn;
+  - thanh tiến độ tới xe kế tiếp;
+  - "Chạy lại" là nút chính.
+- **Sảnh đua cùng bạn:**
+  - vạch xuất phát hiện xe thật của từng người;
+  - chọn xe và đường bằng đúng các bộ chọn trên;
+  - nút Sẵn sàng / Bắt đầu cố định ở đáy và nói rõ đang chờ gì;
+  - nút "Mời bạn" dùng chia sẻ của điện thoại.
+- **Bàn đạp khi đua giống hệt khi chơi một mình:** phanh trái, ga phải, lao tới và nhảy phía trên.
+
+**Cân bằng xe** (chủ dự án: mỗi xe một thế mạnh riêng, không xe nào quá yếu hay quá mạnh). Số liệu nằm ở `HILL_VEHICLES`.
+
+| Xe | Thế mạnh | Điểm yếu | Hợp nhất | Giá |
+|---|---|---|---|---|
+| 🚙 Jeep | Toàn diện | Không có | Mọi đường | 0 |
+| 🚗 Xe con bọ | Nhanh nhất, tiết kiệm xăng nhất | Leo dốc gắt yếu, dễ lật | Đồi chè, Mặt trăng | 150 |
+| 🚌 Xe buýt | Khó lật nhất, ủi mạnh | Tăng tốc chậm | Đồi cát | 300 (trước 500) |
+| 🛻 Tải quái vật | Leo dốc, vượt đá giỏi nhất | Chậm hơn Jeep một chút, hao xăng | Đèo Mã Pí Lèng | 450 (trước 350) |
+
+Trước đó xe con bọ (150 xu) vừa nhanh nhất vừa leo tốt nhất, còn xe buýt (500 xu, đắt nhất) lại yếu nhất. Số liệu mới tính trên giấy, **cần lái thử để chỉnh**.
+
+**🤖 Đua với bot:**
+- Chạy hoàn toàn trên trình duyệt bằng chính `HillRaceSim` của phòng online: không tốn hạn mức Cloudflare, không lag mạng, tạm dừng được.
+- 1–5 bot, đặt tên Tèo, Tí, Sửu…, mỗi bot một xe.
+- **3 mức:**
+  - **Dễ:** phản xạ chậm, hay khựng ga.
+  - **Vừa.**
+  - **Khó:** phản xạ nhanh, rình nhảy lên đầu.
+- Bot (`shared/hillBot.ts`) lái bằng đúng luật như người:
+  - giữ ga, nhả ga khi đầu xe ngửa quá;
+  - trên không thì chỉnh góc cho khớp dốc chỗ sắp đáp;
+  - nhảy qua xe chắn đường;
+  - bật lật hoặc lắc xe khi chổng vó;
+  - kẹt thì xin hồi sinh.
+- Được đi cả 4 xe, chưa mở khoá cũng được, giống đua cùng bạn.
+- **Chưa thưởng xu**, để tránh cày xu bằng bot dễ.
+
+**Hiệu ứng, cổng và bản đồ thu nhỏ (02/11/2026):**
+- `hillFx.ts` chỉ là phần vẽ, tính trên máy người chơi từ trạng thái các xe mỗi khung hình. Áp dụng cho cả chơi một mình, đua bot và đua online, không gửi gì qua mạng. Gồm:
+  - bụi bánh xe theo bản đồ (đất, cát, sỏi, bụi trăng lơ lửng), bánh càng trượt càng nhiều bụi;
+  - vòng bụi khi tiếp đất mạnh;
+  - tia lửa và chữ "BỐP!" khi hai xe húc nhau, đo bằng tốc độ lao vào nhau ngay trước va chạm;
+  - chữ "BẸP!" khi bị giẫm;
+  - tia lửa khi nóc xe cạ đất;
+  - rung màn hình và rung điện thoại, chỉ cho xe của mình; tắt khi máy bật chế độ giảm chuyển động.
+- **Cổng XUẤT PHÁT** đặt ngay trước tháp xe, **cổng 🏁 ĐÍCH** đặt ở vạch đích; cả hai kèm vạch caro trên mặt đường.
+- **Bản đồ thu nhỏ khi đua:** cố ý để đơn giản theo ý chủ dự án: một đường lên xuống theo địa hình cả chặng, cộng chấm xe của từng người. Chế độ "Ai đi xa nhất" thì bản đồ dài dần theo người dẫn đầu.
+- **Chơi một mình:** thanh "còn X m tới 🚩 kỷ lục".
+
+**Đường trên không và nước dưới vực (02/11/2026, cả 4 bản đồ):**
+- **Cách sinh:** sinh từ seed theo từng đoạn 72 m (`shared/hillTerrain.ts`), nên server, phần đoán trước của trình duyệt và phần vẽ khớp nhau mà không gửi thêm dữ liệu. **Mặt đường cũ giữ nguyên.** Không có trong 150 m đầu.
+- **Chỉ có cầu sau dốc phóng**, khoảng 1/5 số đoạn. **Muốn lên phải lấy đà từ dốc VÀ bấm nhảy đúng lúc ở mép dốc** (luật của chủ dự án).
+  - Cầu cao hơn độ bay của xe chạy nhanh (17 m/s) mà không nhảy, và cao hơn một cú nhảy tại chỗ.
+  - Cầu bắt đầu cách mép dốc 8 m, nên nhảy mà không có đà thì hụt.
+  - Độ cao tính riêng theo độ dốc từng con dốc và trọng lực từng bản đồ.
+  - Cầu bắc ngang vực từng có ở bản trước nhưng đã bỏ, vì đứng sát mép bấm nhảy là lên được.
+- **Mặt cầu:** phẳng nên đi nhanh hơn rõ (bỏ qua chỗ dốc đổ và lòng chảo), có dãy xu và một bình ⚡ ở giữa. Cuối cầu là dốc xuống mặt đường.
+- **Cầu một chiều:** từ dưới đi xuyên hay nhảy xuyên lên được, từ trên đáp xuống thì đứng được (`pre-solve` trong `hillWorld.ts`). Chạm gầm cầu từ dưới không bị tính là chổng vó hay đang chạm đất.
+- **Kiểu dáng theo bản đồ:**
+  - Đồi chè: cầu tre trên cột.
+  - Mũi Né: cầu ván.
+  - Mã Pí Lèng: cầu treo dây.
+  - Mặt trăng: tấm đá trôi phát sáng.
+- **Nước dưới vực** (trừ Mặt trăng): xe chạm nước bị chậm 2% tốc độ mỗi giây (chủ dự án muốn 1–2%), té nước khi chạy nhanh, có tiếng.
+- **Bot:** bot quyết định một lần cho mỗi cầu có nhảy lên hay không, tuỳ độ khó. Nếu nhảy thì bấm nhảy ngay mép dốc khi đang chạy trên 9 m/s.
+- **Lưu ý:**
+  - Các con số độ cao mới tính trên giấy, **cần lái thử** xem cầu phóng có quá dễ hoặc quá khó lên không.
+  - Kỷ lục cũ trên bảng xếp hạng được lập khi chưa có lối tắt.

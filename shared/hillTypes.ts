@@ -52,9 +52,15 @@ export interface HillVehicle {
 }
 export const HILL_VEHICLES: Record<HillVehicleId, HillVehicle> = {
   jeep: { ...HILL_JEEP, name: "Jeep", icon: "🚙", price: 0, description: "Cân bằng, dễ lái", halfWidth: 1.65, cabinWidth: 0.95, density: 1.5, fuelRate: 1 },
-  beetle: { name: "Xe con bọ", icon: "🚗", price: 150, description: "Nhẹ, nhanh, dễ lật", halfWidth: 1.35, cabinWidth: 0.8, wheelRadius: 0.45, wheelbase: 2, density: 0.9, motorSpeed: 43, motorTorque: 6, springHz: 4.5, damping: 0.7, airTorque: 6, recoveryTorque: 16, fuelRate: 0.9 },
-  monster: { name: "Tải quái vật", icon: "🛻", price: 350, description: "Bánh lớn, leo khỏe, hao xăng", halfWidth: 1.9, cabinWidth: 1, wheelRadius: 0.8, wheelbase: 2.9, density: 2.7, motorSpeed: 22, motorTorque: 27, springHz: 3.5, damping: 0.8, airTorque: 24, recoveryTorque: 65, fuelRate: 1.35 },
-  bus: { name: "Xe buýt", icon: "🚌", price: 500, description: "Thân dài, nặng, dễ kẹt dốc", halfWidth: 2.65, cabinWidth: 2.25, wheelRadius: 0.6, wheelbase: 4.1, density: 2, motorSpeed: 25, motorTorque: 17, springHz: 4, damping: 0.8, airTorque: 35, recoveryTorque: 90, fuelRate: 1.15 },
+  // Balanced so each car leads at one thing (02/11/2026). Rough figures, from
+  // top speed = motorSpeed × wheelRadius and climbing ≈ 2·torque / radius / mass:
+  //   Jeep     17.6 m/s, ~5.3 m/s² — no weak spot.
+  //   Beetle   21.2 m/s, ~4.9 m/s² — fastest and the least fuel per metre; flips easily.
+  //   Monster  16.8 m/s, ~6.3 m/s² — best climber, big wheels over rock steps; slower than the Jeep, thirsty.
+  //   Bus      16.2 m/s, ~4.6 m/s² — hardest to flip (long wheelbase), heaviest to push.
+  beetle: { name: "Xe con bọ", icon: "🚗", price: 150, description: "Nhanh nhất, tiết kiệm xăng; leo yếu, dễ lật", halfWidth: 1.35, cabinWidth: 0.8, wheelRadius: 0.45, wheelbase: 2, density: 0.9, motorSpeed: 47, motorTorque: 4.2, springHz: 4.5, damping: 0.7, airTorque: 6, recoveryTorque: 16, fuelRate: 0.8 },
+  monster: { name: "Tải quái vật", icon: "🛻", price: 450, description: "Leo dốc, vượt đá giỏi nhất; chậm, hao xăng", halfWidth: 1.9, cabinWidth: 1, wheelRadius: 0.8, wheelbase: 2.9, density: 2.7, motorSpeed: 21, motorTorque: 36, springHz: 3.5, damping: 0.8, airTorque: 24, recoveryTorque: 65, fuelRate: 1.3 },
+  bus: { name: "Xe buýt", icon: "🚌", price: 300, description: "Khó lật nhất, ủi mạnh; tăng tốc chậm", halfWidth: 2.65, cabinWidth: 2.25, wheelRadius: 0.6, wheelbase: 4.1, density: 2, motorSpeed: 27, motorTorque: 19, springHz: 4, damping: 0.8, airTorque: 35, recoveryTorque: 90, fuelRate: 0.9 },
 };
 export const HILL_MAPS: Record<HillMapId, { name: string; icon: string; description: string; gravity: number; friction: number; fuelRate: number; amplitude: number; sky: [string, string]; hills: string[]; ground: string; edge: string }> = {
   tea: { name: "Đồi chè", icon: "🌾", description: "Đồi nhỏ, dốc nhảy và thung lũng", gravity: 9.8, friction: 1, fuelRate: 1, amplitude: 1, sky: ["#79c8e4", "#eaf6ca"], hills: ["#9cc9a0", "#77ad89", "#519574"], ground: "#9b6d43", edge: "#94bb52" },

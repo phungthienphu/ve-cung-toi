@@ -1,7 +1,7 @@
 import { HILL_JEEP, type HillSnapshot } from "@shared/hillTypes";
 
 /** Vector artwork in physics metres, with Y pointing up. */
-export function drawJeepBody(ctx: CanvasRenderingContext2D, state: HillSnapshot) {
+export function drawJeepBody(ctx: CanvasRenderingContext2D, state: Pick<HillSnapshot, "grounded">) {
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   const panel = (x: number, y: number, w: number, h: number, r: number, fill: string | CanvasGradient, stroke?: string) => {

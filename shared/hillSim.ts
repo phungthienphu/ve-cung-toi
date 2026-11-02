@@ -1,8 +1,11 @@
 import { Vec2, Box, Circle, WheelJoint, type Body, type Fixture, type World } from "planck";
 import { HILL_DT, HILL_JEEP as J, type HillInput, type HillPose, type HillSnapshot, type HillEvent, HILL_VEHICLES, HILL_MAPS, type HillOptions, type HillVehicle, type HillMapId, type HillVehicleId, HILL_DASH } from "./hillTypes";
-import { hillHeight, hillPickups } from "./hillTerrain";
+import { hillDeckHeight, hillHeight, hillPickups, hillWaterLevel } from "./hillTerrain";
 
-import { HillPhysicsWorld } from "./hillWorld";
+import { HillPhysicsWorld, isHillDeck } from "./hillWorld";
+
+/** Water slows a car by this fraction of its speed per second (the owner asked for 1–2%). */
+const WATER_DRAG = 0.02;
 
 /** Owns physics only. Call step exactly once per fixed tick on any runtime. */
 export class HillSim {
@@ -99,7 +102,7 @@ export class HillSim {
     this.tick++;
     const V = this.config;
     const direction = Number(input.gas) - Number(input.brake);
-    const grounded = this.wheelContacts.some(c => c.size > 0); this.wasGrounded = grounded;
+    const grounded = this.anyWheelDown(); this.wasGrounded = grounded;
     this.joints.forEach(j => {
       j.setMotorSpeed(this.fuel > 0 ? -direction * V.motorSpeed : 0);
       j.setMaxMotorTorque((this.fuel > 0 && direction !== 0) || (this.fuel === 0 && input.brake) ? V.motorTorque * Math.max(0.2, HILL_MAPS[this.map].gravity / 9.8) : 0);
@@ -135,7 +138,12 @@ export class HillSim {
     const grounded = this.wasGrounded, V = this.config;
     const p = this.chassis.getPosition();
     this.distance = Math.max(this.distance, p.x - 5);
-    const nowGrounded = this.wheelContacts.some(c => c.size > 0);
+    const water = hillWaterLevel(this.seed, p.x, this.map);
+    if (water !== null && this.wheels.some(w => w.getPosition().y - V.wheelRadius < water)) {
+      const keep = 1 - WATER_DRAG * HILL_DT;
+      for (const b of [this.chassis, ...this.wheels]) { const v = b.getLinearVelocity(); b.setLinearVelocity(Vec2(v.x * keep, v.y)); }
+    }
+    const nowGrounded = this.anyWheelDown();
     this.energy = Math.min(100, this.energy + HILL_DT * (nowGrounded ? 2 : 6));
     if (!nowGrounded) {
       if (grounded || this.airTime === 0) { this.takeoffAngle = this.chassis.getAngle(); this.airAwarded = 0; }
@@ -156,7 +164,7 @@ export class HillSim {
     }
     if (this.pendingLanding) {
       if (this.tick > this.pendingLanding) this.pendingLanding = 0;
-      else if (this.wheelContacts.every(c => c.size > 0) && Math.abs(this.lastWheelTouch[0] - this.lastWheelTouch[1]) <= 6) {
+      else if (this.bothWheelsDown() && Math.abs(this.lastWheelTouch[0] - this.lastWheelTouch[1]) <= 6) {
         this.reward("landing", 2); this.pendingLanding = 0;
       }
     }
@@ -174,9 +182,9 @@ export class HillSim {
       const nearby = new Set(hillPickups(this.seed, this.retiredX, p.x + 80, this.map, this.raceFuel).map(v => v.id));
       for (const id of this.collected) if (!nearby.has(id)) this.collected.delete(id);
     }
-    if (this.roofContacts.size && !this.overturned) { this.overturned = true; this.events.push("overturned"); }
+    if (this.roofDown() && !this.overturned) { this.overturned = true; this.events.push("overturned"); }
     if (this.overturned) {
-      if (this.wheelContacts.every(c => c.size > 0) && Math.cos(this.chassis.getAngle()) > 0.3) {
+      if (this.bothWheelsDown() && Math.cos(this.chassis.getAngle()) > 0.3) {
         this.overturned = false; this.overturn = 0; this.reward("recovered", 3);
       } else {
         this.overturn += HILL_DT;
@@ -218,6 +226,24 @@ export class HillSim {
     this.events = [];
   }
 
+  /** A deck only counts as ground for a part on top of it: under one, or jumping up through it, the car is still in the air. */
+  private onTop(fixture: Fixture, body: Body, lift: number) {
+    if (!isHillDeck(fixture)) return true;
+    const at = body.getPosition(), deck = hillDeckHeight(this.seed, at.x, this.map);
+    return deck === null || at.y >= deck + lift;
+  }
+  private wheelDown(i: number) {
+    for (const f of this.wheelContacts[i]) if (this.onTop(f, this.wheels[i], this.config.wheelRadius * 0.5 - 0.1)) return true;
+    return false;
+  }
+  private anyWheelDown() { return this.wheelDown(0) || this.wheelDown(1); }
+  private bothWheelsDown() { return this.wheelDown(0) && this.wheelDown(1); }
+  /** Roof on the ground (or upside down on a deck) — not merely brushing a deck's underside. */
+  private roofDown() {
+    for (const f of this.roofContacts) if (this.onTop(f, this.chassis, -0.5)) return true;
+    return false;
+  }
+
   private reward(event: HillEvent, coins: number) { this.coins += coins; this.skillCoins += coins; this.events.push(event); }
 
   drainEvents(): HillEvent[] { const events = this.events; this.events = []; return events; }
@@ -231,7 +257,7 @@ export class HillSim {
       dashCooldown: Math.max(0, (HILL_DASH.cooldownTicks - (this.tick - this.lastDash)) * HILL_DT),
       jumpReady: this.energy >= 35 && this.tick - this.lastJump >= 36 && (this.overturned || this.tick - this.lastGrounded <= 9), chassis: pose(this.chassis), wheels: this.wheels.map(pose),
       speed: this.chassis.getLinearVelocity().length(), distance: this.distance, fuel: this.fuel, coins: this.coins,
-      grounded: this.wheelContacts.some(c => c.size > 0),
+      grounded: this.anyWheelDown(),
       overturnRemaining: this.overturned ? Math.max(0, J.overturnSeconds - this.overturn) : null,
       finished: this.finished,
       pickups: hillPickups(this.seed, x - 30, x + 85, this.map, this.raceFuel).filter(v => v.x >= this.retiredX && !this.collected.has(v.id)),

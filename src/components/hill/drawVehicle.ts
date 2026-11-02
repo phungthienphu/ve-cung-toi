@@ -1,7 +1,7 @@
 import { HILL_VEHICLES, type HillSnapshot } from "@shared/hillTypes";
 import { drawJeepBody } from "./drawJeep";
 
-export function drawVehicle(ctx: CanvasRenderingContext2D, state: HillSnapshot) {
+export function drawVehicle(ctx: CanvasRenderingContext2D, state: Pick<HillSnapshot, "vehicle" | "grounded">) {
   if (state.vehicle === "jeep") { drawJeepBody(ctx, state); return; }
   const car = HILL_VEHICLES[state.vehicle];
   const paint = ctx.createLinearGradient(0, -0.35, 0, 1);
