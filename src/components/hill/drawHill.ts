@@ -1,9 +1,8 @@
 import { hillDeckPoints, hillHeight, hillSkyRoads, hillWater, type HillSkyRoad } from "@shared/hillTerrain";
 import { HILL_VEHICLES, HILL_MAPS, type HillMapId, type HillSnapshot, type HillFlag } from "@shared/hillTypes";
 
-import { drawJeepWheel } from "./drawJeep";
 
-import { drawVehicle } from "./drawVehicle";
+import { drawVehicle, drawWheel } from "./drawVehicle";
 
 /** `fx`/`fy`: where on screen the car sits (fractions), eased like the rest. */
 export interface HillCamera { x: number; y: number; scale: number; fx?: number; fy?: number }
@@ -110,7 +109,7 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
   ctx.restore();
   for (const wheel of state.wheels) {
     ctx.save(); ctx.translate(sx(wheel.x), sy(wheel.y)); ctx.rotate(-wheel.angle); ctx.scale(s, -s);
-    drawJeepWheel(ctx, car.wheelRadius);
+    drawWheel(ctx, state.vehicle);
     ctx.restore();
   }
   ctx.restore();

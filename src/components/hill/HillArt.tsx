@@ -3,8 +3,7 @@
 import { useEffect, useRef } from "react";
 import { hillHeight } from "@shared/hillTerrain";
 import { HILL_BASE_SEED, HILL_MAPS, HILL_VEHICLES, type HillMapId, type HillVehicleId } from "@shared/hillTypes";
-import { drawJeepWheel } from "./drawJeep";
-import { drawVehicle } from "./drawVehicle";
+import { drawVehicle, drawWheel } from "./drawVehicle";
 
 // Small canvas pictures for the menus, drawn with the in-game artwork so a
 // card shows exactly the car and the road you will get.
@@ -35,7 +34,8 @@ export function VehicleArt({ vehicle, width, height, locked = false, className =
       const car = HILL_VEHICLES[vehicle];
       const wheelY = -0.8;
       const spanX = car.halfWidth * 2 + 0.5;
-      const top = 1.25;
+      // The bus carries sacks and a chicken coop on its roof.
+      const top = vehicle === "bus" ? 1.65 : 1.25;
       const bottom = wheelY - car.wheelRadius;
       const scale = Math.min(width / spanX, height / (top - bottom + 0.2));
       ctx.save();
@@ -53,7 +53,7 @@ export function VehicleArt({ vehicle, width, height, locked = false, className =
       for (const side of [-1, 1]) {
         ctx.save();
         ctx.translate((side * car.wheelbase) / 2, wheelY);
-        drawJeepWheel(ctx, car.wheelRadius);
+        drawWheel(ctx, vehicle);
         ctx.restore();
       }
       ctx.restore();

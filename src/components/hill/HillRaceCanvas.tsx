@@ -6,8 +6,7 @@ import { HillSim } from '@shared/hillSim';
 import { HILL_DT, HILL_VEHICLES } from '@shared/hillTypes';
 import { drawHill, hillProject, type HillCamera } from './drawHill';
 import { HillFx } from './hillFx';
-import { drawVehicle } from './drawVehicle';
-import { drawJeepWheel } from './drawJeep';
+import { drawVehicle, drawWheel } from './drawVehicle';
 /** `pull`: a race simulated in this browser (bots) — draw its latest frame as is, no interpolation or prediction. */
 export default function HillRaceCanvas({ frame, id, players, input, seq, finishDistance, pull }: { frame: HillRaceFrame; id: string; players: HillRacer[]; finishDistance?: number; input: React.RefObject<HillInput>; seq: React.RefObject<number>; pull?: () => HillRaceFrame | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -84,7 +83,7 @@ export default function HillRaceCanvas({ frame, id, players, input, seq, finishD
         ctx.save(); ctx.globalAlpha = car.respawning ? .2 : car.ghost ? .5 : 1;
         if (car.id !== own.id) {
           ctx.save(); ctx.translate(sx(s.chassis.x), sy(s.chassis.y)); ctx.rotate(-s.chassis.angle); ctx.scale(camera.scale, -camera.scale * (car.squash ? .55 : 1)); drawVehicle(ctx, s); ctx.restore();
-          for (const wheel of s.wheels) { ctx.save(); ctx.translate(sx(wheel.x), sy(wheel.y)); ctx.rotate(-wheel.angle); ctx.scale(camera.scale, -camera.scale); drawJeepWheel(ctx, vehicle.wheelRadius); ctx.restore(); }
+          for (const wheel of s.wheels) { ctx.save(); ctx.translate(sx(wheel.x), sy(wheel.y)); ctx.rotate(-wheel.angle); ctx.scale(camera.scale, -camera.scale); drawWheel(ctx, s.vehicle); ctx.restore(); }
         }
         ctx.font = 'bold 13px sans-serif'; ctx.textAlign = f.tick < 0 ? 'left' : 'center'; ctx.fillStyle = car.id === id ? '#fff8a8' : '#fff'; ctx.strokeStyle = '#173c40'; ctx.lineWidth = 4;
         const label = `${car.squash ? '💥 ' : ''}${names.current.find(p => p.id === car.id)?.name ?? ''}${car.respawning ? ' ↺' : ''}`;
