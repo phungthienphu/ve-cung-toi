@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import SoundToggle from "@/components/SoundToggle";
 import CelebrationBanner from "@/components/CelebrationBanner";
@@ -12,6 +13,16 @@ export const metadata: Metadata = {
 
 /** Monetag ads — paused for now. Set back to true to bring them back. */
 const ADS_ENABLED = false;
+
+/**
+ * Cloudflare Web Analytics for ve-cung-toi.vercel.app: page views and visits,
+ * no cookies (so no consent banner). The site token is public — it ships in
+ * the page anyway. NEXT_PUBLIC_CF_ANALYTICS_TOKEN overrides it (empty turns
+ * tracking off). Production builds only, so local dev isn't counted.
+ * `spa`: count client-side route changes as page views too.
+ */
+const CF_ANALYTICS_TOKEN =
+  process.env.NODE_ENV === "production" ? (process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN ?? "f8df945b818b452abce98d044db19508") : "";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,6 +44,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-app text-slate-900 antialiased">
         {children}
+        {CF_ANALYTICS_TOKEN && (
+          <Script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={JSON.stringify({ token: CF_ANALYTICS_TOKEN, spa: true })}
+            strategy="afterInteractive"
+          />
+        )}
         <SoundToggle />
         {/* Occasion greeting: change the text and storageKey for the next holiday. */}
         <CelebrationBanner
