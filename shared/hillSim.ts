@@ -126,10 +126,12 @@ export class HillSim {
       this.events.push("jump");
     }
     if (input.dash && !this.dashHeld && this.energy >= HILL_DASH.energy && this.tick - this.lastDash >= HILL_DASH.cooldownTicks && this.fuel > 0 && Math.cos(this.chassis.getAngle()) > 0.3) {
-      const boost = Math.max(0, Math.min(HILL_DASH.speedBoost, HILL_DASH.maxSpeed - this.chassis.getLinearVelocity().x));
+      const angle = this.chassis.getAngle(), pitch = Math.max(-HILL_DASH.maxPitch, Math.min(HILL_DASH.maxPitch, Math.atan2(Math.sin(angle), Math.cos(angle))));
+      const ahead = Vec2(Math.cos(pitch), Math.sin(pitch)), velocity = this.chassis.getLinearVelocity();
+      const boost = Math.max(0, Math.min(HILL_DASH.speedBoost, HILL_DASH.maxSpeed - (velocity.x * ahead.x + velocity.y * ahead.y)));
       if (boost > 0) {
         this.energy -= HILL_DASH.energy; this.lastDash = this.tick;
-        for (const body of [this.chassis, ...this.wheels]) body.applyLinearImpulse(Vec2(body.getMass() * boost, 0), body.getWorldCenter(), true);
+        for (const body of [this.chassis, ...this.wheels]) body.applyLinearImpulse(Vec2(body.getMass() * boost * ahead.x, body.getMass() * boost * ahead.y), body.getWorldCenter(), true);
         this.events.push("dash");
       }
     }

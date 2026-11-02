@@ -78,7 +78,12 @@ export interface HillRunSubmission {
   runId: string; playerId: string; name: string; map: HillMapId; vehicle: HillVehicleId;
   seed: number; day: string | null; distance: number; coins: number; duration: number;
 }
-export const HILL_DASH = { energy: 25, cooldownTicks: 120, speedBoost: 8, maxSpeed: 30 } as const;
+/**
+ * "Lao tới": a burst along the way the car points (up a slope, down a slope),
+ * but never steeper than maxPitch from level — or nose-up in the air it would
+ * be a second jump. maxSpeed caps the speed along that direction.
+ */
+export const HILL_DASH = { energy: 25, cooldownTicks: 120, speedBoost: 8, maxSpeed: 30, maxPitch: 0.6 } as const;
 export const HILL_BASE_SEED = 20261102;
 export function hillDay(at = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(at);

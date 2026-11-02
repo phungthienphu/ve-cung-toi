@@ -89,10 +89,13 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
   if (view.start !== undefined) drawGate(ctx, sx, sy, s, seed, state.map, view.start, false);
   if (view.finish !== undefined) drawGate(ctx, sx, sy, s, seed, state.map, view.finish, true);
   if (state.dashCooldown > 1.7) {
+    // Speed lines trail behind the car along its body, like the dash itself.
     ctx.strokeStyle = "#fff3b0"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    const cos = Math.cos(state.chassis.angle), sin = Math.sin(state.chassis.angle);
+    const at = (ax: number, ay: number) => [sx(state.chassis.x + ax * cos - ay * sin), sy(state.chassis.y + ax * sin + ay * cos)] as const;
     for (let i = 0; i < 3; i++) {
-      const x = sx(state.chassis.x - car.halfWidth - 0.5), y = sy(state.chassis.y + 0.3 - i * 0.35);
-      ctx.beginPath(); ctx.moveTo(x - (1.7 - i * 0.3) * s, y); ctx.lineTo(x, y); ctx.stroke();
+      const y = 0.3 - i * 0.35, from = at(-car.halfWidth - 0.5 - (1.7 - i * 0.3), y), to = at(-car.halfWidth - 0.5, y);
+      ctx.beginPath(); ctx.moveTo(from[0], from[1]); ctx.lineTo(to[0], to[1]); ctx.stroke();
     }
   }
   ctx.save(); ctx.globalAlpha = carAlpha;
