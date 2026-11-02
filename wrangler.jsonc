@@ -23,7 +23,9 @@
       { "name": "Battleshiplobby", "class_name": "BattleshipDirectory" },
       { "name": "Mathboss", "class_name": "MathBossRoom" },
       { "name": "Oldmaid", "class_name": "OldMaidRoom" },
-      { "name": "Oldmaidlobby", "class_name": "OldMaidDirectory" }
+      { "name": "Oldmaidlobby", "class_name": "OldMaidDirectory" },
+      { "name": "Hill", "class_name": "HillRoom" },
+      { "name": "Hilllobby", "class_name": "HillDirectory" }
     ]
   },
   "migrations": [
@@ -34,7 +36,8 @@
         "SoccerDirectory", "WerewolfRoom", "WerewolfDirectory", "BattleshipRoom", "BattleshipDirectory", "MathBossRoom"
       ]
     },
-    { "tag": "v2", "new_sqlite_classes": ["OldMaidRoom", "OldMaidDirectory"] }
+    { "tag": "v2", "new_sqlite_classes": ["OldMaidRoom", "OldMaidDirectory"] },
+    { "tag": "v3", "new_sqlite_classes": ["HillRoom", "HillDirectory"] }
   ],
   "observability": { "enabled": true }
 }

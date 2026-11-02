@@ -22,6 +22,9 @@ export { MathBossRoom } from "./mathboss-server";
 export { OldMaidRoom } from "./oldmaid-server";
 export { OldMaidDirectory } from "./oldmaid-directory";
 
+export { HillRoom } from "./hill-server";
+export { HillDirectory } from "./hill-directory";
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     return (await routePartykitRequest(request, env, { cors: true })) ?? new Response("Not found", { status: 404 });

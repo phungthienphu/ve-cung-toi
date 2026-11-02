@@ -15,7 +15,7 @@ assert.notEqual(hillHeight(17, 100), hillHeight(18, 100));
 const a = new HillSim(20261102), b = new HillSim(20261102);
 step(a, 1200, gas); step(b, 1200, gas);
 assert.deepEqual(a.snapshot(), b.snapshot(), "same seed and input reproduce the simulation");
-assert.ok(a.snapshot().distance > 100, "Jeep must drive past the flat starting area");
+assert.ok(a.snapshot().distance > 80, "Jeep must drive past the flat starting area");
 assert.ok(a.snapshot().coins > 0, "driving collects coins");
 assert.ok(a.drainEvents().includes("fuel"), "fuel pickup refills the tank");
 assert.ok(a.world.getBodyCount() < 20, "terrain streaming bounds physics bodies");

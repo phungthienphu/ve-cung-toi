@@ -26,6 +26,10 @@ export interface HillSnapshot {
   dashReady: boolean;
   dashCooldown: number;
   skillCoins: number;
+  held?: { jump: boolean; dash: boolean };
+  raceFuel?: boolean;
+  motion: { vx: number; vy: number; omega: number }[];
+  jumpCooldown: number;
   chassis: HillPose;
   wheels: HillPose[];
   speed: number;
@@ -53,12 +57,12 @@ export const HILL_VEHICLES: Record<HillVehicleId, HillVehicle> = {
   bus: { name: "Xe buýt", icon: "🚌", price: 500, description: "Thân dài, nặng, dễ kẹt dốc", halfWidth: 2.65, cabinWidth: 2.25, wheelRadius: 0.6, wheelbase: 4.1, density: 2, motorSpeed: 25, motorTorque: 17, springHz: 4, damping: 0.8, airTorque: 35, recoveryTorque: 90, fuelRate: 1.15 },
 };
 export const HILL_MAPS: Record<HillMapId, { name: string; icon: string; description: string; gravity: number; friction: number; fuelRate: number; amplitude: number; sky: [string, string]; hills: string[]; ground: string; edge: string }> = {
-  tea: { name: "Đồi chè", icon: "🌾", description: "Đồi thoai thoải, dễ làm quen", gravity: 9.8, friction: 1, fuelRate: 1, amplitude: 1, sky: ["#79c8e4", "#eaf6ca"], hills: ["#9cc9a0", "#77ad89", "#519574"], ground: "#9b6d43", edge: "#94bb52" },
+  tea: { name: "Đồi chè", icon: "🌾", description: "Đồi nhỏ, dốc nhảy và thung lũng", gravity: 9.8, friction: 1, fuelRate: 1, amplitude: 1, sky: ["#79c8e4", "#eaf6ca"], hills: ["#9cc9a0", "#77ad89", "#519574"], ground: "#9b6d43", edge: "#94bb52" },
   sand: { name: "Đồi cát Mũi Né", icon: "🏜️", description: "Bám đường kém, hao xăng hơn", gravity: 9.8, friction: 0.5, fuelRate: 1.2, amplitude: 1.3, sky: ["#f3ba83", "#fff2c6"], hills: ["#e9c290", "#dcb17a", "#c79960"], ground: "#ce9d5b", edge: "#ffe3a3" },
   mountain: { name: "Đèo Mã Pí Lèng", icon: "🏔️", description: "Dốc gắt và những bậc đá", gravity: 9.8, friction: 1.1, fuelRate: 1, amplitude: 2, sky: ["#8aa8ce", "#e2e7eb"], hills: ["#abb9c4", "#819ca5", "#5e7e86"], ground: "#68777d", edge: "#b4c5af" },
   moon: { name: "Mặt trăng", icon: "🌕", description: "Trọng lực thấp, bay xa", gravity: 1.6, friction: 0.8, fuelRate: 1, amplitude: 1.2, sky: ["#101d43", "#3a4674"], hills: ["#535c83", "#707796", "#85899f"], ground: "#797c92", edge: "#c5c9de" },
 };
-export interface HillOptions { map?: HillMapId; vehicle?: HillVehicleId }
+export interface HillOptions { map?: HillMapId; vehicle?: HillVehicleId; raceFuel?: boolean }
 export interface HillFlag { distance: number; name: string; kind: "personal" | "leader" | "nearby" }
 export interface HillLeaderboardEntry { playerId: string; name: string; distance: number; rank: number }
 export interface HillWallet { coins: number; unlocked: HillVehicleId[] }

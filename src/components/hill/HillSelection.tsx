@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { HILL_MAPS, HILL_VEHICLES, type HillMapId, type HillVehicleId, type HillWallet, type HillBoard } from "@shared/hillTypes";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 export default function HillSelection(p: Props) {
   return <div className="text-left">
+    <Link href="/con-duong-hoang-kim/friends" className="mb-4 block rounded-xl bg-amber-300 px-4 py-3 text-center font-bold text-emerald-950">🏁 Đua cùng bạn · 2–6 người</Link>
     <div className="mb-4 flex items-center justify-between gap-2"><label className="text-xs text-emerald-100">Tên trên bảng xếp hạng<input maxLength={24} value={p.name} onChange={e => p.onName(e.target.value)} placeholder="Tên của bạn" className="mt-1 block w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-base text-white outline-none focus:border-amber-300" /></label><span className="shrink-0 text-sm font-bold text-amber-200">● {p.wallet.coins} xu</span></div>
     <div className="mb-4 grid grid-cols-2 gap-2" role="group" aria-label="Chế độ chơi">
       <button aria-pressed={!p.daily} onClick={() => p.onDaily(false)} className={`rounded-xl px-2 py-2 text-sm ${!p.daily ? "bg-amber-300 text-emerald-950" : "bg-white/10"}`}>🏆 Phá kỷ lục</button>

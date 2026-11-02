@@ -24,6 +24,16 @@ interface Game {
 
 const GAMES: Game[] = [
   {
+    href: "/con-duong-hoang-kim",
+    title: "Con Đường Hoàng Kim",
+    description: "Lao qua dốc hiểm, nhảy qua đầu xe và húc nhau cùng hội bạn. Lái solo hoặc đua chồng tháp 2–6 người.",
+    tag: "Đua xe địa hình",
+    players: "1–6 người",
+    cover: { image: "/hill/cover.svg", position: "60% 45%" },
+    size: "hero",
+    isNew: true,
+  },
+  {
     href: "/werewolf",
     title: "Ma Sói",
     description: "Đêm xuống, sói lặng lẽ ra tay. Sáng ra cả làng suy luận, cãi nhau và bỏ phiếu — ai là sói đêm nay?",
@@ -304,6 +314,9 @@ export default function GamePickerPage() {
               >
                 🎮 Chọn trò chơi
               </a>
+              <Link href="/con-duong-hoang-kim" className="flex items-center gap-2 rounded-2xl bg-amber-300 px-5 py-3 font-draw-display text-lg font-extrabold text-emerald-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-200">
+                🚙 Con Đường Hoàng Kim <span aria-hidden>→</span>
+              </Link>
               <Link
                 href="/card-draw"
                 className="flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 font-draw-display text-lg font-extrabold ring-1 ring-white/20 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15"

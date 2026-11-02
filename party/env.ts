@@ -1,3 +1,5 @@
+import type { HillRoom } from "./hill-server";
+import type { HillDirectory } from "./hill-directory";
 import type { BattleshipDirectory } from "./battleship-directory";
 import type { BattleshipRoom } from "./battleship-server";
 import type { BrawlerRoom } from "./brawler-server";
@@ -19,6 +21,8 @@ import type { WerewolfRoom } from "./werewolf-server";
  * the names the hosted PartyKit setup used.
  */
 export interface Env {
+  Hill: DurableObjectNamespace<HillRoom>;
+  Hilllobby: DurableObjectNamespace<HillDirectory>;
   /** Base URL of the Next.js app, for posting finished games to /api/game-history. Unset = skip. */
   NEXT_APP_URL?: string;
   Main: DurableObjectNamespace<GameRoom>;

@@ -1,6 +1,8 @@
-import { World, Vec2, Box, Circle, Edge, WheelJoint, type Body, type Fixture } from "planck";
+import { Vec2, Box, Circle, WheelJoint, type Body, type Fixture, type World } from "planck";
 import { HILL_DT, HILL_JEEP as J, type HillInput, type HillPose, type HillSnapshot, type HillEvent, HILL_VEHICLES, HILL_MAPS, type HillOptions, type HillVehicle, type HillMapId, type HillVehicleId, HILL_DASH } from "./hillTypes";
 import { hillHeight, hillPickups } from "./hillTerrain";
+
+import { HillPhysicsWorld } from "./hillWorld";
 
 /** Owns physics only. Call step exactly once per fixed tick on any runtime. */
 export class HillSim {
@@ -8,11 +10,14 @@ export class HillSim {
   readonly map: HillMapId;
   readonly vehicle: HillVehicleId;
   readonly config: HillVehicle;
+  readonly raceFuel: boolean;
   readonly chassis: Body;
   readonly wheels: Body[];
   private joints: WheelJoint[];
-  private ground = new Map<number, Body>();
-  private groundFixtures = new Set<Fixture>();
+  readonly physics: HillPhysicsWorld;
+  private groundFixtures: Set<Fixture>;
+  private standalone: boolean;
+  private wasGrounded = false;
   private wheelContacts = [new Set<Fixture>(), new Set<Fixture>()];
   private roofContacts = new Set<Fixture>();
   private collected = new Set<string>();
@@ -39,30 +44,37 @@ export class HillSim {
   private lastWheelTouch = [-999, -999];
   private events: HillEvent[] = [];
 
-  constructor(readonly seed: number, options: HillOptions = {}) {
+  constructor(readonly seed: number, options: HillOptions = {}, physics?: HillPhysicsWorld, readonly slot = 0) {
+    this.raceFuel = options.raceFuel ?? false;
     this.map = options.map ?? "tea";
     this.vehicle = options.vehicle ?? "jeep";
     this.config = HILL_VEHICLES[this.vehicle];
     const J = this.config;
-    this.world = new World(Vec2(0, -HILL_MAPS[this.map].gravity));
-    this.extendGround(5);
-    const groupIndex = -1;
+    this.standalone = !physics;
+    this.physics = physics ?? new HillPhysicsWorld(seed, this.map);
+    this.world = this.physics.world; this.groundFixtures = this.physics.groundFixtures;
+    if (this.standalone) this.physics.update([5]);
+    const groupIndex = -(slot + 1);
     this.chassis = this.world.createDynamicBody({ position: Vec2(5, J.wheelRadius + 1), angularDamping: 0.8, linearDamping: 0.08 });
-    this.chassis.createFixture(Box(J.halfWidth, 0.35), { density: J.density, friction: 0.4, filterGroupIndex: groupIndex });
-    this.chassis.createFixture(Box(J.cabinWidth, 0.38, Vec2(-0.15, 0.65)), { density: J.density * 0.53, friction: 0.4, filterGroupIndex: groupIndex });
-    const roof = this.chassis.createFixture(Box(J.cabinWidth - 0.15, 0.08, Vec2(-0.15, 1.05)), { isSensor: true, filterGroupIndex: groupIndex });
+    this.chassis.createFixture(Box(J.halfWidth, 0.35), { density: J.density, friction: 0.4, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
+    this.chassis.createFixture(Box(J.cabinWidth, 0.38, Vec2(-0.15, 0.65)), { density: J.density * 0.53, friction: 0.4, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
+    const roof = this.chassis.createFixture(Box(J.cabinWidth - 0.15, 0.08, Vec2(-0.15, 1.05)), { isSensor: true, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
     this.wheels = [-1, 1].map(side => {
       const wheel = this.world.createDynamicBody({ position: Vec2(5 + side * J.wheelbase / 2, J.wheelRadius + 0.1), linearDamping: 0.04, angularDamping: 0.08 });
-      wheel.createFixture(Circle(J.wheelRadius), { density: 1.2, friction: 1.4, filterGroupIndex: groupIndex });
+      wheel.createFixture(Circle(J.wheelRadius), { density: 1.2, friction: 1.4, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
       return wheel;
     });
     this.joints = this.wheels.map(wheel => this.world.createJoint(new WheelJoint({
       enableMotor: true, maxMotorTorque: J.motorTorque, motorSpeed: 0,
       frequencyHz: J.springHz, dampingRatio: J.damping,
     }, this.chassis, wheel, wheel.getPosition(), Vec2(0, 1)))!);
+    roof.setUserData({ hillSlot: slot, part: "roof" });
+    for (const body of [this.chassis, ...this.wheels]) body.setUserData({ hillSlot: slot });
     const contact = (a: Fixture, b: Fixture, begin: boolean) => {
-      if (!this.groundFixtures.has(b)) return;
-      if (a === roof) {
+      const ground = this.groundFixtures.has(b);
+      const other = b.getBody().getUserData() as { hillSlot?: number } | null;
+      if (!ground && (other?.hillSlot === undefined || other.hillSlot === slot || b.isSensor())) return;
+      if (a === roof && ground) {
         if (begin) this.roofContacts.add(b); else this.roofContacts.delete(b);
       }
       this.wheels.forEach((wheel, i) => {
@@ -75,36 +87,19 @@ export class HillSim {
     this.world.on("end-contact", c => { contact(c.getFixtureA(), c.getFixtureB(), false); contact(c.getFixtureB(), c.getFixtureA(), false); });
   }
 
-  private extendGround(x: number) {
-    const low = Math.floor((x - 65) / 16);
-    const high = Math.ceil((x + 85) / 16);
-    for (const [chunk, body] of this.ground) {
-      if (chunk >= low && chunk <= high) continue;
-      const fixtures: Fixture[] = [];
-      for (let f = body.getFixtureList(); f; f = f.getNext()) fixtures.push(f);
-      this.world.destroyBody(body);
-      for (const fixture of fixtures) this.groundFixtures.delete(fixture);
-      this.ground.delete(chunk);
-    }
-    for (let chunk = low; chunk <= high; chunk++) {
-      if (this.ground.has(chunk)) continue;
-      const body = this.world.createBody();
-      for (let x0 = chunk * 16; x0 < (chunk + 1) * 16; x0++) {
-        const edge = new Edge(Vec2(x0, hillHeight(this.seed, x0, this.map)), Vec2(x0 + 1, hillHeight(this.seed, x0 + 1, this.map)));
-        edge.setPrevVertex(Vec2(x0 - 1, hillHeight(this.seed, x0 - 1, this.map)));
-        edge.setNextVertex(Vec2(x0 + 2, hillHeight(this.seed, x0 + 2, this.map)));
-        this.groundFixtures.add(body.createFixture(edge, { friction: HILL_MAPS[this.map].friction }));
-      }
-      this.ground.set(chunk, body);
-    }
+  step(input: HillInput): void {
+    if (this.finished) return;
+    this.prepareStep(input);
+    if (this.standalone) this.physics.update([this.chassis.getPosition().x]);
+    this.world.step(HILL_DT, 8, 3); this.finishStep(input);
   }
 
-  step(input: HillInput): void {
+  prepareStep(input: HillInput): void {
     if (this.finished) return;
     this.tick++;
     const V = this.config;
     const direction = Number(input.gas) - Number(input.brake);
-    const grounded = this.wheelContacts.some(c => c.size > 0);
+    const grounded = this.wheelContacts.some(c => c.size > 0); this.wasGrounded = grounded;
     this.joints.forEach(j => {
       j.setMotorSpeed(this.fuel > 0 ? -direction * V.motorSpeed : 0);
       j.setMaxMotorTorque((this.fuel > 0 && direction !== 0) || (this.fuel === 0 && input.brake) ? V.motorTorque * Math.max(0.2, HILL_MAPS[this.map].gravity / 9.8) : 0);
@@ -133,8 +128,11 @@ export class HillSim {
     }
     this.dashHeld = !!input.dash;
     this.jumpHeld = !!input.jump;
-    this.extendGround(this.chassis.getPosition().x);
-    this.world.step(HILL_DT, 8, 3);
+  }
+
+  finishStep(input: HillInput): void {
+    if (this.finished) return;
+    const grounded = this.wasGrounded, V = this.config;
     const p = this.chassis.getPosition();
     this.distance = Math.max(this.distance, p.x - 5);
     const nowGrounded = this.wheelContacts.some(c => c.size > 0);
@@ -163,7 +161,7 @@ export class HillSim {
       }
     }
     this.fuel = Math.max(0, this.fuel - HILL_DT * (J.idleFuelPerSecond + (input.gas ? J.gasFuelPerSecond : 0)) * V.fuelRate * HILL_MAPS[this.map].fuelRate);
-    for (const pickup of hillPickups(this.seed, p.x - 4, p.x + 4, this.map)) {
+    for (const pickup of hillPickups(this.seed, p.x - 4, p.x + 4, this.map, this.raceFuel)) {
       if (pickup.x < this.retiredX || this.collected.has(pickup.id) || Math.hypot(pickup.x - p.x, pickup.y - p.y) > 2) continue;
       this.collected.add(pickup.id);
       if (pickup.kind === "fuel") { this.fuel = 100; this.events.push("fuel"); }
@@ -173,7 +171,7 @@ export class HillSim {
     // Retire collected IDs behind the streaming window; revisiting old road never mints coins.
     this.retiredX = Math.max(this.retiredX, p.x - 80);
     if (this.tick % 120 === 0) {
-      const nearby = new Set(hillPickups(this.seed, this.retiredX, p.x + 80, this.map).map(v => v.id));
+      const nearby = new Set(hillPickups(this.seed, this.retiredX, p.x + 80, this.map, this.raceFuel).map(v => v.id));
       for (const id of this.collected) if (!nearby.has(id)) this.collected.delete(id);
     }
     if (this.roofContacts.size && !this.overturned) { this.overturned = true; this.events.push("overturned"); }
@@ -190,6 +188,36 @@ export class HillSim {
     if (this.finished) this.events.push("finished");
   }
 
+  setGhost(ghost: boolean) {
+    for (const body of [this.chassis, ...this.wheels]) for (let f = body.getFixtureList(); f; f = f.getNext()) f.setFilterMaskBits(ghost ? 1 : 0xffff);
+  }
+  setActive(active: boolean) { for (const b of [this.chassis, ...this.wheels]) b.setActive(active); }
+  addEnergy(amount: number) { this.energy = Math.min(100, Math.max(0, this.energy + amount)); }
+  setFuel(value: number) { this.fuel = Math.max(0, Math.min(100, value)); }
+  resetAt(x: number, y: number, angle = 0) {
+    const radius = this.config.wheelRadius;
+    this.chassis.setTransform(Vec2(x, y + radius + 1), angle);
+    this.wheels.forEach((w, i) => w.setTransform(Vec2(x + (i ? 1 : -1) * this.config.wheelbase / 2, y + radius + 0.1), angle));
+    for (const b of [this.chassis, ...this.wheels]) { b.setLinearVelocity(Vec2(0, 0)); b.setAngularVelocity(0); b.setAwake(true); }
+    this.finished = null; this.overturned = false; this.overturn = 0; this.stopped = 0; this.jumpHeld = false; this.dashHeld = false; this.airTime = 0; this.pendingLanding = 0;
+    this.roofContacts.clear(); this.wheelContacts.forEach(c => c.clear());
+  }
+  restore(state: HillSnapshot) {
+    [this.chassis, ...this.wheels].forEach((b, i) => {
+      const pose = i ? state.wheels[i - 1] : state.chassis;
+      const motion = state.motion[i]; b.setTransform(Vec2(pose.x, pose.y), pose.angle);
+      b.setLinearVelocity(Vec2(motion.vx, motion.vy)); b.setAngularVelocity(motion.omega);
+    });
+    this.jumpHeld = state.held?.jump ?? false; this.dashHeld = state.held?.dash ?? false;
+    this.tick = state.tick; this.fuel = state.fuel; this.energy = state.energy; this.coins = state.coins;
+    this.distance = state.distance; this.skillCoins = state.skillCoins; this.finished = state.finished;
+    this.overturned = state.overturnRemaining !== null; this.overturn = this.overturned ? 3 - state.overturnRemaining! : 0;
+    this.lastDash = this.tick - 120 + state.dashCooldown / HILL_DT;
+    this.lastJump = this.tick - 36 + state.jumpCooldown / HILL_DT;
+    this.lastGrounded = state.grounded ? this.tick : this.tick - 10;
+    this.events = [];
+  }
+
   private reward(event: HillEvent, coins: number) { this.coins += coins; this.skillCoins += coins; this.events.push(event); }
 
   drainEvents(): HillEvent[] { const events = this.events; this.events = []; return events; }
@@ -197,7 +225,8 @@ export class HillSim {
     const pose = (body: Body): HillPose => ({ x: body.getPosition().x, y: body.getPosition().y, angle: body.getAngle() });
     const x = this.chassis.getPosition().x;
     return {
-      tick: this.tick, map: this.map, vehicle: this.vehicle, energy: this.energy, skillCoins: this.skillCoins,
+      tick: this.tick, held: { jump: this.jumpHeld, dash: this.dashHeld }, raceFuel: this.raceFuel, motion: [this.chassis, ...this.wheels].map(b => ({ vx: b.getLinearVelocity().x, vy: b.getLinearVelocity().y, omega: b.getAngularVelocity() })),
+      jumpCooldown: Math.max(0, (36 - (this.tick - this.lastJump)) * HILL_DT), map: this.map, vehicle: this.vehicle, energy: this.energy, skillCoins: this.skillCoins,
       dashReady: this.energy >= HILL_DASH.energy && this.tick - this.lastDash >= HILL_DASH.cooldownTicks && this.fuel > 0 && Math.cos(this.chassis.getAngle()) > 0.3,
       dashCooldown: Math.max(0, (HILL_DASH.cooldownTicks - (this.tick - this.lastDash)) * HILL_DT),
       jumpReady: this.energy >= 35 && this.tick - this.lastJump >= 36 && (this.overturned || this.tick - this.lastGrounded <= 9), chassis: pose(this.chassis), wheels: this.wheels.map(pose),
@@ -205,7 +234,7 @@ export class HillSim {
       grounded: this.wheelContacts.some(c => c.size > 0),
       overturnRemaining: this.overturned ? Math.max(0, J.overturnSeconds - this.overturn) : null,
       finished: this.finished,
-      pickups: hillPickups(this.seed, x - 30, x + 85, this.map).filter(v => v.x >= this.retiredX && !this.collected.has(v.id)),
+      pickups: hillPickups(this.seed, x - 30, x + 85, this.map, this.raceFuel).filter(v => v.x >= this.retiredX && !this.collected.has(v.id)),
     };
   }
 }

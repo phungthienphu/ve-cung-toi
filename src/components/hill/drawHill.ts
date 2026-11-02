@@ -7,7 +7,7 @@ import { drawVehicle } from "./drawVehicle";
 
 export interface HillCamera { x: number; y: number; scale: number }
 /** Canvas coordinates are CSS pixels; the caller applies capped device scaling. */
-export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number, state: HillSnapshot, camera: HillCamera, dt: number, flags: HillFlag[] = []) {
+export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number, state: HillSnapshot, camera: HillCamera, dt: number, flags: HillFlag[] = [], carAlpha = 1, squash = 1) {
   const map = HILL_MAPS[state.map], car = HILL_VEHICLES[state.vehicle];
   const targetScale = Math.min(w / (w < h ? 25 : 39), h / 18) / (1 + Math.min(0.25, state.speed / 90) + (state.grounded ? 0 : 0.08));
   const blend = 1 - Math.exp(-dt * 5);
@@ -78,6 +78,7 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
       ctx.beginPath(); ctx.moveTo(x - (1.7 - i * 0.3) * s, y); ctx.lineTo(x, y); ctx.stroke();
     }
   }
+  ctx.save(); ctx.globalAlpha = carAlpha;
   // Springs follow the wheel bodies, rather than a decorative fixed wheel position.
   const c = state.chassis;
   state.wheels.forEach((wheel, i) => {
@@ -86,7 +87,7 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
     ctx.beginPath(); ctx.moveTo(sx(ax), sy(ay)); ctx.lineTo(sx(wheel.x), sy(wheel.y));
     ctx.strokeStyle = "#d3d8ce"; ctx.lineWidth = 5; ctx.stroke();
   });
-  ctx.save(); ctx.translate(sx(c.x), sy(c.y)); ctx.rotate(-c.angle); ctx.scale(s, -s);
+  ctx.save(); ctx.translate(sx(c.x), sy(c.y)); ctx.rotate(-c.angle); ctx.scale(s, -s * squash);
   drawVehicle(ctx, state);
   ctx.restore();
   for (const wheel of state.wheels) {
@@ -94,6 +95,7 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
     drawJeepWheel(ctx, car.wheelRadius);
     ctx.restore();
   }
+  ctx.restore();
   if (state.overturnRemaining !== null) {
     ctx.strokeStyle = "#e55542"; ctx.lineWidth = 5;
     ctx.beginPath(); ctx.arc(sx(c.x), sy(c.y) - 45, 23, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * state.overturnRemaining / 3); ctx.stroke();
