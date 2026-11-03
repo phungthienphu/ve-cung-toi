@@ -184,16 +184,26 @@ function Setting({ label, children }: { label: string; children: React.ReactNode
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-/** A fun title for whoever did most of something this round. */
-function titles(cars: HillRaceCar[]) {
-  const best = (score: (car: HillRaceCar) => number) => {
-    const top = [...cars].sort((a, b) => score(b) - score(a))[0];
+/**
+ * A fun title for whoever did most of something this round — always exactly
+ * one winner. A tie goes to the tie-break (lower wins), then to whoever
+ * finished ahead this round (the owner's rule: equal stomps → fewer times
+ * stomped → better finish).
+ */
+function titles(cars: HillRaceCar[], finish: string[]) {
+  const place = (car: HillRaceCar) => {
+    const index = finish.indexOf(car.id);
+    return index < 0 ? cars.length : index;
+  };
+  const best = (score: (car: HillRaceCar) => number, tie: (car: HillRaceCar) => number = () => 0) => {
+    const top = [...cars].sort((a, b) => score(b) - score(a) || tie(a) - tie(b) || place(a) - place(b))[0];
     return top && score(top) > 0 ? top.id : null;
   };
   return [
-    { id: best((car) => car.stomps), label: '🦶 Vua giẫm đầu' },
+    { id: best((car) => car.stomps, (car) => car.squashed), label: '🦶 Vua giẫm đầu' },
     { id: best((car) => car.air), label: '✈️ Phi công' },
-    { id: best((car) => car.squashed), label: '🥞 Nạn nhân của năm' },
+    // The purest victim: stomped most, and stomped back the least.
+    { id: best((car) => car.squashed, (car) => car.stomps), label: '🥞 Nạn nhân của năm' },
     { id: best((car) => car.crashes), label: '🙃 Chuyên gia chổng vó' },
   ].filter((title): title is { id: string; label: string } => title.id !== null);
 }
@@ -205,7 +215,8 @@ export function HillRaceResults({ state, order, cars, title }: { state: HillRace
   const podium = order.slice(0, 3);
   // 2nd · 1st · 3rd, like a real podium.
   const arranged = [podium[1], podium[0], podium[2]].filter(Boolean);
-  const awards = titles(cars);
+  // Titles are for this round, so ties look at this round's finish (state.order), not the series standings.
+  const awards = titles(cars, state.order.length ? state.order : order);
 
   return (
     <section>
