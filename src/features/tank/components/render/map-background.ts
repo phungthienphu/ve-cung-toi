@@ -1,3 +1,5 @@
+import { drawMeadowTile, drawDirtRoad, drawCanopy } from './terrain-art';
+import { VIEWPORT_W, VIEWPORT_H } from './viewport';
 // Everything about drawing the map itself: the static floor/wall/road
 // background (cached per map id), the minimap, and the animated bushes/
 // hazards/monster-nest decals that live on top of it.
@@ -6,8 +8,6 @@ import {
   BUSH_REVEAL_RADIUS,
   NEST_PUDDLE_RADIUS,
   TILE_SIZE,
-  VIEWPORT_H,
-  VIEWPORT_W,
   getMap,
   mapCanvasSize,
   type TankTimeOfDay,
@@ -47,32 +47,6 @@ function isRoadTile(m: ReturnType<typeof getMap>, row: number, col: number): boo
 
 function isTrackTile(m: ReturnType<typeof getMap>, row: number, col: number): boolean {
   return m.layout[row]?.[col] === "T";
-}
-
-/** Picks the right connected-road sprite name (Kenney "Tanks" pack naming)
- * for a road tile based on which of its 4 orthogonal neighbors are also
- * road — a straight, corner, T-junction ("Split"), or 4-way crossing. */
-function roadTileName(n: boolean, s: boolean, e: boolean, w: boolean): string {
-  const count = [n, s, e, w].filter(Boolean).length;
-  if (count >= 4) return "roadCrossing";
-  if (count === 3) {
-    if (!s) return "roadSplitN";
-    if (!n) return "roadSplitS";
-    if (!w) return "roadSplitE";
-    return "roadSplitW";
-  }
-  if (count === 2) {
-    if (n && s) return "roadNorth";
-    if (e && w) return "roadEast";
-    if (n && w) return "roadCornerUL";
-    if (n && e) return "roadCornerUR";
-    if (s && w) return "roadCornerLL";
-    if (s && e) return "roadCornerLR";
-  }
-  // Dead-end or isolated tile: fall back to whichever straight piece matches
-  // the one connection it does have (the pack has no dedicated end-cap art).
-  if (n || s) return "roadNorth";
-  return "roadEast";
 }
 
 function drawEdgeTufts(ctx: CanvasRenderingContext2D, x: number, y: number, side: "top" | "bottom" | "left" | "right", rng: () => number) {
@@ -120,10 +94,6 @@ function drawEdgeTufts(ctx: CanvasRenderingContext2D, x: number, y: number, side
  * fall back to a plain fill and retry next frame rather than cache a blank.
  */
 export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElement | null {
-  const floorSrcs =
-    m.terrain === "sand" ? ["/tank/Retina/tileSand1.png", "/tank/Retina/tileSand2.png"] : ["/tank/Retina/tileGrass1.png", "/tank/Retina/tileGrass2.png"];
-  const floorTiles = floorSrcs.map(getSprite);
-  if (floorTiles.some((img) => !img)) return null;
   const hasIce = m.layout.some((row) => row.includes("I"));
   const iceTiles = [getSprite("/tank/ices/iceBlock.png"), getSprite("/tank/ices/iceBlockAlt.png")];
   if (hasIce && iceTiles.some((img) => !img)) return null;
@@ -146,19 +116,6 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
   const railCorners = [railCornerUL, railCornerUR, railCornerLL, railCornerLR];
   if (hasTrack && [...railVerticalTiles, ...railHorizontalTiles, ...railCorners].some((img) => !img)) return null;
 
-  // Only this map's actually-used road variants need to be ready — gating on
-  // the full 18-sprite set would delay every map's first paint needlessly.
-  const roadPrefix = m.terrain === "sand" ? "tileSand" : "tileGrass";
-  const neededRoadSrcs = new Set<string>();
-  for (let row = 0; row < m.layout.length; row++) {
-    for (let col = 0; col < m.layout[row].length; col++) {
-      if (!isRoadTile(m, row, col)) continue;
-      const name = roadTileName(isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
-      neededRoadSrcs.add(`/tank/Retina/${roadPrefix}_${name}.png`);
-    }
-  }
-  if ([...neededRoadSrcs].some((src) => !getSprite(src))) return null;
-
   const { w, h } = mapCanvasSize(m);
   const canvas = document.createElement("canvas");
   canvas.width = w;
@@ -175,14 +132,14 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
       if (tile === "#") {
         // Ground shows underneath (sandbag art doesn't fill a perfect square),
         // then a real sandbag sprite as the obstacle itself.
-        ctx.drawImage(floorTiles[rng() > 0.5 ? 1 : 0]!, x, y, TILE_SIZE, TILE_SIZE);
-        const wallImg = getSprite(rng() > 0.5 ? "/tank/Retina/sandbagBeige.png" : "/tank/Retina/sandbagBrown.png");
-        if (wallImg) {
-          ctx.drawImage(wallImg, x - 1, y - 1, TILE_SIZE + 2, TILE_SIZE + 2);
-        } else {
-          ctx.fillStyle = "#8a7355";
-          ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-        }
+        drawMeadowTile(ctx, x, y, m.terrain === "sand", 0);
+        ctx.fillStyle = "#b9a473";
+        ctx.strokeStyle = "#796744"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#d9c996";
+        ctx.beginPath(); ctx.roundRect(x + 3, y + 2, TILE_SIZE - 6, TILE_SIZE - 8, 4); ctx.fill();
+        ctx.strokeStyle = "#eee0b8"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + 9, y + 3); ctx.lineTo(x + 9, y + TILE_SIZE - 7); ctx.stroke();
         // Soft contact shadow where this wall meets open floor, for depth.
         if (!isWallTile(m, row - 1, col)) {
           ctx.fillStyle = "rgba(255,255,255,0.14)";
@@ -195,15 +152,8 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
         continue;
       }
 
-      const floorImg = floorTiles[rng() > 0.75 ? 1 : 0]!;
-      ctx.drawImage(floorImg, x, y, TILE_SIZE, TILE_SIZE);
-
-      if (tile === "R") {
-        const prefix = m.terrain === "sand" ? "tileSand" : "tileGrass";
-        const name = roadTileName(isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
-        const roadImg = getSprite(`/tank/Retina/${prefix}_${name}.png`);
-        if (roadImg) ctx.drawImage(roadImg, x, y, TILE_SIZE, TILE_SIZE);
-      }
+      drawMeadowTile(ctx, x, y, m.terrain === "sand", rng());
+      if (tile === "R") drawDirtRoad(ctx, x, y, isRoadTile(m, row - 1, col), isRoadTile(m, row + 1, col), isRoadTile(m, row, col + 1), isRoadTile(m, row, col - 1));
 
       if (tile === "H") {
         ctx.fillStyle = "rgba(127,29,29,0.16)";
@@ -258,25 +208,12 @@ export function buildMapBackground(m: ReturnType<typeof getMap>): HTMLCanvasElem
       if (isWallTile(m, row, col - 1)) drawEdgeTufts(ctx, x, y, "left", rng);
       if (isWallTile(m, row, col + 1)) drawEdgeTufts(ctx, x, y, "right", rng);
 
-      // Scattered twig/pebble litter on plain floor tiles — purely decorative
-      // ground clutter, baked into the static background so it costs nothing
-      // per frame. Sparse (~1 in 9 tiles) so it reads as texture, not noise.
-      if (tile === "." && rng() < 0.11) {
-        const twigImg = getSprite(m.terrain === "sand" ? "/tank/Retina/treeBrown_twigs.png" : "/tank/Retina/treeGreen_twigs.png");
-        if (twigImg) {
-          const size = TILE_SIZE * 0.7;
-          ctx.save();
-          ctx.translate(x + TILE_SIZE / 2, y + TILE_SIZE / 2);
-          ctx.rotate(rng() * Math.PI * 2);
-          ctx.drawImage(twigImg, -size / 2, -size / 2, size, size);
-          ctx.restore();
-        }
-      }
+
     }
   }
   // A light overall darkening so bright foreground elements (bullets, tanks,
   // pickups) read clearly against the floor art instead of blending into it.
-  ctx.fillStyle = "rgba(15,23,42,0.12)";
+  ctx.fillStyle = "rgba(15,23,42,0.02)";
   ctx.fillRect(0, 0, w, h);
   return canvas;
 }
@@ -325,7 +262,9 @@ export function drawMinimap(
   m: ReturnType<typeof getMap>,
   selfId: string,
   camX: number,
-  camY: number
+  camY: number,
+  viewportWidth = VIEWPORT_W,
+  viewportHeight = VIEWPORT_H
 ) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -339,7 +278,7 @@ export function drawMinimap(
 
   ctx.strokeStyle = "rgba(255,255,255,0.55)";
   ctx.lineWidth = 1;
-  ctx.strokeRect((camX - VIEWPORT_W / 2) * scaleX, (camY - VIEWPORT_H / 2) * scaleY, VIEWPORT_W * scaleX, VIEWPORT_H * scaleY);
+  ctx.strokeRect((camX - viewportWidth / 2) * scaleX, (camY - viewportHeight / 2) * scaleY, viewportWidth * scaleX, viewportHeight * scaleY);
 
   ctx.fillStyle = "#92400e";
   for (const crate of s.crates) {
@@ -467,16 +406,7 @@ export function bushNeighborBias(m: ReturnType<typeof getMap>, row: number, col:
   };
 }
 
-const BUSH_SPRITES = ["/tank/Retina/treeGreen_large.png", "/tank/Retina/treeGreen_small.png", "/tank/Retina/treeBrown_large.png"];
-
-/**
- * Real tree/bush sprite, deterministically picked+placed per tile (row/col)
- * so it stays stable frame to frame — only the `time`-driven sway moves.
- * `bias` nudges it toward any adjacent wall so it reads as growing out of
- * the terrain instead of floating mid-tile. `opacity` lets the same call be
- * reused as a lighter "foliage in front" overlay for whichever tank is
- * currently standing in this tile (so you can see yourself under the leaves).
- */
+/** Animated, outlined canopy; same appearance for cover and its foreground pass. */
 export function drawBush(
   ctx: CanvasRenderingContext2D,
   tileX: number,
@@ -487,28 +417,9 @@ export function drawBush(
   time: number,
   opacity: number
 ) {
-  const rng = mulberry32(row * 7919 + col * 104729 + 17);
-  const img = getSprite(BUSH_SPRITES[Math.floor(rng() * BUSH_SPRITES.length)]);
-  const dx = bias.left ? -4 : bias.right ? 4 : 0;
-  const dy = bias.top ? -4 : bias.bottom ? 4 : 0;
-  const cx = tileX + TILE_SIZE / 2 + dx;
-  const cy = tileY + TILE_SIZE / 2 + dy;
-  const sway = Math.sin(time / 650 + row * 2.1 + col * 1.7) * 0.06;
-
-  ctx.save();
-  ctx.globalAlpha = opacity;
-  if (img) {
-    const size = TILE_SIZE * 1.2;
-    ctx.translate(cx, cy + size * 0.3);
-    ctx.rotate(sway);
-    ctx.drawImage(img, -size / 2, -size * 0.8, size, size);
-  } else {
-    ctx.fillStyle = "#166534";
-    ctx.beginPath();
-    ctx.arc(cx, cy, TILE_SIZE * 0.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
+  const dx = bias.left ? -3 : bias.right ? 3 : 0;
+  const dy = bias.top ? -3 : bias.bottom ? 3 : 0;
+  drawCanopy(ctx, tileX + TILE_SIZE / 2 + dx, tileY + TILE_SIZE / 2 + dy, time / 650 + row * 2.1 + col * 1.7, opacity);
 }
 
 /** One of TANK_TIME_OF_DAY, rolled once per match server-side (see
@@ -516,31 +427,31 @@ export function drawBush(
  * Drawn in screen space over the whole viewport, after the world content but
  * before the blind item's fog-of-war overlay — blind stays fully dominant
  * regardless of the ambient lighting underneath it. "day" draws nothing. */
-export function drawTimeOfDayOverlay(ctx: CanvasRenderingContext2D, timeOfDay: TankTimeOfDay) {
+export function drawTimeOfDayOverlay(ctx: CanvasRenderingContext2D, timeOfDay: TankTimeOfDay, width = VIEWPORT_W, height = VIEWPORT_H) {
   if (timeOfDay === "day") return;
   ctx.save();
   if (timeOfDay === "sunset") {
-    const grad = ctx.createLinearGradient(0, 0, 0, VIEWPORT_H);
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, "rgba(251,146,60,0.16)");
     grad.addColorStop(1, "rgba(190,24,93,0.16)");
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H);
+    ctx.fillRect(0, 0, width, height);
   } else {
     // night
     ctx.fillStyle = "rgba(15,23,42,0.42)";
-    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H);
+    ctx.fillRect(0, 0, width, height);
     const vignette = ctx.createRadialGradient(
-      VIEWPORT_W / 2,
-      VIEWPORT_H / 2,
-      VIEWPORT_H * 0.25,
-      VIEWPORT_W / 2,
-      VIEWPORT_H / 2,
-      VIEWPORT_H * 0.72
+      width / 2,
+      height / 2,
+      height * 0.25,
+      width / 2,
+      height / 2,
+      height * 0.72
     );
     vignette.addColorStop(0, "rgba(0,0,0,0)");
     vignette.addColorStop(1, "rgba(0,0,0,0.35)");
     ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H);
+    ctx.fillRect(0, 0, width, height);
   }
   ctx.restore();
 }

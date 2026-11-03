@@ -1,6 +1,8 @@
 "use client";
+import { useTankViewport } from './render/viewport';
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   BULLET_SPREAD_MAX_DEG,
   BULLET_SPREAD_PER_SHOT_DEG,
@@ -13,8 +15,6 @@ import {
   TANK_SIZE,
   SNAPSHOT_MS,
   TILE_SIZE,
-  VIEWPORT_H,
-  VIEWPORT_W,
   VISION_RADIUS,
   getMap,
   mapCanvasSize,
@@ -75,12 +75,14 @@ import { useTankEffects } from "./useTankEffects";
 import { useTankInput } from "./useTankInput";
 
 interface Props {
+  minimapHost?: HTMLDivElement | null;
   state: ClientTankPublicState;
   selfId: string;
   send: (msg: TankClientMessage) => number;
 }
 
-export default function TankCanvas({ state, selfId, send }: Props) {
+export default function TankCanvas({ state, selfId, send, minimapHost }: Props) {
+  const { width: VIEWPORT_W, height: VIEWPORT_H } = useTankViewport();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const minimapRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef(state);
@@ -112,7 +114,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
   }
 
   const { explosionsRef, marksRef, oilSpillsRef, muzzleFlashesRef, leavesRef, sandWavesRef, hooksRef, damageNumbersRef, killFeed } = useTankEffects(state, selfId);
-  const input = useTankInput({ send, selfId, stateRef, canvasRef });
+  const input = useTankInput({ send, selfId, stateRef, canvasRef, width: VIEWPORT_W, height: VIEWPORT_H });
 
   const bgCacheRef = useRef<{ mapId: string; canvas: HTMLCanvasElement } | null>(null);
 
@@ -131,7 +133,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     // every single frame (dozens of drawImage/gradient/save-restore calls
     // each) for a sharpness difference nobody notices on a small screen —
     // 2x already looks crisp and is the actual perf-sensitive case.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(2, (window.devicePixelRatio || 1) * Math.max(1, canvas.getBoundingClientRect().width / VIEWPORT_W));
     canvas.width = VIEWPORT_W * dpr;
     canvas.height = VIEWPORT_H * dpr;
     ctx.scale(dpr, dpr);
@@ -502,7 +504,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
 
       ctx.restore();
 
-      drawTimeOfDayOverlay(ctx, s.timeOfDay);
+      drawTimeOfDayOverlay(ctx, s.timeOfDay, VIEWPORT_W, VIEWPORT_H);
 
       // Fog of war: purely a local rendering restriction — the browser still
       // has the full state above, it just chooses to paint over most of it.
@@ -521,7 +523,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
       }
 
       if (nowMs - lastMinimapAt >= 100) {
-        drawMinimap(minimapRef.current, s, m, selfId, camX, camY); lastMinimapAt = nowMs;
+        drawMinimap(minimapRef.current, s, m, selfId, camX, camY, VIEWPORT_W, VIEWPORT_H); lastMinimapAt = nowMs;
       }
 
       raf = requestAnimationFrame(draw);
@@ -534,7 +536,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
     // re-runs, it just satisfies the linter, which can't see through the
     // custom hooks to verify that stability itself.
   }, [
-    selfId, send, input.aimAngleRef, input.renderSelfRef,
+    VIEWPORT_W, VIEWPORT_H, selfId, send, input.aimAngleRef, input.renderSelfRef,
     input.heldRef,
     input.cameraOffsetRef,
     input.aimDistanceRef,
@@ -555,7 +557,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
   const self = state.players.find((p) => p.id === selfId);
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="tg-canvas-shell">
       <div className="relative">
         <canvas
           ref={canvasRef}
@@ -565,17 +567,19 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           onMouseLeave={input.handleAimLeave}
           onMouseDown={input.handleMouseDown}
           onMouseUp={input.handleMouseUp}
-          className="block w-full touch-none rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="tg-world block w-full touch-none"
           style={{ aspectRatio: `${VIEWPORT_W} / ${VIEWPORT_H}` }}
         />
-        <canvas
+        {minimapHost ? createPortal(
+          <canvas
           ref={minimapRef}
           width={MINIMAP_W}
           height={MINIMAP_H}
-          className="absolute left-2 top-2 rounded-md border border-white/50 shadow-lg md:bottom-2 md:left-auto md:right-2 md:top-auto"
-        />
+          className="tg-minimap absolute left-2 top-2 rounded-md border border-white/50 shadow-lg md:bottom-2 md:left-auto md:right-2 md:top-auto"
+        />, minimapHost) : null}
+
         {killFeed.length > 0 && (
-          <div className="pointer-events-none absolute right-2 top-2 flex max-w-[70%] flex-col items-end gap-1">
+          <div className="tg-feed pointer-events-none absolute right-2 top-2 flex max-w-[70%] flex-col items-end gap-1">
             {killFeed.map((f) => (
               <div key={f.id} className="truncate rounded bg-black/70 px-2 py-1 text-[11px] font-medium text-white shadow">
                 {f.text}
@@ -593,7 +597,7 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           onPointerUp={input.resetJoystick}
           onPointerCancel={input.resetJoystick}
           onLostPointerCapture={input.resetJoystick}
-          className="absolute bottom-3 left-3 h-24 w-24 touch-none rounded-full border border-white/40 bg-black/25 md:hidden"
+          className="tg-stick tg-move absolute bottom-3 left-3 h-24 w-24 touch-none rounded-full border border-white/40 bg-black/25 md:hidden"
         >
           <div
             ref={input.joyKnobRef}
@@ -608,7 +612,8 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           }}
           onPointerUp={() => input.setBoost(false)}
           onPointerCancel={() => input.setBoost(false)}
-          className="absolute bottom-24 right-3 flex h-14 w-14 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xl shadow-lg md:hidden"
+          aria-label="Giữ để tăng tốc"
+          className="tg-boost absolute bottom-24 right-3 flex h-14 w-14 touch-none items-center justify-center rounded-full border border-white/40 bg-amber-400/80 text-xl shadow-lg md:hidden"
         >
           ⚡
         </button>
@@ -621,13 +626,13 @@ export default function TankCanvas({ state, selfId, send }: Props) {
           onPointerUp={input.handleFireUp}
           onPointerCancel={input.handleFireUp}
           onLostPointerCapture={input.handleFireUp}
-          className="absolute bottom-3 right-3 flex h-16 w-16 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg md:hidden"
+          className="tg-stick tg-aim absolute bottom-3 right-3 flex h-16 w-16 touch-none items-center justify-center rounded-full border border-white/40 bg-red-500/80 text-xs font-bold text-white shadow-lg md:hidden"
         >
           <span ref={input.aimKnobRef} className="pointer-events-none flex flex-col items-center">🎯<span>BẮN</span></span>
         </button>
       </div>
       {self && (
-        <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 shadow-xl">
+        <div className="tg-legacy-boost hidden">
           <span className="shrink-0 text-xs font-medium text-slate-500">⚡ Tăng tốc (Shift)</span>
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
             <div

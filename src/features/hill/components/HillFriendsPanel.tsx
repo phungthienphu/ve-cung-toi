@@ -40,7 +40,7 @@ export function HillFriendsPanel({ name, onName }: { name: string; onName: (name
   };
 
   return (
-    <div>
+    <div className="hk-friends-form">
       <label className="block text-xs font-bold uppercase tracking-wider text-emerald-100/70">
         Tên tài xế
         <input

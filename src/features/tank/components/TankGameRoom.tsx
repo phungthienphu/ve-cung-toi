@@ -4,13 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { homeFonts } from '@/features/home/fonts';
 import TankPreview from './TankPreview';
+import { TankMatchPanel } from './TankMatchPanel';
 import '../lobby.css';
+import '../play.css';
 import { useRouter } from "next/navigation";
 import { useTankRoom } from "@/features/tank/hooks/useTankRoom";
 import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw, startTankBgMusic, stopTankBgMusic } from "@/lib/sound";
 import { fireworks } from "@/lib/confetti";
 import {
   AMMO_MAX_ROUNDS,
+  MAX_HP,
+  MAX_BOOST_ENERGY,
   DEFAULT_MAP_ID,
   KILL_TARGET,
   MIN_TANK_PLAYERS,
@@ -38,10 +42,34 @@ interface Props {
 
 export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
   const router = useRouter();
+  const [battleMenuOpen, setBattleMenuOpen] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [tabHeld, setTabHeld] = useState(false);
+  const [minimapHost, setMinimapHost] = useState<HTMLDivElement | null>(null);
   const { state, connected, kicked, send } = useTankRoom(roomId, playerId, name, color);
   const [mapId, setMapId] = useState(DEFAULT_MAP_ID);
   const botDifficulty = state?.botDifficulty ?? "normal";
   const [pickingTank, setPickingTank] = useState(false);
+
+  const matchStatus = state?.status;
+  useEffect(() => {
+    if (!matchStatus || matchStatus === 'lobby') return;
+    const down = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setRosterOpen(false); setTabHeld(false); }
+      if (event.key !== 'Tab' || event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLButtonElement) return;
+      event.preventDefault(); setTabHeld(true);
+    };
+    const up = (event: KeyboardEvent) => { if (event.key === 'Tab') setTabHeld(false); };
+    const blur = () => setTabHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+    };
+  }, [matchStatus]);
 
   useEffect(() => {
     if (kicked) router.push("/tank-game");
@@ -437,31 +465,20 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
       : null;
 
   return (
-    <div className="min-h-app bg-tank-scene">
-      <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-3 px-3 py-4">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-xl">
-          <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
-            {remainingLabel && (
-              <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-mono font-semibold text-slate-700">⏱ {remainingLabel}</span>
-            )}
-            {state.mode === "practice" ? (
-              <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">🎯 Luyện tập</span>
-            ) : state.mode === "team" ? (
-              <span className="shrink-0 font-semibold">
-                <span className="text-blue-600">Đội A: {state.teamScores.A}</span>
-                <span className="mx-1.5 text-slate-300">·</span>
-                <span className="text-red-600">Đội B: {state.teamScores.B}</span>
-              </span>
-            ) : (
-              state.players.map((p) => (
-                <span key={p.id} className="flex min-w-0 items-center gap-1.5 font-medium">
-                  <span className="h-3 w-3 shrink-0 rounded" style={{ backgroundColor: p.color }} />
-                  <span className="max-w-[8rem] truncate">{p.name}</span>: {p.score}
-                </span>
-              ))
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+    <div className={`${homeFonts} tank-battle`}>
+      <div className="tg-stage">
+        <div className="tg-scoreboard">
+          <button className="tg-match-summary" aria-label="Bảng điểm người chơi" aria-haspopup="dialog" aria-expanded={rosterOpen || tabHeld} onClick={() => setRosterOpen(!rosterOpen)}>
+            {state.mode === "team" ? <>
+              <span className="tg-team-a">Đội A · {state.players.filter(p => p.team === 'A').length} người <b>{state.teamScores.A}</b></span>
+              <span className="tg-match-time">{remainingLabel || 'VS'}</span>
+              <span className="tg-team-b"><b>{state.teamScores.B}</b> Đội B · {state.players.filter(p => p.team === 'B').length} người</span>
+            </> : <><span>{state.mode === 'practice' ? '🎯' : '👥'} {state.players.length} người chơi</span>{remainingLabel && <span className="tg-match-time">{remainingLabel}</span>}</>}
+            <span aria-hidden="true">⌄</span>
+          </button>
+          <div className="tg-menu-actions">
+            <button aria-label="Menu trận đấu" aria-expanded={battleMenuOpen} onClick={() => setBattleMenuOpen(!battleMenuOpen)}>☰</button>
+            {battleMenuOpen && <div className="tg-menu-popover">
             {state.mode === "practice" && isHost && (
               <button
                 onClick={() => {
@@ -479,12 +496,18 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             >
               Rời phòng
             </button>
+            </div>}
           </div>
         </div>
 
+        {self && <div className="tg-vitals" aria-label="Trạng thái xe của bạn">
+          <div><span aria-hidden="true">♥</span><meter aria-label="Máu" value={self.hp} min={0} max={MAX_HP} /><strong>{Math.max(0, Math.ceil(self.hp))}</strong></div>
+          <div><span aria-hidden="true">▰</span><span className="tg-rounds" aria-label={`${Math.floor(self.ammo)} trên ${AMMO_MAX_ROUNDS} viên đạn`}>{Array.from({ length: AMMO_MAX_ROUNDS }, (_, i) => <i key={i} data-loaded={i < Math.floor(self.ammo)} />)}</span><span aria-hidden="true">ϟ</span><meter aria-label="Tăng tốc" value={self.boostEnergy} min={0} max={MAX_BOOST_ENERGY} /></div>
+          {!self.alive && <p>Đang chờ hồi sinh…</p>}
+        </div>}
         {self && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-xl">
-            <span className="shrink-0 text-xs font-medium text-slate-500">Vật phẩm:</span>
+          <div className="tg-loadout">
+            <span className="sr-only">Vật phẩm:</span>
             {[0, 1, 2].map((i) => {
               const kind = self.items[i] as ItemKind | undefined;
               return (
@@ -508,7 +531,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
               );
             })}
             <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
-            <div className="flex shrink-0 items-center gap-1" title="Băng đạn — hết phải chờ hồi từng viên">
+            <div className="tg-ammo flex shrink-0 items-center gap-1" title="Băng đạn — hết phải chờ hồi từng viên">
               <span className="text-xs font-medium text-slate-500">Đạn:</span>
               <div className="flex gap-0.5">
                 {Array.from({ length: AMMO_MAX_ROUNDS }, (_, i) => (
@@ -526,7 +549,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
               const ui = ULTIMATE_UI[skin];
               const ready = self.ultimateEnergy >= ultimateConfig.maxEnergy;
               const isCharging = self.sniperChargingSince !== null;
-              const className = `flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-base transition ${
+              const className = `tg-ultimate flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-base transition ${
                 ready ? ui.activeClasses : "border-slate-200 text-slate-300"
               } ${isCharging ? "ring-2 ring-red-400" : ""}`;
               const bar = (
@@ -597,8 +620,9 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
           </div>
         )}
 
-        <div className="relative">
-          <TankCanvas state={state} selfId={playerId} send={send} />
+        <div className="tg-field">
+          <div className="tg-battle-minimap" ref={setMinimapHost} aria-label="Bản đồ chiến trường" />
+          <TankCanvas state={state} selfId={playerId} send={send} minimapHost={minimapHost} />
           {state.status === "ended" && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
               <div className="animate-bounce-in rounded-xl bg-white px-6 py-3 text-lg font-bold text-ink shadow-xl">🏁 Trận đấu kết thúc!</div>
@@ -606,7 +630,10 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
           )}
         </div>
 
-        <p className="text-center text-xs text-ink/40">
+        {(rosterOpen || tabHeld) && <button className="tg-roster-backdrop" aria-label="Đóng bảng điểm" onClick={() => { setRosterOpen(false); setTabHeld(false); }} />}
+        <TankMatchPanel state={state} selfId={playerId} open={rosterOpen || tabHeld} onClose={() => { setRosterOpen(false); setTabHeld(false); }} />
+
+        <p className="tg-keyboard-hint text-center text-xs text-ink/40">
           Di chuyển: mũi tên / WASD · Bắn: phím cách hoặc click chuột trái (ngắm theo chuột) · Dùng vật phẩm: 1/2/3 · Đạn to: R · Giữ Shift để tăng tốc
           {self && !self.alive && " · Bạn vừa bị bắn, hồi sinh sau ít giây..."}
         </p>

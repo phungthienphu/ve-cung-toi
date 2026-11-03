@@ -1,4 +1,4 @@
-import { BUSH_REVEAL_RADIUS, TILE_SIZE, VISION_RADIUS, ULTIMATE_ACTIVATION_MODE, ULTIMATE_CONFIG, skinForColor, type TankClientMessage, type TankMapDef, type TankPlayer, type TankPublicState } from './types';
+import { BUSH_REVEAL_RADIUS, TANK_SIZE, TILE_SIZE, VISION_RADIUS, ULTIMATE_ACTIVATION_MODE, ULTIMATE_CONFIG, skinForColor, type TankClientMessage, type TankMapDef, type TankPlayer, type TankPublicState } from './types';
 import { tankBlocked, tileAt } from './movement';
 
 export type TankBotDifficulty = 'easy' | 'normal' | 'hard';
@@ -9,7 +9,7 @@ export const TANK_BOT_LEVELS = {
 };
 
 /** Grid route, bounded by map size; tanks never cut diagonally through wall corners. */
-export function tankBotWaypoint(map: TankMapDef, from: { x: number; y: number }, to: { x: number; y: number }) {
+export function tankBotWaypoint(map: TankMapDef, from: { x: number; y: number }, to: { x: number; y: number }, obstacles: readonly { x: number; y: number }[] = []) {
   const cols = map.layout[0].length, rows = map.layout.length;
   const index = (p: { x: number; y: number }) => Math.floor(p.y / TILE_SIZE) * cols + Math.floor(p.x / TILE_SIZE);
   const start = index(from), goal = index(to), previous = new Int32Array(cols * rows).fill(-1);
@@ -22,6 +22,7 @@ export function tankBotWaypoint(map: TankMapDef, from: { x: number; y: number },
       const nx = x + dx, ny = y + dy, next = ny * cols + nx;
       if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || previous[next] !== -1) continue;
       if (tankBlocked(map, (nx + .5) * TILE_SIZE, (ny + .5) * TILE_SIZE) || map.layout[ny][nx] === 'H') continue;
+      if (obstacles.some(o => Math.abs(o.x - (nx + .5) * TILE_SIZE) < (TILE_SIZE + TANK_SIZE) / 2 && Math.abs(o.y - (ny + .5) * TILE_SIZE) < (TILE_SIZE + TANK_SIZE) / 2)) continue;
       previous[next] = current; queue.push(next);
     }
   }
@@ -53,11 +54,16 @@ export class TankBot {
   private destination: { x: number; y: number } | null = null;
   private routeAt = 0;
   private wanderAt = 0;
+  private progressAt = 0;
+  private progressPosition = { x: 0, y: 0 };
   private waypoint = { x: 0, y: 0 };
   constructor(readonly difficulty: TankBotDifficulty) {}
   decide(self: TankPlayer, state: Omit<TankPublicState, 'players'> & { players: TankPlayer[] }, map: TankMapDef, now: number): TankClientMessage[] {
-    if (now < this.nextThink) return [];
-    const level = TANK_BOT_LEVELS[this.difficulty]; this.nextThink = now + level.think;
+    // Steering must update every simulation tick: holding a turn until the next
+    // combat decision overshoots tile centres and oscillates against corners.
+    const thinking = now >= this.nextThink;
+    const level = TANK_BOT_LEVELS[this.difficulty];
+    if (thinking) this.nextThink = now + level.think;
     const idle = { type: 'input' as const, up: false, down: false, left: false, right: false, boost: false };
     if (!self.alive) return [idle];
     const candidates = state.players.filter(p => p.id !== self.id && p.alive && p.connected && (state.mode !== 'team' || p.team !== self.team));
@@ -73,9 +79,18 @@ export class TankBot {
         if (!tankBlocked(map, x, y) && tileAt(map, x, y) !== 'H') { this.destination = { x, y }; break; }
       }
     }
+    if (now - this.progressAt >= 900) {
+      if (Math.hypot(self.x - this.progressPosition.x, self.y - this.progressPosition.y) < 5) {
+        this.destination = null;
+        this.wanderAt = 0;
+        this.routeAt = 0;
+      }
+      this.progressPosition = { x: self.x, y: self.y };
+      this.progressAt = now;
+    }
     const goal = self.hp < 65 && pickup ? pickup : target ?? pickup ?? this.destination ?? self;
     if (now >= this.routeAt || Math.hypot(this.waypoint.x - self.x, this.waypoint.y - self.y) < 3) {
-      this.waypoint = tankBotWaypoint(map, self, goal); this.routeAt = now + 450;
+      this.waypoint = tankBotWaypoint(map, self, goal, state.crates); this.routeAt = now + 450;
     }
     let dx = this.waypoint.x - self.x, dy = this.waypoint.y - self.y;
     // Sidestep an approaching visible round, with the same walls as the player.
@@ -88,7 +103,13 @@ export class TankBot {
     } else if (target && Math.hypot(target.x - self.x, target.y - self.y) < 100 && self.hp >= 65) dx = dy = 0;
     const angle = target ? Math.atan2(target.y - self.y, target.x - self.x) + (Math.random() * 2 - 1) * level.error : Math.atan2(dy, dx);
     const commands: TankClientMessage[] = [{ ...idle, up: dy < -2, down: dy > 2, left: dx < -2, right: dx > 2, boost: !!threat || self.hp < 35, aimAngle: angle }];
-    if (target) {
+    const blockingCrate = state.crates.find(c => Math.hypot(c.x - self.x, c.y - self.y) < TILE_SIZE * 1.6);
+    if (thinking && !target && blockingCrate && Math.hypot(dx, dy) < 3) {
+      const input = commands[0];
+      if (input.type === 'input') input.aimAngle = Math.atan2(blockingCrate.y - self.y, blockingCrate.x - self.x);
+      commands.push({ type: 'shoot' });
+    }
+    if (target && thinking) {
       const blocked = state.crates.some(c => {
         const along = (c.x - self.x) * Math.cos(angle) + (c.y - self.y) * Math.sin(angle);
         const across = Math.abs((c.x - self.x) * Math.sin(angle) - (c.y - self.y) * Math.cos(angle));

@@ -84,7 +84,7 @@ export default function HillRoom({ room }: { room: string }) {
     ? canStart ? 'Mọi người đã sẵn sàng!' : connectedPlayers.length < 2 ? 'Cần ít nhất 2 người · bấm 📤 Mời bạn' : `Chờ ${connectedPlayers.length - readyCount} người sẵn sàng`
     : `${readyCount}/${connectedPlayers.length} đã sẵn sàng · chờ chủ phòng 👑 bắt đầu`;
 
-  return <main className={`${drawFontClass} min-h-dvh bg-emerald-950 text-emerald-50`}>
+  return <main className={`${drawFontClass} hk-online hk-waiting min-h-dvh`}>
     <div className="mx-auto max-w-5xl px-4 pb-36" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
       <div className="flex items-center gap-2">
         <Link href="/con-duong-hoang-kim/friends" className="rounded-full bg-white/10 px-3 py-2 text-sm font-bold hover:bg-white/20">‹ Phòng khác</Link>
@@ -105,7 +105,7 @@ export default function HillRoom({ room }: { room: string }) {
           : state && <HillLobby state={state} myId={identity.id} onVehicle={(vehicle: HillVehicleId) => send({ type: 'ready', vehicle, ready: false })} onConfig={configure} onInvite={share} />}
       </div>
     </div>
-    {state && <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-emerald-950/95 backdrop-blur" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+    {state && <div className="hk-waiting-footer fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-emerald-950/95 backdrop-blur" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
       <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 pt-3">
         {state.phase === 'results'
           ? host

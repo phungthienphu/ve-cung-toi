@@ -1,3 +1,4 @@
+import { drawWoodenCrate } from './terrain-art';
 // Placed game objects with their own HP/behavior: tanks, forest monsters,
 // crates, traps, and ground pickups.
 
@@ -53,6 +54,10 @@ export function drawTank(
   dashInfo: { isDashing: boolean; angle: number } | null
 ) {
   const half = TANK_SIZE / 2;
+  ctx.save();
+  ctx.fillStyle = "rgba(46,28,15,0.22)";
+  ctx.beginPath(); ctx.ellipse(x + 2, y + 5, half * 1.5, half * 1.1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
   drawHealthBar(ctx, x, y, hp, isAlly);
 
   // Blue's rapid-fire ultimate: a fast-flickering cyan ring, distinct from
@@ -187,18 +192,18 @@ export function drawTank(
     }
   }
 
-  if (isSelf) {
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, half + 4, 0, Math.PI * 2);
-    ctx.stroke();
-  }
 
   ctx.fillStyle = "#1e293b";
-  ctx.font = "10px monospace";
+  ctx.font = "bold 9px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(name, Math.round(x), Math.round(y - half - 20));
+  const label = isSelf ? "Bạn" : name.slice(0, 16);
+  const labelWidth = ctx.measureText(label).width + 10;
+  const labelY = Math.round(y - half - 29);
+  ctx.fillStyle = isAlly ? "#3679bc" : "#d64a3b";
+  ctx.strokeStyle = "#2e1c0f"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(x - labelWidth / 2, labelY, labelWidth, 13, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#fff9eb";
+  ctx.fillText(label, Math.round(x), labelY + 10);
 }
 
 /** Small flame flicker drawn over a burning tank. */
@@ -432,7 +437,7 @@ export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.lineWidth = 1.5;
   ctx.strokeRect(Math.round(x - half) + 0.5, Math.round(y - half) + 0.5, PICKUP_SIZE - 1, PICKUP_SIZE - 1);
   ctx.fillStyle = fg;
-  ctx.font = "10px monospace";
+  ctx.font = "bold 9px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(label, Math.round(x), Math.round(y) + 1);
@@ -440,14 +445,8 @@ export function drawItemPickup(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawCrate(ctx: CanvasRenderingContext2D, crate: Crate) {
-  const img = getSprite("/tank/Retina/crateWood.png");
   const size = CRATE_SIZE * 1.5;
-  if (img) {
-    ctx.drawImage(img, Math.round(crate.x - size / 2), Math.round(crate.y - size / 2), size, size);
-  } else {
-    ctx.fillStyle = "#92400e";
-    ctx.fillRect(Math.round(crate.x - CRATE_SIZE / 2), Math.round(crate.y - CRATE_SIZE / 2), CRATE_SIZE, CRATE_SIZE);
-  }
+  drawWoodenCrate(ctx, crate.x, crate.y, size);
   if (crate.hp < CRATE_MAX_HP) {
     const barY = crate.y - size / 2 - 8;
     for (let i = 0; i < CRATE_MAX_HP; i++) {

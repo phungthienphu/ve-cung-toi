@@ -15,8 +15,6 @@ import {
   RAPID_FIRE_COOLDOWN_MS,
   ULTIMATE_ACTIVATION_MODE,
   ULTIMATE_CONFIG,
-  VIEWPORT_H,
-  VIEWPORT_W,
   skinForColor,
   type TankClientMessage,
 } from "@shared/tank/types";
@@ -43,13 +41,15 @@ const JOY_DEAD_ZONE = 12;
 
 
 interface Params {
+  width: number;
+  height: number;
   send: (msg: TankClientMessage) => void;
   selfId: string;
   stateRef: { current: ClientTankPublicState };
   canvasRef: { current: HTMLCanvasElement | null };
 }
 
-export function useTankInput({ send, selfId, stateRef, canvasRef }: Params) {
+export function useTankInput({ send, selfId, stateRef, canvasRef, width: VIEWPORT_W, height: VIEWPORT_H }: Params) {
   // Shared with the touch joystick/boost button below — both the keyboard
   // listener and the touch handlers mutate this same object so either input
   // method (or a mix, e.g. keyboard + touch on a hybrid device) works.

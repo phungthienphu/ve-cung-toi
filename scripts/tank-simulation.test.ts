@@ -76,7 +76,24 @@ const bot = [...engine.players.values()].find(p => p.bot)!;
 bot.x = 80; bot.y = 80; me.x = 160; me.y = 80; bot.alive = me.alive = true; bot.hp = 100;
 const brain = new TankBot('hard'); const view = { ...engine.publicState(), players: [...engine.players.values()] };
 assert.ok(brain.decide(bot, view, map, clock).some(c => c.type === 'shoot'), 'bot attacks a visible opponent');
-assert.deepEqual(brain.decide(bot, view, map, clock + 1), [], 'AI decisions have a bounded frequency');
+assert.ok(brain.decide(bot, view, map, clock + 1).every(c => c.type === 'input'), 'steering updates each tick while combat decisions stay bounded');
+
+// Follow an actual multi-turn route at simulation cadence, rather than only
+// checking the first waypoint. Coarse steering used to oscillate at corners.
+for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+  const driver = { ...bot, x:80, y:80, hp:60, velocityX:0, velocityY:0 };
+  const navigation = new TankBot(difficulty);
+  const routeView = { ...view, players:[driver], bullets:[], crates:[], pickups:[{ id:'route-health', kind:'health' as const, x:144, y:144 }] };
+  const cornerMap = { ...map, layout:['#######', '#..#..#', '#..#..#', '#..#..#', '#.....#', '#.....#', '#######'] };
+  let closest = Infinity;
+  for (let tick=0; tick<700; tick++) {
+    const command = navigation.decide(driver, routeView, cornerMap, clock + tick*TICK_MS).find(c => c.type === 'input');
+    if (command?.type === 'input') Object.assign(driver, stepSelfMovement(driver, command, flags, cornerMap, () => true));
+    closest = Math.min(closest, Math.hypot(driver.x-144, driver.y-144));
+  }
+  assert.ok(closest < 12, `${difficulty} bot clears wall corners and reaches its pickup, closest=${closest}`);
+}
+assert.ok(tankBotWaypoint(map, {x:80,y:80}, {x:176,y:80}, [{x:112,y:80}]).y !== 80, 'route detours around a live crate');
 engine.mode = 'ffa'; me.score = 4; victim.alive = true; victim.hp = 10;
 damagePlayer(engine, victim, 20, host.id, 'Đạn thường'); steps(1);
 assert.ok(messages.some(m => m.type === 'state' && m.state.status === 'ended'), 'kill-target victory publishes the ended phase');

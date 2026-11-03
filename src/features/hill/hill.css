@@ -583,3 +583,75 @@
 .hk-garage .overflow-y-auto::-webkit-scrollbar {
   display: none;
 }
+
+/* Online entry and waiting room share the garage's paper-and-ink palette. */
+.hk-online {
+  min-height:100dvh;
+  background:linear-gradient(#b9e4eb 0, #e4f0de 320px, #f6e7ca 640px);
+  color:var(--hk-ink);
+  padding:24px clamp(16px, 4vw, 64px) 48px;
+}
+.hk-online-nav {
+  max-width:1280px;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  gap:24px;
+  font-weight:700;
+  font-size:12px;
+}
+.hk-online-nav a {
+  border:2px solid var(--hk-ink);
+  background:var(--hk-paper);
+  border-radius:12px;
+  padding:10px 16px;
+  box-shadow:0 3px 0 var(--hk-ink);
+}
+.hk-online-nav > span:last-child { margin-left:auto; }
+.hk-online-grid {
+  display:grid;
+  grid-template-columns:minmax(0, 1.15fr) minmax(340px, .85fr);
+  gap:48px;
+  max-width:1280px;
+  margin:48px auto 0;
+  align-items:start;
+}
+.hk-online-eyebrow { font-size:11px; font-weight:800; letter-spacing:2px; color:#836135; }
+.hk-online-intro h1 { font-family:var(--home-display); font-size:clamp(36px, 4vw, 58px); line-height:1.1; margin:12px 0; }
+.hk-online-intro > p:last-of-type { max-width:470px; font-size:14px; line-height:1.8; color:#6e573d; }
+.hk-online-art { position:relative; aspect-ratio:1.6; margin-top:28px; overflow:hidden; border:2.5px solid var(--hk-ink); border-radius:24px; box-shadow:0 6px 0 var(--hk-ink); }
+.hk-online-art span { position:absolute; bottom:0; inset-inline:0; background:var(--hk-paper); border-top:2px solid var(--hk-ink); padding:12px; text-align:center; font-size:12px; font-weight:700; }
+.hk-online-card { background:var(--hk-paper); border:2.5px solid var(--hk-ink); border-radius:24px; padding:28px; box-shadow:0 6px 0 var(--hk-ink); }
+.hk-online-card h2 { font-family:var(--home-display); font-size:30px; margin:8px 0; line-height:1.2; }
+.hk-online-card > p:last-of-type { font-size:12px; line-height:1.8; color:#796347; margin-bottom:24px; }
+.hk-friends-form { color:var(--hk-ink); }
+.hk-friends-form [class*="text-emerald-100"],.hk-friends-form [class*="text-amber-300"] { color:#796347; }
+.hk-friends-form input,.hk-waiting input,.hk-waiting select { color:var(--hk-ink); background:#fffdf6; border:2px solid #bca17c; border-radius:12px; }
+.hk-friends-form input { min-height:46px; }
+.hk-friends-form input::placeholder { color:#a18b70; }
+.hk-friends-form input:focus { border-color:var(--hk-ink); outline:2px solid #ffc23a; outline-offset:2px; }
+.hk-friends-form > div:last-child { border-color:#cfb791; background:#f6ecd7; }
+.hk-friends-form li > button { border:1.5px solid #cfb791; background:#f8edda; }
+.hk-waiting > div { max-width:1100px; }
+.hk-waiting [class*="text-emerald-100"],.hk-waiting [class*="text-amber-300"],.hk-waiting [class*="text-amber-200"] { color:#796347; }
+.hk-waiting section { background:var(--hk-paper); border:2px solid var(--hk-ink); border-radius:20px; padding:18px; box-shadow:0 4px 0 var(--hk-ink); }
+.hk-waiting section button:not(.hk-button) { color:var(--hk-ink); border-color:#c7ac85; }
+.hk-waiting .hk-vehicle-list > button { background:#f4e5c9; }
+.hk-waiting .hk-vehicle-list > button[aria-pressed=true] { background:#ffc23a; border-color:var(--hk-ink); }
+.hk-waiting .hk-vehicle-list > button span { color:var(--hk-ink); }
+.hk-waiting .hk-waiting-footer { background:var(--hk-paper); border-top:2px solid var(--hk-ink); max-width:none; }
+@media (max-width:760px) {
+  .hk-online { padding:16px 16px 32px; }
+  .hk-online-nav { gap:12px; }
+  .hk-online-nav > span:nth-child(2) { display:none; }
+  .hk-online-grid { grid-template-columns:1fr; gap:24px; margin-top:28px; }
+  .hk-online-intro h1 { font-size:38px; }
+  .hk-online-art { aspect-ratio:2; margin-top:18px; }
+  .hk-online-card { padding:20px; }
+}
+.hk-waiting section { min-width:0; }
+@media (max-width:760px) {
+  .hk-waiting > div { padding-left:0; padding-right:0; }
+  .hk-waiting .hk-waiting-footer > div { flex-wrap:wrap; }
+  .hk-waiting .hk-waiting-footer p { flex-basis:100%; }
+}

@@ -1,0 +1,143 @@
+/* Battlefield HUD and on-demand match scoreboard. */
+.tank-battle {
+  --battle-ink:#2e1c0f;
+  --battle-paper:#fff9eb;
+  background:linear-gradient(#25382b55,#25382b88),url("/tank/tank-bg.png") center/cover no-repeat;
+  color:var(--battle-ink);
+  font-family:var(--home-body),sans-serif;
+  height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  padding:24px;
+}
+.tg-stage {
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:76px auto 76px auto;
+  gap:0;
+  width:min(1640px,100%,calc((100dvh - 216px) * 19 / 9));
+}
+.tg-scoreboard { grid-area:1/1; display:flex; align-items:center; justify-content:center; position:relative; min-width:0; }
+.tg-match-summary { display:flex; align-items:center; justify-content:center; gap:8px; font-size:12px; padding:10px 14px; background:var(--battle-paper); border:2px solid var(--battle-ink); border-radius:6px; box-shadow:0 3px 0 var(--battle-ink); max-width:60%; cursor:pointer; }
+.tg-menu-actions { position:absolute; z-index:7; top:18px; right:0; display:flex; gap:6px; }
+.tg-menu-actions button { background:var(--battle-paper); border:2px solid var(--battle-ink); border-radius:5px; color:var(--battle-ink); padding:9px; font-size:10px; box-shadow:0 3px 0 var(--battle-ink); white-space:nowrap; }
+.tg-menu-actions > button { width:40px; height:40px; font-size:18px; padding:0; }
+.tg-menu-popover { position:absolute; top:48px; right:0; width:180px; background:var(--battle-paper); padding:10px; border:2px solid var(--battle-ink); border-radius:6px; display:grid; gap:8px; box-shadow:0 4px 0 var(--battle-ink); }
+.tg-vitals { position:absolute; z-index:4; top:8px; left:0; width:200px; border:2px solid var(--battle-ink); border-radius:6px; background:var(--battle-paper); box-shadow:0 3px 0 var(--battle-ink); padding:9px; font-size:12px; }
+.tg-vitals > div { display:flex; align-items:center; gap:7px; }
+.tg-vitals > div + div { margin-top:6px; }
+.tg-vitals > div:first-child > span { color:#e15246; }
+.tg-vitals meter { flex:1; min-width:0; width:90px; height:12px; border:1.5px solid var(--battle-ink); border-radius:10px; overflow:hidden; background:#ead9b5; }
+.tg-vitals meter::-webkit-meter-bar { background:#ead9b5; border:0; }
+.tg-vitals meter::-webkit-meter-optimum-value { background:#63a646; }
+.tg-vitals > div:nth-child(2) meter::-webkit-meter-optimum-value { background:#4fd1e8; }
+.tg-vitals meter::-moz-meter-bar { background:#63a646; }
+.tg-rounds { display:flex; gap:3px; }
+.tg-rounds i { width:6px; height:11px; border:1px solid var(--battle-ink); border-radius:3px 3px 1px 1px; background:#e8d9be; }
+.tg-rounds i[data-loaded=true] { background:#ffc23a; }
+.tg-field { grid-area:2/1; position:relative; z-index:0; border:3px solid var(--battle-ink); border-radius:6px; overflow:hidden; box-shadow:0 5px 0 #15251c; }
+.tg-canvas-shell > .relative { position:relative; }
+.tg-world { border:0; border-radius:0; box-shadow:none; image-rendering:auto; }
+.tg-loadout { grid-area:3/1; display:flex; gap:8px; align-items:center; justify-content:center; padding:12px; }
+.tg-loadout > button:not(.tg-ultimate) { width:44px; height:44px; border:2px solid var(--battle-ink); background:var(--battle-paper); border-radius:5px; box-shadow:0 3px 0 var(--battle-ink); }
+.tg-loadout > button:disabled { background:#fff9eb44; border-style:dashed; box-shadow:none; }
+.tg-loadout > .bg-slate-200,.tg-ammo { display:none; }
+.tg-loadout .tg-ultimate { width:52px; height:52px; margin-left:12px; border:2px solid var(--battle-ink); border-radius:6px; background:#ffc23a; color:var(--battle-ink); box-shadow:0 3px 0 var(--battle-ink); display:flex; flex-direction:column; gap:2px; padding:4px; font-size:19px; }
+.tg-loadout .tg-ultimate:disabled { background:#f2d38d; color:#72552f; opacity:.8; }
+.tg-loadout .tg-ultimate > span:last-child { font-size:9px; }
+.tg-keyboard-hint { grid-area:4/1; color:#e7e4cc; font-size:10px; line-height:1.7; }
+.tg-stage > div:not(.tg-field):not(.tg-scoreboard):not(.tg-vitals):not(.tg-loadout) { position:absolute; z-index:5; top:90px; left:40%; transform:translateX(-50%); max-width:60%; }
+.tg-feed { top:12px; right:12px; gap:4px; }
+.tg-feed > div { background:var(--battle-paper); border:1.5px solid var(--battle-ink); border-radius:6px; color:var(--battle-ink); font-size:10px; padding:3px 9px; }
+.tg-roster { position:fixed; z-index:30; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; gap:18px; width:min(640px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); background:var(--battle-paper); border:2px solid var(--battle-ink); border-radius:6px; padding:20px; box-shadow:0 16px 60px #10241866; }
+.tg-roster[data-mode=team] .tg-roster-list { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.tg-roster[data-mode=team] .tg-roster-list section + section { margin-top:0; }
+.tg-roster header { display:flex; align-items:center; justify-content:space-between; }
+.tg-roster header small { font-size:9px; font-weight:700; letter-spacing:2px; color:#8c7455; }
+.tg-roster h2 { font-family:var(--home-display); font-size:23px; line-height:1.2; }
+.tg-roster header button { display:block; width:32px; height:32px; background:#f0e0c1; border-radius:4px; font-size:24px; }
+.tg-roster-list { flex:1; overflow-y:auto; min-height:0; scrollbar-width:thin; scrollbar-color:#c6ad88 transparent; }
+.tg-roster h3 { display:flex; justify-content:space-between; font-size:10px; color:#826a4d; font-weight:700; margin-bottom:8px; }
+.tg-roster-list section + section { margin-top:16px; }
+.tg-roster-list [data-team=A] h3 { color:#3679bc; }.tg-roster-list [data-team=B] h3 { color:#c44d3d; }
+.tg-roster ol { list-style:none; padding:0; margin:0; display:grid; gap:5px; }
+.tg-roster li { display:flex; align-items:center; gap:7px; padding:9px 5px; border:1px solid transparent; border-radius:10px; }
+.tg-roster li[data-self=true] { background:#ffedb7; border-color:#d5b567; }
+.tg-roster-rank { font-size:10px; width:10px; color:#9c8264; }
+.tg-roster li > i { width:10px; height:10px; flex-shrink:0; border:1px solid #2e1c0f55; border-radius:3px; }
+.tg-roster li > div { flex:1; min-width:0; }
+.tg-roster strong { display:block; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tg-roster em { font-size:9px; font-weight:500; font-style:normal; color:#927040; }
+.tg-roster li small { display:block; font-size:9px; margin-top:3px; color:#8c7455; }
+.tg-roster li > b { font-family:var(--home-display); font-size:20px; }
+.tg-roster-tip { margin-top:0; font-size:10px; color:#8c7455; }
+.tg-roster-backdrop { display:block; position:fixed; inset:0; z-index:29; background:#10241899; }
+.tg-stick { border:2px solid var(--battle-ink); background:#fff9eb45; box-shadow:none; }
+.tg-move { width:112px; height:112px; bottom:18px; left:18px; }
+.tg-move > div { width:44px; height:44px; border:2px solid var(--battle-ink); background:var(--battle-paper); box-shadow:0 3px 0 var(--battle-ink); }
+.tg-aim { width:112px; height:112px; bottom:18px; right:18px; background:#ffc23a33; color:var(--battle-ink); }
+.tg-aim > span { border:2px solid var(--battle-ink); border-radius:50%; width:48px; height:48px; justify-content:center; background:#f05b43; color:white; box-shadow:0 3px 0 var(--battle-ink); }
+.tg-aim > span > span { font-size:9px; }
+.tg-boost { right:145px; bottom:18px; width:48px; height:48px; background:#4fd1e8; border:2px solid var(--battle-ink); color:var(--battle-ink); box-shadow:0 3px 0 var(--battle-ink); }
+/* Touch/narrow screens keep controls in the arena, roster opens on demand. */
+@media (pointer:coarse), (max-width:1000px) {
+  .tank-battle { padding:8px; }
+  .tg-stage { display:block; width:min(100%,calc((100dvh - 16px) * 19 / 9)); }
+  .tg-scoreboard { position:absolute; inset:0; z-index:4; display:block; pointer-events:none; }
+  .tg-match-summary { position:absolute; left:50%; top:12px; transform:translateX(-50%); max-width:40%; padding:6px 9px; font-size:10px; }
+  .tg-menu-actions { pointer-events:auto; top:12px; right:12px; }
+  .tg-vitals { top:12px; left:12px; width:180px; font-size:11px; padding:6px; }
+  .tg-loadout { position:absolute; z-index:4; bottom:16px; left:50%; transform:translateX(-50%); padding:0; }
+  .tg-loadout .tg-ultimate { position:absolute; left:calc(100% + 20px); bottom:70px; width:56px; height:56px; margin:0; border-radius:50%; }
+  .tg-move,.tg-aim,.tg-boost { display:flex; }
+  .tg-keyboard-hint { display:none; }
+  .tg-feed { top:76px; }
+  .tg-roster header button { display:block; width:32px; height:32px; background:#f0e0c1; border-radius:9px; font-size:24px; }
+  .tg-roster-backdrop { display:block; position:fixed; inset:0; z-index:29; background:#10241899; }
+  .tg-roster-tip { display:none; }
+}
+@media (max-height:600px) and (orientation:landscape) and (max-width:1000px) {
+  .tank-battle { padding:0; }
+  .tg-stage { width:min(100%,calc((100dvh - 8px) * 19 / 9)); }
+  .tg-field { border-radius:5px; border-width:2px; }
+}
+@media (max-width:600px) and (orientation:portrait) {
+  .tg-stage { width:100%; }
+  .tg-vitals { width:135px; left:6px; top:6px; font-size:9px; padding:5px; }
+  .tg-vitals meter { height:8px; }
+  .tg-rounds { gap:2px; }.tg-rounds i { width:4px; height:8px; }
+  .tg-match-summary { top:8px; left:60%; max-width:27%; padding:5px; font-size:8px; }
+  .tg-menu-actions { top:6px; right:6px; gap:3px; }
+  .tg-menu-actions > button { width:27px; height:30px; font-size:15px; }
+  .tg-move,.tg-aim { width:86px; height:86px; bottom:8px; }
+  .tg-move { left:8px; }.tg-aim { right:8px; }
+  .tg-move > div { width:28px; height:28px; }.tg-aim > span { width:34px; height:34px; }
+  .tg-loadout { bottom:12px; gap:4px; }.tg-loadout > button:not(.tg-ultimate) { width:30px; height:30px; font-size:12px; border-radius:9px; }
+  .tg-loadout .tg-ultimate { left:calc(100% + 10px); bottom:48px; width:36px; height:36px; font-size:12px; }
+  .tg-loadout .tg-ultimate > span { display:none; }
+  .tg-boost { width:32px; height:32px; right:104px; bottom:80px; font-size:14px; }
+  .tg-feed { top:60px; right:6px; }.tg-feed > div { font-size:8px; }
+}
+
+.tg-match-summary { pointer-events:auto; }
+.tg-match-summary:focus-visible { outline:3px solid #f5bb38; outline-offset:3px; }
+.tg-match-summary b { font-size:18px; }
+.tg-team-a { color:#286ca5; }.tg-team-b { color:#b64232; }
+.tg-match-time { font-variant-numeric:tabular-nums; color:#826a4d; padding:0 8px; }
+.tg-battle-minimap { position:absolute; z-index:3; right:10px; bottom:10px; width:130px; aspect-ratio:110/82; pointer-events:none; border:1px solid #fff9ebaa; background:#15251c; }
+.tg-battle-minimap .tg-minimap { position:static; display:block; width:100%; height:100%; border:0; border-radius:0; opacity:.9; }
+@media (max-width:1000px), (pointer:coarse) {
+ .tg-match-summary { position:absolute; left:50%; top:10px; transform:translateX(-50%); display:flex; align-items:center; gap:5px; padding:6px 9px; background:var(--battle-paper); border:1px solid var(--battle-ink); border-radius:4px; font-size:10px; max-width:52%; }
+ .tg-match-summary b { font-size:12px; }
+ .tg-battle-minimap { width:85px; right:10px; bottom:145px; }
+}
+@media (max-width:600px) and (orientation:portrait) {
+ .tg-match-summary { top:58px; left:50%; max-width:95%; font-size:10px; }
+ .tg-roster[data-mode=team] .tg-roster-list { gap:10px; }
+ .tg-roster { padding:12px; }
+ .tg-battle-minimap { width:70px; bottom:185px; }
+}
