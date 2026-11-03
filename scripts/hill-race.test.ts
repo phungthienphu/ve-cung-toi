@@ -54,7 +54,11 @@ const crashRace = pair(); for (let i = 0; i < 181; i++) crashRace.step();
 const crashed = crashRace.entries[0];
 crashed.sim.chassis.setTransform(Vec2(25, 1.2), Math.PI);
 crashed.sim.wheels.forEach((w, i) => w.setTransform(Vec2(25 + (i ? -1.25 : 1.25), 2.1), Math.PI));
-for (let i = 0; i < 360; i++) crashRace.step();
+for (let i = 0; i < 60 && crashed.sim.snapshot().overturnRemaining === null; i++) crashRace.step();
+assert.notEqual(crashed.sim.snapshot().overturnRemaining, null, 'roof contact starts the rescue countdown');
+// Exercise the timeout directly: free physics may right the car before ten seconds.
+Reflect.set(crashed.sim, 'overturn', 9.99);
+crashRace.step();
 assert.ok(crashed.crashes > 0, 'roof-ground timeout respawns rather than eliminates racer');
 assert.equal(crashed.done, false);
 const finish = pair(); for (let i = 0; i < 180; i++) finish.step();

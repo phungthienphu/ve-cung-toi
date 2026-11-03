@@ -62,6 +62,24 @@ async function main() {
   step(rescue, 60); step(rescue, 1, true); step(rescue, 120);
   assert.equal(rescue.snapshot().finished, null, "rescue must right an overturned Jeep in time");
   assert.ok(rescue.drainEvents().includes("recovered"));
+  const airborneRescue = new HillSim(1);
+  airborneRescue.chassis.setTransform(Vec2(5, 1.2), Math.PI);
+  airborneRescue.wheels[0].setTransform(Vec2(6.25, 2.1), Math.PI);
+  airborneRescue.wheels[1].setTransform(Vec2(3.75, 2.1), Math.PI);
+  step(airborneRescue, 60);
+  assert.notEqual(airborneRescue.snapshot().overturnRemaining, null);
+  Reflect.set(airborneRescue, "overturn", 9.99);
+  airborneRescue.chassis.setTransform(Vec2(5, 30), 0);
+  airborneRescue.wheels[0].setTransform(Vec2(3.75, 29.1), 0);
+  airborneRescue.wheels[1].setTransform(Vec2(6.25, 29.1), 0);
+  for (const body of [airborneRescue.chassis, ...airborneRescue.wheels]) {
+    body.setLinearVelocity(Vec2(0, 0)); body.setAngularVelocity(0);
+  }
+  step(airborneRescue, 1);
+  assert.equal(airborneRescue.snapshot().grounded, false, "rescue happens before touching down");
+  assert.equal(airborneRescue.snapshot().overturnRemaining, null, "righting in midair clears the countdown");
+  assert.equal(airborneRescue.snapshot().finished, null, "righting at the deadline prevents overturn death");
+  assert.ok(airborneRescue.drainEvents().includes("recovered"));
   const valid: HillRunSubmission = { runId: "review-run-0000001", playerId: "abc123def4", name: "Phú", map: "tea", vehicle: "jeep", seed: 20261102, day: null, distance: 300, coins: 25, duration: 30 };
   assert.ok(parseHillRun(valid));
   for (const patch of [{ coins: -1 }, { distance: Infinity }, { duration: 0 }, { vehicle: "truck" }, { day: "2026-11-03", seed: 20261102 }, { playerId: { $ne: "" } }]) assert.equal(parseHillRun({ ...valid, ...patch }), null);

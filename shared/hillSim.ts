@@ -193,7 +193,8 @@ export class HillSim {
     }
     if (this.roofDown() && !this.overturned) { this.overturned = true; this.events.push("overturned"); }
     if (this.overturned) {
-      if (this.bothWheelsDown() && Math.cos(this.chassis.getAngle()) > 0.3) {
+      // Righting the car in midair also rescues it; do not wait for wheel contact.
+      if (Math.cos(this.chassis.getAngle()) > 0.3) {
         this.overturned = false; this.overturn = 0; this.reward("recovered", 3);
       } else {
         this.overturn += HILL_DT;
