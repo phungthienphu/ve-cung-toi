@@ -6,7 +6,7 @@ import { HILL_DT, HILL_MAPS, HILL_VEHICLES, HILL_BASE_SEED, hillDay, hillDailySe
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { getAudioContext, isMuted, setMuted, playPop, playCorrect, playWhoosh, playClockTick, playHillJump, playHillDash, playHillLanding } from "@/lib/sound";
 import { hillWalletView, readHillProgress, cacheHillRun, syncHillProgress, buyHillVehicle, loadHillBoard, hillRecordKey } from "@/features/hill/client/progress";
-import { drawFontClass } from "@/features/draw/fonts";
+import { hillFontClass as drawFontClass } from "./hillFonts";
 import HillBotRace, { DEFAULT_BOT_SETUP, type HillBotSetup } from "./HillBotRace";
 import HillGarage, { type HillMode } from "./HillGarage";
 import { HillPause, HillResults } from "./HillResults";
@@ -22,7 +22,7 @@ const SEED = HILL_BASE_SEED;
 const KEYS: Record<string, keyof HillInput> = { ArrowRight: "gas", KeyD: "gas", ArrowLeft: "brake", KeyA: "brake", Space: "dash", ArrowUp: "jump", KeyW: "jump" };
 const IDLE: HillInput = { gas: false, brake: false };
 /** The garage close-up: the car big and clear of the menu panel (bottom on phones held upright, right otherwise). */
-const garageView = (w: number, h: number): HillView => (h > w ? { zoom: 2.6, focusX: 0.5, focusY: 0.24 } : { zoom: 2.1, focusX: 0.27, focusY: 0.52 });
+const garageView = (w: number, h: number): HillView => (h > w ? { zoom: 2.6, focusX: 0.5, focusY: 0.24 } : { zoom: 2.1, focusX: 0.30, focusY: 0.57 });
 /** The start gate, just ahead of the car's front bumper (the bus is the longest, 2.65 m from centre). */
 const SOLO_START = 8.2;
 
@@ -276,7 +276,7 @@ export default function HillGame() {
   return <div ref={stage} className={`${drawFontClass} relative h-[100dvh] min-h-[320px] overflow-hidden bg-emerald-950 text-white select-none`} style={{ touchAction: phase === "ready" || phase === "finished" ? "pan-y" : "none" }}>
     <canvas ref={canvas} className="absolute inset-0 h-full w-full" aria-label="Đường đua địa hình, A/D lái xe, W để nhảy, Space để lao tới" />
     {playing && <>
-    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-5" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
+    <div className="hk-solo-top absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-5" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
       <div className="w-28 rounded-2xl bg-emerald-950/75 p-3 sm:w-44">
         <div className={`mb-1 text-xs font-bold ${snapshot && snapshot.fuel < 20 ? "animate-pulse text-red-300" : "text-amber-100"}`}>⛽ {Math.ceil(snapshot?.fuel ?? 100)}%</div>
         <div role="meter" aria-label="Xăng" aria-valuenow={Math.round(snapshot?.fuel ?? 100)} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-white/20"><div className={`h-full ${snapshot && snapshot.fuel < 20 ? "bg-red-400" : "bg-amber-300"}`} style={{ width: `${snapshot?.fuel ?? 100}%` }} /></div>
@@ -297,17 +297,17 @@ export default function HillGame() {
     <button disabled={phase !== "running" || !snapshot?.dashReady} aria-label="Lao tới"
       onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); pointer("dash", e.pointerId, true); }}
       onPointerUp={e => pointer("dash", e.pointerId, false)} onPointerCancel={e => pointer("dash", e.pointerId, false)} onLostPointerCapture={e => pointer("dash", e.pointerId, false)}
-      className="absolute bottom-36 left-6 rounded-full border-2 border-amber-100/50 bg-orange-800/90 px-5 py-3 font-bold shadow-lg disabled:opacity-40 sm:left-12">💨 Lao tới<span className="block text-[10px] font-normal">{snapshot?.dashCooldown ? `${snapshot.dashCooldown.toFixed(1)}s` : "25⚡ · Space"}</span></button>
+      className="hk-action hk-dash absolute bottom-36 left-6 rounded-full border-2 border-amber-100/50 bg-orange-800/90 px-5 py-3 font-bold shadow-lg disabled:opacity-40 sm:left-12">💨 Lao tới<span className="block text-[10px] font-normal">{snapshot?.dashCooldown ? `${snapshot.dashCooldown.toFixed(1)}s` : "25⚡ · Space"}</span></button>
     <button disabled={phase !== "running" || !snapshot?.jumpReady} aria-label={snapshot?.overturnRemaining !== null && snapshot?.overturnRemaining !== undefined ? "Bật lật" : "Nhảy"}
       onContextMenu={e => e.preventDefault()} onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); pointer("jump", e.pointerId, true); }}
       onPointerUp={e => pointer("jump", e.pointerId, false)} onPointerCancel={e => pointer("jump", e.pointerId, false)} onLostPointerCapture={e => pointer("jump", e.pointerId, false)}
-      className="absolute bottom-36 right-6 rounded-full border-2 border-cyan-100/50 bg-cyan-800/90 px-5 py-3 font-bold shadow-lg disabled:opacity-40 sm:right-12">{snapshot?.overturnRemaining != null ? "↻ Bật lật" : "↑ Nhảy"}<span className="block text-[10px] font-normal">35⚡ · ↑ / W</span></button>
+      className="hk-action hk-jump absolute bottom-36 right-6 rounded-full border-2 border-cyan-100/50 bg-cyan-800/90 px-5 py-3 font-bold shadow-lg disabled:opacity-40 sm:right-12">{snapshot?.overturnRemaining != null ? "↻ Bật lật" : "↑ Nhảy"}<span className="block text-[10px] font-normal">35⚡ · ↑ / W</span></button>
     <div className="absolute inset-x-0 bottom-0 flex justify-between px-5 pb-5 sm:px-10" style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
       {(["brake", "gas"] as const).map(control => <button key={control} disabled={phase !== "running"} aria-label={control === "gas" ? "Ga" : "Phanh / lùi"} aria-pressed={control === "gas" ? gas : brake}
         onContextMenu={e => e.preventDefault()}
         onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); pointer(control, e.pointerId, true); }}
         onPointerUp={e => pointer(control, e.pointerId, false)} onPointerCancel={e => pointer(control, e.pointerId, false)} onLostPointerCapture={e => pointer(control, e.pointerId, false)}
-        className={`h-24 w-28 rounded-3xl border-b-8 border-black/30 text-xl font-black shadow-lg transition-transform sm:h-28 sm:w-40 ${(control === "gas" ? gas : brake) ? "translate-y-2 border-b-0" : ""} ${control === "gas" ? "bg-amber-400 text-amber-950" : "bg-stone-100 text-stone-700"} disabled:opacity-50`}>
+        className={`hk-pedal hk-${control} h-24 w-28 rounded-3xl border-b-8 border-black/30 text-xl font-black shadow-lg transition-transform sm:h-28 sm:w-40 ${(control === "gas" ? gas : brake) ? "translate-y-2 border-b-0" : ""} ${control === "gas" ? "bg-amber-400 text-amber-950" : "bg-stone-100 text-stone-700"} disabled:opacity-50`}>
         {control === "gas" ? "GA →" : "← PHANH"}<span className="mt-1 block text-xs font-medium">{control === "gas" ? "D / →" : "A / ←"}</span>
       </button>)}
     </div>

@@ -51,8 +51,8 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
   ctx.lineTo(sx(to), h + 10); ctx.closePath(); ctx.fillStyle = map.ground; ctx.fill();
   ctx.beginPath();
   for (let x = from; x <= to; x++) { const y = sy(hillHeight(seed, x, state.map)); if (x === from) ctx.moveTo(sx(x), y); else ctx.lineTo(sx(x), y); }
-  ctx.strokeStyle = "#42743a"; ctx.lineWidth = 7; ctx.lineJoin = "round"; ctx.stroke();
-  ctx.strokeStyle = map.edge; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = "#2e1c0f"; ctx.lineWidth = 9; ctx.lineJoin = "round"; ctx.stroke();
+  ctx.strokeStyle = map.edge; ctx.lineWidth = 6; ctx.stroke();
   drawWater(ctx, sx, sy, s, seed, state.map, from, to);
   for (const road of hillSkyRoads(seed, from, to, state.map)) drawSkyRoad(ctx, sx, sy, s, state.map, road);
   for (let x = Math.ceil(from / 100) * 100; x <= to; x += 100) {
@@ -70,7 +70,8 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
       ctx.beginPath(); ctx.ellipse(x, y, s * 0.22, s * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     } else if (item.kind === "energy") {
       ctx.fillStyle = "#32d7ee"; ctx.strokeStyle = "#125975"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(x - 8, y - 12, 16, 25, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#fff7df"; ctx.fillRect(x - 5, y - 16, 10, 5);
       ctx.fillStyle = "white"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("ϟ", x, y + 6);
     } else {
       ctx.fillStyle = "#e45249"; ctx.fillRect(x - 10, y - 12, 20, 25);

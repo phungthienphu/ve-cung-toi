@@ -66,7 +66,7 @@ export function HillRaceHud({
 
   return (
     <>
-      <div className="absolute inset-x-0 top-0 flex items-start gap-2 p-3" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+      <div className="hk-race-top absolute inset-x-0 top-0 flex items-start gap-2 p-3" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
         <div className="shrink-0 rounded-2xl bg-emerald-950/80 px-3 py-1.5 text-center backdrop-blur">
           <p className="font-draw-display text-3xl font-extrabold leading-none">
             {rank || '–'}
@@ -120,19 +120,19 @@ export function HillRaceHud({
         </GameButton>
       )}
 
-      <button disabled={locked} aria-label="Lao tới" {...hold('dash')} className={`${ACTION} left-6 border-amber-100/50 bg-orange-800/90 sm:left-12`}>
+      <button disabled={locked || !car?.state.dashReady} aria-label="Lao tới" {...hold('dash')} className={`hk-action hk-dash ${ACTION} left-6 border-amber-100/50 bg-orange-800/90 sm:left-12`}>
         💨 Lao tới
         <span className="block text-[10px] font-normal">{car?.state.dashCooldown ? `${car.state.dashCooldown.toFixed(1)}s` : '25⚡ · Space'}</span>
       </button>
-      <button disabled={locked} aria-label={overturned ? 'Bật lật' : 'Nhảy'} {...hold('jump')} className={`${ACTION} right-6 border-cyan-100/50 bg-cyan-800/90 sm:right-12`}>
+      <button disabled={locked || !car?.state.jumpReady} aria-label={overturned ? 'Bật lật' : 'Nhảy'} {...hold('jump')} className={`hk-action hk-jump ${ACTION} right-6 border-cyan-100/50 bg-cyan-800/90 sm:right-12`}>
         {overturned ? '↻ Bật lật' : '↑ Nhảy'}
         <span className="block text-[10px] font-normal">35⚡ · ↑ / W</span>
       </button>
       <div className="absolute inset-x-0 bottom-0 flex justify-between px-5 sm:px-10" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
-        <button disabled={locked} aria-label="Phanh / lùi" aria-pressed={!!held.brake} {...hold('brake')} className={`${PEDAL} bg-stone-100 text-stone-700 ${held.brake ? 'translate-y-2 border-b-0' : ''}`}>
+        <button disabled={locked} aria-label="Phanh / lùi" aria-pressed={!!held.brake} {...hold('brake')} className={`hk-pedal hk-brake ${PEDAL} bg-stone-100 text-stone-700 ${held.brake ? 'translate-y-2 border-b-0' : ''}`}>
           ← PHANH<span className="mt-1 block text-xs font-medium">A / ←</span>
         </button>
-        <button disabled={locked} aria-label="Ga" aria-pressed={!!held.gas} {...hold('gas')} className={`${PEDAL} bg-amber-400 text-amber-950 ${held.gas ? 'translate-y-2 border-b-0' : ''}`}>
+        <button disabled={locked} aria-label="Ga" aria-pressed={!!held.gas} {...hold('gas')} className={`hk-pedal hk-gas ${PEDAL} bg-amber-400 text-amber-950 ${held.gas ? 'translate-y-2 border-b-0' : ''}`}>
           GA →<span className="mt-1 block text-xs font-medium">D / →</span>
         </button>
       </div>

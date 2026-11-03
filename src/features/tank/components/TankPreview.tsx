@@ -6,9 +6,9 @@ import { getSprite } from "@/lib/imageCache";
 
 interface Props {
   color: string;
+  size?: number;
 }
 
-const SIZE = 120;
 
 function skinForColor(color: string): TankSkin {
   const idx = TANK_COLORS.indexOf(color);
@@ -22,7 +22,7 @@ function capitalize(s: string): string {
 /** A small standalone animated render of the real in-game tank sprite for
  * the color-pick screen — the turret idly scans back and forth (for skins
  * that have one) so the choice feels alive instead of a flat swatch. */
-export default function TankPreview({ color }: Props) {
+export default function TankPreview({ color, size = 120 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -32,8 +32,8 @@ export default function TankPreview({ color }: Props) {
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = SIZE * dpr;
-    canvas.height = SIZE * dpr;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
     ctx.scale(dpr, dpr);
 
     let raf = 0;
@@ -42,12 +42,12 @@ export default function TankPreview({ color }: Props) {
     function draw(now: number) {
       if (!ctx) return;
       const t = now - start;
-      const cx = SIZE / 2;
-      const cy = SIZE / 2;
+      const cx = size / 2;
+      const cy = size / 2;
       const bob = Math.sin(t / 500) * 2;
       const y = cy + bob;
 
-      ctx.clearRect(0, 0, SIZE, SIZE);
+      ctx.clearRect(0, 0, size, size);
 
       ctx.fillStyle = "rgba(15,23,42,0.15)";
       ctx.beginPath();
@@ -55,7 +55,7 @@ export default function TankPreview({ color }: Props) {
       ctx.fill();
 
       const skin = skinForColor(color);
-      const renderSize = SIZE * 0.62;
+      const renderSize = size * 0.62;
 
       if (TANK_SKINS_WITH_TURRET.has(skin)) {
         const body = getSprite(`/tank/Retina/tankBody_${skin}.png`);
@@ -93,7 +93,7 @@ export default function TankPreview({ color }: Props) {
     }
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [color]);
+  }, [color, size]);
 
-  return <canvas ref={canvasRef} width={SIZE} height={SIZE} style={{ width: SIZE, height: SIZE }} className="mx-auto" />;
+  return <canvas ref={canvasRef} width={size} height={size} style={{ width: size, height: size }} className="mx-auto" role="img" aria-label="Xem trước xe tăng đang chọn" />;
 }

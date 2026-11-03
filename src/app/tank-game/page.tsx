@@ -1,4 +1,9 @@
 "use client";
+import Image from 'next/image';
+import { homeFonts } from '@/features/home/fonts';
+import { HomeIcon } from '@/features/home/components/HomeIcon';
+import '@/features/tank/lobby.css';
+
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -63,93 +68,23 @@ export default function TankGameHomePage() {
     router.push(`/tank-game/${target}`);
   }
 
-  return (
-    <main className="flex min-h-app items-center justify-center bg-tank-scene px-4">
-      <div className="w-full max-w-xl rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
-        <div className="mb-6 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-lg text-white">🎯</div>
-          <span className="text-base font-semibold tracking-tight text-ink">Đại Chiến Xe Tăng</span>
-        </div>
-
-        <h1 className="mb-1 text-2xl font-bold text-ink">Bắn nhau cùng hội bạn</h1>
-        <p className="mb-6 text-sm text-ink/60">Tối đa 8 người, ai đủ {KILL_TARGET} điểm tiêu diệt trước thì thắng.</p>
-
-        <Link href="/tank-game/local" onClick={playClick} className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-100">
-          🤖 Luyện tập / Đấu với bot
-        </Link>
-        <p className="mb-4 text-center text-xs text-ink/50">Chơi tại máy · không cần phòng mạng · chọn tối đa 5 bot</p>
-
-        <button
-          onClick={handleCreate}
-          className="mb-5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900"
-        >
-          Tạo phòng mới
-          <span aria-hidden>→</span>
-        </button>
-
-        <div className="mb-4 flex items-center gap-3 text-xs text-ink/40">
-          <div className="h-px flex-1 bg-cream-200" />
-          hoặc vào phòng có sẵn
-          <div className="h-px flex-1 bg-cream-200" />
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            className="min-w-0 flex-1 rounded-lg border border-cream-200 px-3.5 py-2.5 font-mono text-sm uppercase tracking-wider text-ink outline-none transition focus:border-slate-500 focus:ring-1 focus:ring-slate-500"
-            placeholder="MÃ PHÒNG"
-            maxLength={8}
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-          />
-          <button
-            onClick={() => handleJoin()}
-            className="shrink-0 rounded-lg border border-cream-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink/70 transition hover:border-slate-500 hover:text-slate-700"
-          >
-            Vào
-          </button>
-        </div>
-
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between gap-3 text-xs text-ink/40">
-            <span className="whitespace-nowrap">phòng đang chờ {rooms.length > 0 && `(${rooms.length})`}</span>
-            <div className="h-px flex-1 bg-cream-200" />
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              title="Tìm phòng đang mở ngay bây giờ"
-              className="flex shrink-0 items-center gap-1 rounded border border-cream-200 px-2 py-1 font-medium text-ink/60 transition hover:border-slate-500 hover:text-slate-700 disabled:opacity-50"
-            >
-              <span className={refreshing ? "animate-spin" : ""}>🔄</span> Làm mới
-            </button>
-          </div>
-          {rooms.length > 0 ? (
-            <div className="max-h-48 space-y-1.5 overflow-y-auto">
-              {rooms.map((r) => (
-                <button
-                  key={r.roomId}
-                  onClick={() => handleJoin(r.roomId)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-cream-200 bg-white px-3.5 py-2 text-left text-sm transition hover:border-slate-500"
-                >
-                  <span className="min-w-0 flex-1 truncate font-mono font-semibold tracking-wider text-ink">{r.roomId}</span>
-                  <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {TANK_ROOM_MODE_LABELS[r.mode]}
-                  </span>
-                  <span className="shrink-0 text-xs font-medium text-ink/50">
-                    {r.playerCount}/{MAX_TANK_PLAYERS}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-ink/40">Chưa có phòng nào đang chờ — tạo phòng mới nhé!</p>
-          )}
-        </div>
-
-        <Link href="/" className="mt-8 block text-center text-xs font-medium text-ink/40 hover:text-ink/70">
-          ← Về trang chủ
-        </Link>
-      </div>
-    </main>
-  );
+  return <main className={`${homeFonts} tank-lobby-preview`}>
+    <nav className="tl-nav" aria-label="Điều hướng sảnh"><Link href="/">‹ Chơi Cùng Tôi</Link><span>SẢNH TRÒ CHƠI / XE TĂNG</span><Link href="/leaderboard?game=tank">Lịch sử trận ↗</Link></nav>
+    <div className="tl-layout">
+      <section className="tl-feature">
+        <div className="tl-art"><Image src="/tank/tank-bg.png" alt="Đội xe tăng giữa chiến trường" fill priority sizes="(max-width:800px) 100vw, 60vw" /><span className="tl-art-badge"><HomeIcon name="game" /> Đấu trường đã sẵn sàng</span></div>
+        <div className="tl-story"><div className="tl-eyebrow">VÀO TRẬN THÔI!</div><h1>Đại Chiến <br />Xe Tăng<span>.</span></h1><p>Lái thật khéo, ngắm thật chuẩn.<br />Rủ hội bạn vào một trận cho ra trò.</p><div className="tl-facts"><span><HomeIcon name="users" /> 1–8 người</span><span><HomeIcon name="bot" /> Có bot</span><span>{KILL_TARGET} điểm để thắng</span></div></div>
+      </section>
+      <section className="tl-play" aria-labelledby="tl-play-heading">
+        <span className="tl-step">01 / CHỌN CÁCH CHƠI</span><h2 id="tl-play-heading">Lên xe nào.</h2><p className="tl-muted">Một mình hay cả hội, đều có chỗ.</p>
+        <button className="tl-create" onClick={handleCreate}><span><HomeIcon name="users" /> Chơi cùng bạn bè<small>Tạo phòng mới · gửi link là vào</small></span><span aria-hidden>↗</span></button>
+        <Link className="tl-practice" href="/tank-game/local" onClick={playClick}><span><HomeIcon name="bot" /> Đấu với bot<small>Chơi ngay tại máy · tối đa 5 bot</small></span><span aria-hidden>→</span></Link>
+        <div className="tl-join"><label htmlFor="tl-code">Có mã phòng rồi?</label><div><input id="tl-code" value={joinCode} onChange={e=>setJoinCode(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleJoin()} maxLength={8} placeholder="NHẬP MÃ PHÒNG" autoComplete="off" /><button onClick={()=>handleJoin()} aria-label="Vào phòng bằng mã">Vào →</button></div></div>
+        <div className="tl-room-heading"><h3>Phòng đang mở <span>{rooms.length}</span></h3><button onClick={handleRefresh} disabled={refreshing}>{refreshing?'Đang tìm…':'Làm mới ↻'}</button></div>
+        {rooms.length ? <ul className="tl-rooms">{rooms.map(room=><li key={room.roomId}><button onClick={()=>handleJoin(room.roomId)}><strong>{room.roomId}</strong><span>{TANK_ROOM_MODE_LABELS[room.mode]} · {room.playerCount}/{MAX_TANK_PLAYERS}</span><span aria-hidden>→</span></button></li>)}</ul> : <div className="tl-empty"><HomeIcon name="game" /><p>Chiến trường đang yên ắng.<br /><strong>Tạo phòng, gọi hội bạn vào phá thôi!</strong></p></div>}
+        <p className="tl-note">Không tài khoản. Không cài đặt. Chỉ cần chơi.</p>
+      </section>
+    </div>
+    <footer className="tl-footer"><span>CHƠI CÙNG TÔI</span><span>Vui là chính. Thắng thì càng vui.</span></footer>
+  </main>;
 }

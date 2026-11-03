@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { homeFonts } from '@/features/home/fonts';
+import TankPreview from './TankPreview';
+import '../lobby.css';
 import { useRouter } from "next/navigation";
 import { useTankRoom } from "@/features/tank/hooks/useTankRoom";
 import { playClick, playJoin, playMatchWin, playMatchLose, playMatchDraw, startTankBgMusic, stopTankBgMusic } from "@/lib/sound";
@@ -141,55 +144,11 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
       </div>
     );
 
-    return (
-      <main className="flex min-h-app items-center justify-center bg-tank-scene px-4 py-10">
-        <div className="w-full max-w-md min-w-0 rounded-xl border border-cream-200 bg-white p-6 shadow-xl">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xl font-bold tracking-tight text-ink">{roomId === "local" ? "Luyện tập & đấu bot" : "Phòng chờ"}</h2>
-            <span className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700">
-              {roomId === "local" ? "Chơi tại máy" : `Mã: ${roomId}`}
-            </span>
-          </div>
-
-          {isHost && (
-            <div className="mb-4">
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Chế độ chơi</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => send({ type: "set_mode", mode: "ffa" })}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                    state.mode === "ffa" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
-                  }`}
-                >
-                  Đấu tự do
-                </button>
-                <button
-                  type="button"
-                  onClick={() => send({ type: "set_mode", mode: "team" })}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                    state.mode === "team" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
-                  }`}
-                >
-                  Đấu đội
-                </button>
-                <button
-                  type="button"
-                  onClick={() => send({ type: "set_mode", mode: "practice" })}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-                    state.mode === "practice" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
-                  }`}
-                >
-                  Luyện tập
-                </button>
-              </div>
-              {state.mode === "practice" && (
-                <p className="mt-1.5 text-xs text-slate-400">Chơi một mình để nghịch bản đồ — không cần đủ người, không giới hạn thời gian.</p>
-              )}
-            </div>
-          )}
-
-          {state.mode === "team" ? (
+    return <main className={`${homeFonts} tank-lobby-preview tw-screen`}>
+      <nav className="tl-nav" aria-label="Điều hướng phòng chờ"><Link href="/tank-game">‹ Sảnh Xe Tăng</Link><span>03 / TẬP HỢP ĐỘI HÌNH</span><span className="ts-room">{roomId === 'local' ? 'TẠI MÁY' : roomId}</span></nav>
+      <div className="ts-layout">
+        <section className="tw-squad"><div className="tl-eyebrow">{roomId === 'local' ? 'LÀM NÓNG NÒNG PHÁO' : 'GỌI HỘI BẠN VÀO THÔI'}</div><h1>{roomId === 'local' ? 'Luyện tập.' : 'Phòng chờ.'}</h1><div className="ts-stage"><div className="ts-orbit"/><TankPreview color={self?.color ?? color} size={210}/><span className="ts-ready-tag">{self?.name ?? name}</span></div>
+        <div className="tw-roster"><h2>Đội hình <span>{connectedCount} người</span></h2>          {state.mode === "team" ? (
             <div className="mb-3 grid grid-cols-2 gap-3">
               <div>
                 <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-blue-600">Đội A ({teamA.length})</div>
@@ -231,7 +190,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                       key={c}
                       type="button"
                       onClick={() => send({ type: "choose_color", color: c })}
-                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-1.5 transition ${
+                      aria-pressed={self.color === c} className={`ts-tank-card ${
                         self.color === c ? "border-slate-800 bg-white" : "border-transparent hover:border-slate-200"
                       }`}
                       aria-label={TANK_SKIN_LABELS[TANK_SKINS[i]]}
@@ -244,6 +203,45 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                 </div>
               )}
             </>
+          )}
+
+</div></section>
+        <section className="tl-play tw-settings"><span className="tl-step">CHUẨN BỊ TRƯỚC KHI XUẤT KÍCH</span><h2>Thiết lập trận.</h2><p className="tl-muted">{isHost ? 'Chọn luật chơi. Cả hội đã sẵn sàng chưa?' : 'Chủ phòng đang chuẩn bị trận đấu.'}</p>          {isHost && (
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Chế độ chơi</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => send({ type: "set_mode", mode: "ffa" })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    state.mode === "ffa" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Đấu tự do
+                </button>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "set_mode", mode: "team" })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    state.mode === "team" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Đấu đội
+                </button>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "set_mode", mode: "practice" })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    state.mode === "practice" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-700 hover:border-slate-500"
+                  }`}
+                >
+                  Luyện tập
+                </button>
+              </div>
+              {state.mode === "practice" && (
+                <p className="mt-1.5 text-xs text-slate-400">Chơi một mình để nghịch bản đồ — không cần đủ người, không giới hạn thời gian.</p>
+              )}
+            </div>
           )}
 
           {isHost && (
@@ -281,8 +279,8 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             </label>
           </div>}
 
-          <div className="mb-5">
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">Vật phẩm trong trận</label>
+          <details className="tw-items">
+            <summary>Hướng dẫn vật phẩm trong trận</summary>
             <div className="space-y-1.5 rounded-lg border border-cream-200 bg-slate-50 p-2.5">
               {(Object.keys(ITEM_UI) as ItemKind[]).map((kind) => (
                 <div key={kind} className="flex items-start gap-2 text-xs leading-snug">
@@ -294,7 +292,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
                 </div>
               ))}
             </div>
-          </div>
+          </details>
 
           <div className="flex flex-wrap gap-2">
             {isHost ? (
@@ -322,9 +320,9 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
               Rời phòng
             </button>
           </div>
-        </div>
-      </main>
-    );
+</section>
+      </div>
+    </main>;
   }
 
   if (state.status === "ended" && showEndedScreen) {

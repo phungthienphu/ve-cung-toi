@@ -64,7 +64,7 @@ export function HillResults({
   const picked = snapshot.coins - snapshot.skillCoins;
 
   return (
-    <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-white/20 bg-emerald-950/95 text-center shadow-2xl landscape:grid landscape:max-w-2xl landscape:grid-cols-2 landscape:text-left">
+    <div className="hk-ui hk-result w-full max-w-md overflow-hidden rounded-[28px] border border-white/20 bg-emerald-950/95 text-center shadow-2xl landscape:grid landscape:max-w-2xl landscape:grid-cols-2 landscape:text-left">
       <div className="relative p-5 landscape:flex landscape:flex-col landscape:justify-center">
         {newRecord && (
           <p className="mx-auto mb-2 w-fit -rotate-2 rounded-lg bg-amber-400 px-3 py-1 font-draw-display text-sm font-extrabold text-emerald-950 shadow-lg landscape:mx-0">🚩 KỶ LỤC MỚI!</p>
@@ -132,7 +132,7 @@ export function HillResults({
 
 export function HillPause({ onResume, onRetry, onGarage }: { onResume: () => void; onRetry: () => void; onGarage: () => void }) {
   return (
-    <div className="w-full max-w-sm rounded-[28px] border border-white/20 bg-emerald-950/95 p-5 text-center shadow-2xl landscape:max-w-lg">
+    <div className="hk-ui hk-pause w-full max-w-sm rounded-[28px] border border-white/20 bg-emerald-950/95 p-5 text-center shadow-2xl landscape:max-w-lg">
       <h2 className="font-draw-display text-3xl font-extrabold">⏸ Tạm dừng</h2>
       <dl className="my-4 grid grid-cols-2 gap-2 text-left text-xs">
         {[

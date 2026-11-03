@@ -9,7 +9,7 @@ import { MAP_INFO, VEHICLE_INFO, VEHICLE_STATS, formatNumber } from "./hillUiDat
 // lobby: chunky buttons, segmented choices, the vehicle carousel with stat
 // bars, and the map postcards. Phone first: big targets, horizontal swipes.
 
-const VEHICLE_IDS = Object.keys(HILL_VEHICLES) as HillVehicleId[];
+const VEHICLE_IDS: HillVehicleId[] = ["jeep", "beetle", "bus", "monster"];
 const MAP_IDS = Object.keys(HILL_MAPS) as HillMapId[];
 
 type Tone = "gold" | "glass" | "cyan";
@@ -29,7 +29,7 @@ export function GameButton({
   return (
     <button
       {...props}
-      className={`rounded-2xl border-b-[5px] font-draw-display font-extrabold transition active:translate-y-[3px] active:border-b-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0 disabled:active:border-b-[5px] ${TONES[tone]} ${className}`}
+      className={`hk-button rounded-2xl border-b-[5px] font-draw-display font-extrabold transition active:translate-y-[3px] active:border-b-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0 disabled:active:border-b-[5px] ${TONES[tone]} ${className}`}
     >
       {children}
     </button>
@@ -38,7 +38,7 @@ export function GameButton({
 
 export function CoinPill({ coins, className = "" }: { coins: number; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-3 font-draw-display text-base font-extrabold text-amber-200 backdrop-blur ${className}`}>
+    <span className={`hk-coins inline-flex items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-3 font-draw-display text-base font-extrabold text-amber-200 backdrop-blur ${className}`}>
       <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-amber-600 bg-amber-300 text-xs text-amber-800">₫</span>
       {formatNumber(coins)}
     </span>
@@ -59,7 +59,7 @@ export function Segmented<T extends string | number>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex gap-1 rounded-2xl bg-black/30 p-1">
+    <div role="radiogroup" aria-label={label} className="hk-segmented flex gap-1 rounded-2xl bg-black/30 p-1">
       {options.map((option) => (
         <button
           key={String(option.value)}
@@ -82,7 +82,7 @@ export function Segmented<T extends string | number>({
 export function StatBars({ vehicle, className = "" }: { vehicle: HillVehicleId; className?: string }) {
   const stats = VEHICLE_INFO[vehicle].stats;
   return (
-    <dl className={`grid grid-cols-2 gap-x-4 gap-y-1.5 ${className}`}>
+    <dl className={`hk-stats grid grid-cols-2 gap-x-4 gap-y-1.5 ${className}`}>
       {VEHICLE_STATS.map((stat) => (
         <div key={stat.key} className="min-w-0">
           <dt className="truncate text-[11px] font-bold uppercase tracking-wide text-emerald-100/70">{stat.label}</dt>
@@ -120,7 +120,7 @@ export function VehiclePicker({
     if (box && card) box.scrollTo({ left: card.offsetLeft - (box.clientWidth - card.clientWidth) / 2, behavior: "smooth" });
   }, [value]);
   return (
-    <div ref={row} className="relative -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div ref={row} className="hk-vehicle-list relative -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {(only ? [only] : VEHICLE_IDS).map((id) => {
         const locked = isLocked(id);
         const active = id === value;
@@ -164,7 +164,7 @@ export function MapPicker({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="hk-map-list grid grid-cols-2 gap-2">
       {MAP_IDS.map((id) => {
         const active = id === value;
         const info = MAP_INFO[id];

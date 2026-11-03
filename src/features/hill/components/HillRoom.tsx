@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { drawFontClass } from '@/features/draw/fonts';
+import { hillFontClass as drawFontClass } from './hillFonts';
 import { getOrCreatePlayerId, getStoredName, setStoredName } from '@/lib/player';
 import { getAudioContext, isMuted, setMuted } from "@/lib/sound";
 import { useHillRoom } from '@/features/hill/hooks/useHillRoom';

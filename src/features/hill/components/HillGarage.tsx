@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HILL_MAPS, HILL_VEHICLES, type HillBoard, type HillMapId, type HillVehicleId, type HillWallet } from "@shared/hill/types";
 import { BOT_LEVELS, type HillBotSetup } from "./HillBotRace";
 import { HillFriendsPanel } from "./HillFriendsPanel";
@@ -70,6 +70,22 @@ function useDailyCountdown(active: boolean) {
 }
 
 export default function HillGarage(p: Props) {
+  const layout = useRef<HTMLDivElement>(null);
+  const [frame, setFrame] = useState<React.CSSProperties>();
+  useEffect(() => {
+    const parent = layout.current?.parentElement;
+    if (!parent) return;
+    const resize = () => {
+      const { width, height } = parent.getBoundingClientRect();
+      if (width < height) { setFrame(undefined); return; }
+      const scale = Math.min(width / 844, height / 390);
+      setFrame({ width: 844, height: 390, inset: 'auto', left: (width - 844 * scale) / 2, top: (height - 390 * scale) / 2, transform: `scale(${scale})`, transformOrigin: 'top left' });
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(parent);
+    return () => observer.disconnect();
+  }, []);
   const [tab, setTab] = useState<"vehicle" | "map" | "rivals">("vehicle");
   const [boardOpen, setBoardOpen] = useState(false);
   const daily = p.mode === "daily";
@@ -85,10 +101,10 @@ export default function HillGarage(p: Props) {
   const rank = p.board?.personal?.rank;
 
   return (
-    <div className="absolute inset-0 flex flex-col landscape:flex-row">
+    <div ref={layout} style={frame} className="hk-ui hk-garage absolute inset-0">
       {/* The showroom: the canvas behind shows through. */}
-      <div className="pointer-events-none relative min-h-0 flex-1">
-        <div className="pointer-events-auto flex items-center gap-2 px-3 pb-2" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
+      <div className="hk-showroom pointer-events-none relative min-h-0 flex-1">
+        <div className="hk-toolbar pointer-events-auto flex items-center gap-2 px-3 pb-2" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
           <Link href="/" aria-label="Về trang chủ" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/45 text-xl font-bold backdrop-blur hover:bg-black/60">
             ‹
           </Link>
@@ -101,7 +117,7 @@ export default function HillGarage(p: Props) {
             {p.muted ? "🔇" : "🔊"}
           </button>
         </div>
-        <div className="pointer-events-auto mx-auto grid w-[min(96%,30rem)] grid-cols-4 gap-1.5 px-1" role="tablist" aria-label="Chế độ chơi">
+        <div className="hk-modes pointer-events-auto grid grid-cols-4 gap-1.5" role="tablist" aria-label="Chế độ chơi">
           {MODES.map((mode) => (
             <button
               key={mode.id}
@@ -112,9 +128,9 @@ export default function HillGarage(p: Props) {
                 p.mode === mode.id ? "border-b-4 border-amber-600 bg-amber-400 text-emerald-950 shadow-lg" : "border-b-4 border-black/30 bg-black/45 text-white backdrop-blur hover:bg-black/60"
               }`}
             >
-              <span className="text-xl leading-tight">{mode.icon}</span>
+              <span className="hk-mode-icon text-xl leading-tight">{mode.icon}</span>
               <span className="text-[11px] font-extrabold leading-tight sm:text-xs">{mode.label}</span>
-              <span className={`hidden text-[10px] leading-tight sm:block ${p.mode === mode.id ? "text-emerald-950/70" : "text-white/55"}`}>{mode.detail}</span>
+              <span className={`hk-mode-detail hidden text-[10px] leading-tight sm:block ${p.mode === mode.id ? "text-emerald-950/70" : "text-white/55"}`}>{mode.detail}</span>
             </button>
           ))}
         </div>
@@ -125,7 +141,7 @@ export default function HillGarage(p: Props) {
         )}
         {(p.mode === "record" || daily) && <button
           onClick={() => setBoardOpen(true)}
-          className="pointer-events-auto absolute bottom-3 left-3 rounded-2xl bg-black/50 px-3.5 py-2 text-left backdrop-blur transition hover:bg-black/65"
+          className="hk-record pointer-events-auto absolute bottom-3 left-3 rounded-2xl bg-black/50 px-3.5 py-2 text-left backdrop-blur transition hover:bg-black/65"
         >
           <span className="block text-[11px] font-bold uppercase tracking-wider text-amber-200">🚩 {daily ? "Hôm nay" : "Kỷ lục"} · {HILL_MAPS[p.map].name}</span>
           <span className="block font-draw-display text-2xl font-extrabold leading-tight">{p.best ? `${formatNumber(p.best)} m` : "Chưa có"}</span>
@@ -133,8 +149,10 @@ export default function HillGarage(p: Props) {
         </button>}
       </div>
 
+      <div className="hk-cars"><VehiclePicker value={p.vehicle} onChange={p.onVehicle} isLocked={isLocked} /></div>
+
       {/* The panel: pick a car or a road, then go. */}
-      <section className="pointer-events-auto flex max-h-[64%] flex-col rounded-t-[28px] border-t border-white/15 bg-emerald-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.35)] backdrop-blur landscape:max-h-none landscape:w-[min(46%,26rem)] landscape:rounded-l-[28px] landscape:rounded-tr-none landscape:border-l landscape:border-t-0">
+      <section className="hk-panel pointer-events-auto flex max-h-[64%] flex-col rounded-t-[28px] border-t border-white/15 bg-emerald-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.35)] backdrop-blur landscape:max-h-none landscape:w-[min(46%,26rem)] landscape:rounded-l-[28px] landscape:rounded-tr-none landscape:border-l landscape:border-t-0">
         {p.mode === "friends" ? (
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
             <h2 className="font-draw-display text-2xl font-extrabold leading-none">👥 Đua cùng bạn bè</h2>
@@ -158,31 +176,11 @@ export default function HillGarage(p: Props) {
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               {shownTab === "vehicle" && (
                 <>
-                  <div className="flex items-end justify-between gap-2">
+                  <div className="hk-car-heading flex items-end justify-between gap-2">
                     <h2 className="font-draw-display text-2xl font-extrabold leading-none">{car.name}</h2>
                     <span className="truncate text-xs font-semibold text-amber-200">{info.tagline}</span>
                   </div>
                   <StatBars vehicle={p.vehicle} className="mt-3" />
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className="font-bold text-emerald-100/70">Hợp nhất:</span>
-                    {info.bestOn.length ? (
-                      info.bestOn.map((id) => (
-                        <button
-                          key={id}
-                          onClick={() => p.onMap(id)}
-                          className={`rounded-full px-2 py-0.5 font-bold transition ${id === p.map ? "bg-amber-300 text-emerald-950" : "bg-white/10 hover:bg-white/20"}`}
-                        >
-                          {HILL_MAPS[id].icon} {HILL_MAPS[id].name}
-                        </button>
-                      ))
-                    ) : (
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 font-bold">🗺️ Mọi đường</span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-xs leading-snug text-emerald-100/70">💡 {info.tip}</p>
-                  <div className="mt-3">
-                    <VehiclePicker value={p.vehicle} onChange={p.onVehicle} isLocked={isLocked} />
-                  </div>
                   {racing && <p className="mt-1 text-[11px] text-emerald-100/55">Đua với bot được đi cả 4 xe, chưa mở khoá cũng được.</p>}
                 </>
               )}
@@ -251,7 +249,7 @@ export default function HillGarage(p: Props) {
             <div className="border-t border-white/10 px-4 pt-3" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
               {racing ? (
                 <GameButton onClick={p.onStartBots} className="w-full py-2.5 text-2xl tracking-wide">
-                  ĐUA ▶
+                  Xuất phát →
                   <span className="block font-draw-body text-xs font-bold opacity-75">
                     {p.botSetup.bots} bot {BOT_LEVELS.find((level) => level.value === p.botSetup.level)?.label.split(" ")[1]} · {p.botSetup.randomMap ? "🎲 đường ngẫu nhiên" : HILL_MAPS[p.map].name} ·{" "}
                     {p.botSetup.mode === "race" ? `${formatNumber(p.botSetup.length)} m` : "đi xa nhất"}
@@ -264,7 +262,7 @@ export default function HillGarage(p: Props) {
                 </GameButton>
               ) : (
                 <GameButton onClick={p.onStart} className="w-full py-2.5 text-2xl tracking-wide">
-                  CHẠY ▶
+                  Xuất phát →
                   <span className="block font-draw-body text-xs font-bold opacity-75">
                     {car.name} · {HILL_MAPS[p.map].name}
                     {daily ? " · đường hôm nay" : ""}

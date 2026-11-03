@@ -55,7 +55,7 @@ export function HillMiniMap({
       if (i) ctx.lineTo(x, y);
       else ctx.moveTo(x, y);
     });
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.strokeStyle = '#8f7047';
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.stroke();
@@ -64,6 +64,7 @@ export function HillMiniMap({
   return (
     <div className="relative mt-1.5 h-9" aria-label="Bản đồ thu nhỏ đường đua">
       <canvas ref={canvas} width={WIDTH} height={HEIGHT} className="absolute inset-0 h-full w-full" />
+      <span className="absolute right-0 -top-2 text-xs" aria-hidden="true">⚑</span>
       {[...cars]
         .sort((a, b) => Number(a.id === myId) - Number(b.id === myId))
         .map((car) => {
@@ -73,7 +74,7 @@ export function HillMiniMap({
               key={car.id}
               title={names(car.id)}
               className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-[left,top] duration-100 ${
-                mine ? 'z-10 h-3.5 w-3.5 border-white bg-amber-400' : 'h-2.5 w-2.5 border-emerald-950 bg-white'
+                mine ? 'z-10 h-3.5 w-3.5 border-amber-900 bg-amber-400' : 'h-2.5 w-2.5 border-emerald-950 bg-white'
               }`}
               style={{ left: `${Math.min(100, (car.distance / length) * 100)}%`, top: `${((TOP + depth(car.distance) * BAND) / HEIGHT) * 100}%` }}
             />

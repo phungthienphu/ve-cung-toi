@@ -223,7 +223,7 @@ export default function HillBotRace({ setup, map, vehicle, name, onExit }: { set
 
       {result && resultState && (
         <div className="absolute inset-0 flex touch-pan-y overflow-y-auto bg-black/55 p-4 backdrop-blur-[2px]">
-          <div className="m-auto w-full max-w-2xl rounded-[28px] border border-white/15 bg-emerald-950/95 p-5 shadow-2xl">
+          <div className="hk-race-end m-auto w-full max-w-2xl rounded-[28px] border border-white/15 bg-emerald-950/95 p-5 shadow-2xl">
             <HillRaceResults
               state={resultState}
               order={result.order}

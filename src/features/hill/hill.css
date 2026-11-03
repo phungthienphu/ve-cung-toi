@@ -1,0 +1,585 @@
+/* HillDrive reference: cream cards, brown ink, hard shadows. Scoped to hill. */
+.hk-ui {
+  --hk-ink:#2e1c0f;
+  --hk-paper:#fff9eb;
+  --hk-sand:#f8e3b7;
+  --font-draw-display:var(--home-display);
+  --font-draw-body:var(--home-body);
+  font-family:var(--home-body),sans-serif;
+}
+.hk-ui .font-draw-display {
+  font-family:var(--home-display),sans-serif;
+}
+.hk-garage {
+  color:var(--hk-ink);
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(240px,32%);
+  grid-template-rows:1fr 90px;
+  gap:14px;
+  padding:76px 20px 20px;
+}
+.hk-showroom {
+  position:static;
+  grid-area:1/1;
+}
+.hk-toolbar {
+  position:absolute;
+  inset:12px 16px auto;
+  padding:0!important;
+}
+.hk-toolbar > button:nth-child(2) {
+  display:none;
+}
+.hk-toolbar > a,.hk-toolbar > button,.hk-coins {
+  border:2px solid var(--hk-ink);
+  background:var(--hk-paper);
+  color:var(--hk-ink);
+  box-shadow:0 3px 0 var(--hk-ink);
+  backdrop-filter:none;
+}
+.hk-toolbar > a {
+  border-radius:12px;
+}
+.hk-modes {
+  position:absolute;
+  top:12px;
+  left:68px;
+  right:170px;
+}
+.hk-modes button {
+  border:2px solid var(--hk-ink);
+  border-radius:12px;
+  background:var(--hk-paper);
+  color:var(--hk-ink);
+  box-shadow:0 3px 0 var(--hk-ink);
+  flex-direction:row;
+  justify-content:center;
+  gap:5px;
+  padding:10px 3px;
+}
+.hk-modes button[aria-selected=true] {
+  background:#ffc23a;
+}
+.hk-mode-icon {
+  font-size:13px;
+}
+.hk-mode-detail {
+  display:none!important;
+}
+.hk-record {
+  bottom:auto;
+  top:68px;
+  left:20px;
+  background:var(--hk-paper);
+  color:var(--hk-ink);
+  padding:6px 12px;
+  border:2px solid var(--hk-ink);
+  border-radius:20px;
+}
+.hk-record span {
+  display:inline;
+  font-size:11px;
+  color:inherit;
+  margin-right:6px;
+}
+.hk-record span:last-child {
+  display:none;
+}
+.hk-panel {
+  grid-area:1/2/3/3;
+  width:auto!important;
+  max-height:100%!important;
+  border:2.5px solid var(--hk-ink)!important;
+  border-radius:22px!important;
+  background:var(--hk-sand);
+  box-shadow:0 5px 0 var(--hk-ink);
+  backdrop-filter:none;
+}
+.hk-panel > div {
+  padding-left:14px;
+  padding-right:14px;
+}
+.hk-panel > div:last-child {
+  border-color:#2e1c0f25;
+}
+.hk-panel [class*="text-emerald-100"],.hk-panel [class*="text-amber-200"] {
+  color:#69533b;
+}
+.hk-car-heading {
+  display:block;
+}
+.hk-car-heading h2 {
+  font-size:26px;
+}
+.hk-car-heading > span {
+  display:block;
+  margin-top:5px;
+  font-size:11px;
+  white-space:normal;
+}
+.hk-segmented {
+  background:#e9d3ac;
+  border-radius:12px;
+  padding:3px;
+}
+.hk-segmented button {
+  color:var(--hk-ink);
+  font-size:12px;
+  padding:6px;
+}
+.hk-segmented [aria-checked=true] {
+  background:var(--hk-paper);
+  box-shadow:0 2px 0 var(--hk-ink);
+}
+.hk-stats {
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.hk-stats > div {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  align-items:center;
+}
+.hk-stats dt {
+  font-size:11px;
+  text-transform:none;
+  letter-spacing:0;
+  color:var(--hk-ink);
+}
+.hk-stats dd {
+  margin:0;
+}
+.hk-stats dd span {
+  height:9px;
+  border:1px solid var(--hk-ink);
+  background:var(--hk-paper);
+}
+.hk-stats dd .bg-amber-300 {
+  background:#ffc23a;
+}
+.hk-cars {
+  grid-area:2/1;
+  min-width:0;
+  align-self:end;
+}
+.hk-cars .hk-vehicle-list {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  overflow:visible;
+  gap:8px;
+  margin:0;
+  padding:0;
+}
+.hk-cars button {
+  width:100%;
+  min-width:0;
+  background:var(--hk-paper);
+  border:2px solid var(--hk-ink);
+  border-radius:14px;
+  box-shadow:0 4px 0 var(--hk-ink);
+  padding:4px;
+}
+.hk-cars button[aria-pressed=true] {
+  background:#ffc23a;
+}
+.hk-cars button svg {
+  max-width:100%;
+  height:38px;
+}
+.hk-cars button span {
+  color:var(--hk-ink);
+  font-size:10px;
+}
+.hk-cars button > span:last-child {
+  display:none;
+}
+.hk-ui .hk-button {
+  color:var(--hk-ink);
+  background:#ffc23a;
+  border:2px solid var(--hk-ink);
+  border-radius:12px;
+  box-shadow:0 4px 0 var(--hk-ink);
+  text-shadow:none;
+}
+.hk-button span {
+  display:none;
+}
+.hk-ui .hk-button:active {
+  transform:translateY(3px);
+  box-shadow:0 1px 0 var(--hk-ink);
+}
+.hk-ui .hk-action,.hk-ui .hk-pedal {
+  position:absolute;
+  margin:0;
+  padding:5px;
+  border:2.5px solid var(--hk-ink);
+  color:var(--hk-ink);
+  box-shadow:0 5px 0 var(--hk-ink);
+  font-size:12px;
+  font-weight:800;
+  touch-action:none;
+}
+.hk-ui .hk-action {
+  width:70px;
+  height:70px;
+  border-radius:50%;
+}
+.hk-ui .hk-dash {
+  left:auto;
+  right:max(30px,env(safe-area-inset-right));
+  bottom:132px;
+  background:#4fd1e8;
+}
+.hk-ui .hk-jump {
+  right:136px;
+  bottom:max(22px,env(safe-area-inset-bottom));
+  background:#ff9db5;
+}
+.hk-ui .hk-pedal {
+  bottom:max(16px,env(safe-area-inset-bottom));
+  border-radius:22px;
+}
+.hk-ui .hk-brake {
+  left:max(16px,env(safe-area-inset-left));
+  width:92px;
+  height:92px;
+  background:var(--hk-paper);
+}
+.hk-ui .hk-gas {
+  right:max(16px,env(safe-area-inset-right));
+  width:104px;
+  height:104px;
+  background:#ffc23a;
+  font-family:var(--home-display);
+  font-size:20px;
+}
+.hk-ui .hk-pedal[aria-pressed=true],.hk-ui .hk-action:active {
+  transform:translateY(3px);
+  box-shadow:0 2px 0 var(--hk-ink);
+}
+.hk-solo-top > div,.hk-race-top > div {
+  color:var(--hk-ink);
+  background:var(--hk-paper);
+  border:2px solid var(--hk-ink);
+  box-shadow:0 3px 0 var(--hk-ink);
+  border-radius:14px;
+  padding:8px 10px;
+}
+.hk-solo-top [class*="text-"],.hk-race-top [class*="text-"] {
+  color:inherit;
+}
+.hk-solo-top > div:first-child {
+  width:160px;
+}
+.hk-solo-top > div:last-child {
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  padding:0;
+}
+.hk-solo-top > div:last-child > * {
+  background:var(--hk-paper);
+  color:var(--hk-ink);
+  border:2px solid var(--hk-ink);
+}
+.hk-solo-top strong {
+  font-size:24px;
+}
+.hk-race-top > div:first-child {
+  order:3;
+}
+.hk-race-top > div:last-child {
+  order:-1;
+  width:150px;
+}
+.hk-result,.hk-pause,.hk-race-result {
+  color:var(--hk-ink);
+  border:2.5px solid var(--hk-ink);
+  background:var(--hk-paper);
+  border-radius:22px;
+  box-shadow:0 6px 0 var(--hk-ink);
+}
+.hk-result > div:last-child {
+  background:var(--hk-sand);
+}
+.hk-result [class*="text-emerald"],.hk-result [class*="text-amber"],.hk-pause [class*="text-emerald"],.hk-pause [class*="text-amber"],.hk-race-result [class*="text-emerald"],.hk-race-result [class*="text-amber"] {
+  color:inherit;
+}
+.hk-race-result {
+  padding:18px;
+  display:grid;
+  grid-template-columns:minmax(0,1.5fr) minmax(180px,1fr);
+  gap:8px 20px;
+}
+.hk-race-result > h2 {
+  text-align:left;
+  font-size:26px;
+}
+.hk-race-result > p {
+  grid-column:1;
+  text-align:left;
+}
+.hk-race-result > ol {
+  grid-column:1;
+  grid-row:3/5;
+  margin:0;
+}
+.hk-race-result li {
+  border:1.5px solid #d1b78c;
+  background:#fffaf0;
+  padding:7px;
+  border-radius:12px;
+}
+.hk-awards {
+  grid-column:2;
+  grid-row:1/5;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:stretch;
+  background:var(--hk-sand);
+  border-radius:14px;
+  margin:0;
+  padding:12px;
+}
+.hk-awards:before {
+  content:'Danh hiệu ván này';
+  font-family:var(--home-display);
+  font-size:18px;
+}
+.hk-awards span {
+  border-radius:8px;
+  padding:10px 4px;
+  font-size:12px;
+  background:transparent;
+}
+@media (max-width:600px) and (orientation:portrait) {
+  .hk-garage {
+    grid-template-columns:1fr;
+    grid-template-rows:180px 70px minmax(0,1fr);
+    gap:10px;
+    padding:110px 12px 14px;
+  }
+  .hk-modes {
+    top:64px;
+    left:12px;
+    right:12px;
+  }
+  .hk-modes button {
+    padding:8px 2px;
+  }
+  .hk-record {
+    top:112px;
+    left:12px;
+  }
+  .hk-panel {
+    grid-area:3/1;
+  }
+  .hk-cars {
+    grid-area:2/1;
+  }
+  .hk-panel .hk-stats {
+    gap:4px;
+  }
+  .hk-solo-top {
+    gap:5px;
+    padding:8px;
+  }
+  .hk-solo-top > div:first-child {
+    width:105px;
+  }
+  .hk-solo-top > div:nth-child(2) {
+    max-width:130px;
+    padding:6px;
+  }
+  .hk-solo-top > div:nth-child(2) > div {
+    max-width:100%;
+    font-size:9px;
+  }
+  .hk-solo-top > div:last-child {
+    max-width:65px;
+    gap:3px;
+  }
+  .hk-race-result {
+    grid-template-columns:1fr;
+  }
+  .hk-awards {
+    grid-column:1;
+    grid-row:auto;
+  }
+  .hk-race-result > ol {
+    grid-row:auto;
+  }
+}
+@media (orientation:landscape) and (max-height:500px) {
+  .hk-garage {
+    padding:62px 16px 16px;
+    grid-template-rows:1fr 72px;
+    gap:10px;
+    grid-template-columns:minmax(0,1fr) 270px;
+  }
+  .hk-record {
+    top:64px;
+  }
+  .hk-panel > div {
+    padding-top:8px;
+    padding-bottom:8px;
+  }
+  .hk-car-heading h2 {
+    font-size:23px;
+  }
+  .hk-stats {
+    gap:4px;
+  }
+  .hk-panel .hk-button {
+    padding:7px;
+    font-size:20px;
+  }
+  .hk-panel .hk-stats {
+    margin-top:8px;
+  }
+  .hk-solo-top {
+    padding:12px 16px;
+  }
+  .hk-solo-top > div:first-child {
+    width:135px;
+  }
+  .hk-solo-top > div:first-child > div:last-child {
+    display:none;
+  }
+}
+.hk-awards .hk-award-owner {
+  display:block;
+  padding:2px 0 0;
+  color:#796347;
+  font-size:11px;
+  font-weight:500;
+}
+.hk-ui .hk-race-end {
+  background:var(--hk-paper);
+  color:var(--hk-ink);
+  border:2.5px solid var(--hk-ink);
+  border-radius:22px;
+  box-shadow:0 5px 0 var(--hk-ink);
+  padding:0;
+  overflow:hidden;
+}
+.hk-race-end .hk-race-result {
+  border:0;
+  box-shadow:none;
+  border-radius:0;
+}
+.hk-race-end > div:last-child {
+  margin:0;
+  padding:12px 18px;
+  background:var(--hk-sand);
+}
+.hk-race-end > div:last-child > button:last-child {
+  background:var(--hk-paper);
+}
+@media (orientation:landscape) and (max-height:500px) {
+  .hk-race-result {
+    padding:12px;
+    gap:4px 12px;
+  }
+  .hk-race-result > h2 {
+    font-size:24px;
+  }
+  .hk-race-result li {
+    padding:3px 7px;
+  }
+  .hk-race-result li svg {
+    width:40px;
+    height:25px;
+  }
+  .hk-race-result li .mt-0\.5 {
+    display:none;
+  }
+  .hk-awards {
+    padding:8px;
+  }
+  .hk-awards > span {
+    padding:5px 2px;
+  }
+  .hk-race-end > div:last-child {
+    padding:8px 12px;
+  }
+  .hk-race-end > div:last-child button {
+    padding:7px;
+    font-size:17px;
+  }
+}
+.hk-ui .hk-solo-top > div:not(:last-child),.hk-ui .hk-solo-top > div:not(:last-child) *, .hk-ui .hk-race-top > div,.hk-ui .hk-race-top > div * {
+  color:var(--hk-ink);
+}
+.hk-ui .hk-action {
+  font-size:11px;
+  line-height:1.3;
+}
+.hk-ui .hk-action > span {
+  font-size:9px;
+  line-height:1.4;
+}
+.hk-ui .hk-action {
+  padding:4px 2px;
+}
+.hk-cars button canvas {
+  max-width:100%;
+  height:38px!important;
+  object-fit:contain;
+}
+.hk-cars button > span:last-child[class*="rounded-full"] {
+  display:block;
+  position:absolute;
+  top:-8px;
+  right:3px;
+  background:var(--hk-ink);
+  color:var(--hk-paper);
+  padding:1px 5px;
+  font-size:9px;
+}
+/* The landscape artboard keeps its proportions on large desktop displays. */
+@media (orientation:landscape) {
+  .hk-garage {
+    padding:62px 16px 16px;
+    grid-template-rows:1fr 72px;
+    gap:10px;
+    grid-template-columns:minmax(0,1fr) 270px;
+  }
+  .hk-panel > div { padding-top:8px; padding-bottom:8px; }
+  .hk-car-heading h2 { font-size:23px; }
+  .hk-stats { gap:4px; margin-top:8px; }
+  .hk-panel .hk-button { padding:7px; font-size:20px; }
+  .hk-record { top:64px; }
+}
+.hk-map-list > button {
+  border:1.5px solid var(--hk-ink);
+  border-radius:12px;
+  background:var(--hk-paper);
+  color:var(--hk-ink);
+  overflow:hidden;
+}
+.hk-map-list > button[aria-pressed=true] {
+  border-color:var(--hk-ink);
+  box-shadow:0 0 0 2px #ffc23a;
+}
+.hk-map-list canvas { width:100%!important; height:65px!important; object-fit:cover; }
+.hk-map-list > button > span:last-child { background:var(--hk-paper); padding:6px 8px; }
+.hk-map-list > button > span:last-child span { color:var(--hk-ink); }
+.hk-map-list > button:last-child.col-span-2 { padding:8px; background:#eed5a5; }
+.hk-map-list canvas { height:42px!important; }
+.hk-map-list > button > span:last-child { padding:4px 6px; }
+.hk-map-list > button > span:last-child > span:first-child { display:block; }
+.hk-map-list > button > span:last-child > span:first-child > span:first-child { display:block; font-size:10px; white-space:normal; line-height:1.4; }
+.hk-map-list [aria-label^="Độ khó"] { display:none; }
+.hk-map-list > button > span:last-child > span:last-child { font-size:8px; }
+
+/* Keep scrolling available without exposing native scrollbar chrome. */
+.hk-garage .overflow-y-auto {
+  scrollbar-width: none;
+}
+.hk-garage .overflow-y-auto::-webkit-scrollbar {
+  display: none;
+}

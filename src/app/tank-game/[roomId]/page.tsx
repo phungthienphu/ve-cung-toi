@@ -1,5 +1,9 @@
 "use client";
 
+import Link from 'next/link';
+import Image from 'next/image';
+import { homeFonts } from '@/features/home/fonts';
+import '@/features/tank/lobby.css';
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
@@ -39,60 +43,28 @@ export default function TankRoomPage({ params }: { params: Promise<{ roomId: str
   }
 
   if (!ready) {
-    return (
-      <main className="flex min-h-app items-center justify-center bg-tank-scene px-4">
-        <div className="w-full max-w-sm rounded-xl border border-cream-200 bg-white p-8 shadow-xl">
-          <h1 className="mb-1 text-xl font-bold text-ink">Vào phòng đại chiến</h1>
-          <p className="mb-5 font-mono text-sm tracking-wider text-ink/40">{roomId}</p>
-
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Tên hiển thị</label>
-          <input
-            autoFocus
-            className="mb-5 w-full rounded-lg border border-cream-200 px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-slate-500 focus:ring-1 focus:ring-slate-500"
-            placeholder="Ví dụ: Phú"
-            maxLength={20}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && confirm()}
-          />
-
-          <div className="mb-5 rounded-lg bg-slate-50 py-2">
-            <TankPreview color={color} />
-          </div>
-
-          <div className="mb-5 flex items-start gap-2 rounded-lg border border-cream-200 bg-white px-3 py-2.5">
-            <span className="text-lg leading-none">{ULTIMATE_UI[skinForColor(color)].icon}</span>
-            <p className="text-xs leading-snug text-ink/70">{ULTIMATE_UI[skinForColor(color)].label}</p>
-          </div>
-
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink/50">Loại xe tăng</label>
-          <div className="mb-6 grid grid-cols-4 gap-2">
-            {TANK_COLORS.map((c, i) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`flex flex-col items-center gap-1 rounded-lg border-2 p-1.5 transition ${
-                  color === c ? "border-slate-800 bg-slate-50" : "border-transparent hover:border-slate-200"
-                }`}
-                aria-label={TANK_SKIN_LABELS[TANK_SKINS[i]]}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/tank/Retina/tank_${TANK_SKINS[i]}.png`} alt="" className="h-9 w-9 object-contain" />
-                <span className="truncate text-[10px] font-medium text-ink/60">{TANK_SKIN_LABELS[TANK_SKINS[i]]}</span>
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={confirm}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900"
-          >
-            Vào phòng
-            <span aria-hidden>→</span>
-          </button>
-        </div>
-      </main>
-    );
+    const skin = skinForColor(color);
+    const ultimate = ULTIMATE_UI[skin];
+    return <main className={`${homeFonts} tank-lobby-preview`}>
+      <nav className="tl-nav" aria-label="Điều hướng chọn xe"><Link href="/tank-game">‹ Sảnh Xe Tăng</Link><span>02 / CHỌN CHIẾN XA</span><span className="ts-room">{roomId === 'local' ? 'LUYỆN TẬP' : `PHÒNG ${roomId.toUpperCase()}`}</span></nav>
+      <div className="ts-layout">
+        <section className="ts-showcase" aria-label="Xe tăng đang chọn">
+          <div className="tl-eyebrow">CHIẾN XA CỦA BẠN</div><h1>{TANK_SKIN_LABELS[skin]}<span>.</span></h1>
+          <div className="ts-stage"><div className="ts-orbit" /><span className="ts-coordinate">GARAGE / 0{TANK_SKINS.indexOf(skin)+1}</span><TankPreview color={color} size={260} /><span className="ts-ready-tag">● Sẵn sàng xuất kích</span></div>
+          <div className="ts-ability" aria-live="polite"><span className="ts-ability-icon" aria-hidden>{ultimate.icon}</span><div><span className="tl-eyebrow">KỸ NĂNG ĐẶC BIỆT · PHÍM R</span><p>{ultimate.label}</p></div></div>
+          <p className="ts-hint">Mỗi xe một tuyệt chiêu. Chọn đúng chất của bạn.</p>
+        </section>
+        <section className="tl-play ts-picker" aria-labelledby="ts-heading"><span className="tl-step">CHỌN XE, ĐẶT TÊN, VÀO TRẬN.</span><h2 id="ts-heading">Bạn lái chiếc nào?</h2><p className="tl-muted">8 chiến xa. 8 cách khuấy đảo chiến trường.</p>
+          <div className="ts-grid" role="group" aria-label="Chọn loại xe tăng">{TANK_COLORS.map((c,i)=>{
+            const selected = color === c;
+            return <button key={c} className="ts-tank-card" aria-pressed={selected} aria-label={TANK_SKIN_LABELS[TANK_SKINS[i]]} onClick={()=>{playClick();setColor(c);}}><span className="ts-card-number">0{i+1}</span><Image src={`/tank/Retina/tank_${TANK_SKINS[i]}.png`} width={70} height={70} alt="" /><span className="ts-card-name">{TANK_SKIN_LABELS[TANK_SKINS[i]]}</span><span className="ts-card-check" aria-hidden>{selected ? '✓' : ''}</span></button>;
+          })}</div>
+          <form className="ts-confirm" onSubmit={event=>{event.preventDefault();confirm();}}><label htmlFor="ts-name">Tên của bạn trên chiến trường</label><input id="ts-name" autoComplete="nickname" placeholder="Ví dụ: Phú bá đạo" maxLength={20} value={name} onChange={event=>setName(event.target.value)} required />
+            <button type="submit" className="tl-create" disabled={!name.trim()}><span>{roomId === 'local' ? 'Vào luyện tập' : 'Vào phòng'}<small>{TANK_SKIN_LABELS[skin]} · {name.trim() || 'Đặt tên để xuất kích'}</small></span><span aria-hidden>→</span></button></form>
+        </section>
+      </div>
+      <footer className="tl-footer"><span>CHƠI CÙNG TÔI</span><span>Xe đã sẵn sàng. Còn bạn?</span></footer>
+    </main>;
   }
 
   return <TankGameRoom roomId={roomId} playerId={playerId} name={name} color={color} />;

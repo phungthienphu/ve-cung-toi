@@ -182,7 +182,6 @@ function Setting({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
 
 /**
  * A fun title for whoever did most of something this round — always exactly
@@ -212,44 +211,21 @@ export function HillRaceResults({ state, order, cars, title }: { state: HillRace
   const player = (id: string) => state.players.find((item) => item.id === id);
   const car = (id: string) => cars.find((item) => item.id === id);
   const vehicleOf = (id: string) => car(id)?.state.vehicle ?? player(id)?.vehicle ?? 'jeep';
-  const podium = order.slice(0, 3);
-  // 2nd · 1st · 3rd, like a real podium.
-  const arranged = [podium[1], podium[0], podium[2]].filter(Boolean);
   // Titles are for this round, so ties look at this round's finish (state.order), not the series standings.
   const awards = titles(cars, state.order.length ? state.order : order);
 
   return (
-    <section>
+    <section className="hk-ui hk-race-result">
       <h2 className="text-center font-draw-display text-3xl font-extrabold">{title ?? (state.seriesOver ? '🏆 Tổng kết chặng đua' : `🏁 Kết quả ván ${state.round}/${state.config.rounds}`)}</h2>
       <p className="mt-1 text-center text-sm text-emerald-100/60">
         {HILL_MAPS[cars[0]?.state.map ?? 'tea'].name} · {state.config.mode === 'race' ? `về đích ${formatNumber(state.config.length)} m` : 'ai đi xa nhất'}
       </p>
 
-      <div className="mt-6 flex items-end justify-center gap-2">
-        {arranged.map((id) => {
-          const place = podium.indexOf(id);
-          return (
-            <div key={id} className="flex w-28 flex-col items-center sm:w-36">
-              <VehicleArt vehicle={vehicleOf(id)} width={96} height={48} />
-              <p className="mt-1 w-full truncate text-center text-sm font-bold">{player(id)?.name}</p>
-              <div
-                className={`mt-1 flex w-full flex-col items-center justify-start rounded-t-2xl pt-2 font-draw-display font-extrabold ${
-                  place === 0 ? 'h-28 bg-amber-400 text-emerald-950' : place === 1 ? 'h-20 bg-slate-300 text-slate-800' : 'h-14 bg-orange-300 text-orange-900'
-                }`}
-              >
-                <span className="text-3xl">{MEDALS[place]}</span>
-                <span className="text-sm">{player(id)?.points ?? 0} điểm</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       {awards.length > 0 && (
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <div className="hk-awards mt-4 flex flex-wrap justify-center gap-2">
           {awards.map((award) => (
             <span key={award.label} className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
-              {award.label}: {player(award.id)?.name}
+              {award.label}<span className="hk-award-owner">{player(award.id)?.name}{award.label.includes('giẫm đầu') ? ` · ${car(award.id)?.stomps ?? 0} lần` : award.label.includes('Phi công') ? ` · ${(car(award.id)?.air ?? 0).toFixed(1)}s trên không` : award.label.includes('Nạn nhân') ? ` · bị giẫm ${car(award.id)?.squashed ?? 0} lần` : ` · lật ${car(award.id)?.crashes ?? 0} lần`}</span>
             </span>
           ))}
         </div>
