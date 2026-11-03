@@ -40,7 +40,10 @@ npm run typecheck
 npm run lint
 npm run test:tank
 npm run test:hill
+npm run test:layout
 npm run build
 ```
 
 Test mô phỏng xác nhận luật và đồng bộ, không thay thế đánh giá FPS trên điện thoại hoặc độ trễ mạng thực tế. Deploy Worker khi thay đổi `party` hoặc luật `shared` mà Worker dùng; deploy web khi thay đổi mã phía web hoặc shared mà web dùng.
+
+Tailwind quét toàn bộ `src/**/*.{ts,tsx}`. Khi di chuyển UI, phải giữ các file trong phạm vi quét; build TypeScript không phát hiện việc CSS bị thiếu. `test:layout` kiểm tra mọi component feature và các utility bố cục/responsive quan trọng.
