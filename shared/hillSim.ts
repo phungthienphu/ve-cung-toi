@@ -1,6 +1,6 @@
 import { Vec2, Box, Circle, WheelJoint, type Body, type Fixture, type World } from "planck";
 import { HILL_DT, HILL_JEEP as J, type HillInput, type HillPose, type HillSnapshot, type HillEvent, HILL_VEHICLES, HILL_MAPS, type HillOptions, type HillVehicle, type HillMapId, type HillVehicleId, HILL_DASH } from "./hillTypes";
-import { hillDeckHeight, hillHeight, hillPickups, hillWaterLevel } from "./hillTerrain";
+import { hillHeight, hillPickups, hillWaterLevel } from "./hillTerrain";
 
 import { HillPhysicsWorld, isHillDeck } from "./hillWorld";
 
@@ -26,6 +26,8 @@ export class HillSim {
   private wasGrounded = false;
   private wheelContacts = [new Set<Fixture>(), new Set<Fixture>()];
   private roofContacts = new Set<Fixture>();
+  /** The roof sensor: touching the ground with it is what "upside down" means. */
+  private roof: Fixture;
   private collected = new Set<string>();
   private retiredX = -Infinity;
   private tick = 0;
@@ -65,6 +67,7 @@ export class HillSim {
     this.chassis.createFixture(Box(J.halfWidth, 0.35), { density: J.density, friction: 0.4, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
     this.chassis.createFixture(Box(J.cabinWidth, 0.38, Vec2(-0.15, 0.65)), { density: J.density * 0.53, friction: 0.4, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
     const roof = this.chassis.createFixture(Box(J.cabinWidth - 0.15, 0.08, Vec2(-0.15, 1.05)), { isSensor: true, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
+    this.roof = roof;
     this.wheels = [-1, 1].map(side => {
       const wheel = this.world.createDynamicBody({ position: Vec2(5 + side * J.wheelbase / 2, J.wheelRadius + 0.1), linearDamping: 0.04, angularDamping: 0.08 });
       wheel.createFixture(Circle(J.wheelRadius), { density: 1.2, friction: 1.4, filterGroupIndex: groupIndex, filterCategoryBits: 2 });
@@ -234,20 +237,18 @@ export class HillSim {
   }
 
   /** A deck only counts as ground for a part on top of it: under one, or jumping up through it, the car is still in the air. */
-  private onTop(fixture: Fixture, body: Body, lift: number) {
-    if (!isHillDeck(fixture)) return true;
-    const at = body.getPosition(), deck = hillDeckHeight(this.seed, at.x, this.map);
-    return deck === null || at.y >= deck + lift;
+  private onTop(fixture: Fixture, part: Fixture) {
+    return !isHillDeck(fixture) || this.physics.deckAbove(part, fixture);
   }
   private wheelDown(i: number) {
-    for (const f of this.wheelContacts[i]) if (this.onTop(f, this.wheels[i], this.config.wheelRadius * 0.5 - 0.1)) return true;
+    for (const f of this.wheelContacts[i]) if (this.onTop(f, this.wheels[i].getFixtureList()!)) return true;
     return false;
   }
   private anyWheelDown() { return this.wheelDown(0) || this.wheelDown(1); }
   private bothWheelsDown() { return this.wheelDown(0) && this.wheelDown(1); }
   /** Roof on the ground (or upside down on a deck) — not merely brushing a deck's underside. */
   private roofDown() {
-    for (const f of this.roofContacts) if (this.onTop(f, this.chassis, -0.5)) return true;
+    for (const f of this.roofContacts) if (this.onTop(f, this.roof)) return true;
     return false;
   }
 

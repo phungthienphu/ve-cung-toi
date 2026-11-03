@@ -648,7 +648,8 @@ Trước đó xe con bọ (150 xu) vừa nhanh nhất vừa leo tốt nhất, c�
 
 **Hết xăng khi đua (sửa sau lần chơi thử 02/11/2026):**
 - Ở chế độ **Đua về đích**, hết xăng không còn bị tính là xong lượt. Xe **chạy cầm cự** (35% tốc độ, 60% lực kéo, không lao tới được) cho tới can xăng kế tiếp, mỗi 60 m. HUD báo "⛽ Cầm cự".
-- Hồi sinh khi Đua về đích được đổ ít nhất 30% xăng, để xe cầm cự không kẹt mãi dưới cùng một con dốc.
+- Hồi sinh khi Đua về đích được đổ ít nhất 60% xăng (ban đầu là 30%, chủ dự án thấy ít, nâng ngày 03/11/2026), để xe cầm cự không kẹt mãi dưới cùng một con dốc.
 - **Chơi một mình** và **Ai đi xa nhất** giữ luật cũ: hết xăng là hết lượt.
 - Nút "Hồi sinh" không còn hiện khi lượt đã xong. Trước đây nó vẫn hiện nhưng bấm không có tác dụng.
 - **Thời gian cứu xe khi lật ngửa tăng từ 3 lên 10 giây** theo ý chủ dự án (02/11/2026). Áp dụng cho mọi xe, mọi chế độ. Con số nằm duy nhất ở `HILL_JEEP.overturnSeconds` (`shared/hillTypes.ts`); vòng đếm ngược, phần khôi phục trạng thái khi đua online và các dòng hướng dẫn đều đọc từ đó. Những chỗ ghi "3 giây" ở phía trên spec là con số cũ.
+- **Sửa xe kẹt dưới cuối cầu (03/11/2026):** cầu một chiều giờ nhớ từng bộ phận xe chạm cầu từ phía nào ngay lúc mới chạm, và giữ kết luận đó cho tới khi rời khỏi cả cây cầu (`HillPhysicsWorld.deckAbove`). Trước đây game tính lại mỗi khung hình, nên ở đoạn cầu dốc xuống chạm đất, xe chui bên dưới bị coi là đang ở trên cầu và bị mặt cầu kẹp như cái nêm. Phần kiểm tra bánh chạm đất và nóc chạm đất cũng dùng cùng kết luận này.

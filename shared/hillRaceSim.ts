@@ -46,8 +46,8 @@ export class HillRaceSim {
   reconnect(id: string) { const e = this.entries.find(e => e.id === id); if (e) { e.ack = -1; this.neutral(id); } }
   neutral(id: string) { const e = this.entries.find(e => e.id === id); if (e) { e.input = { gas: false, brake: false }; e.pendingJump = false; e.pendingDash = false; } }
   requestRespawn(id: string) { const e = this.entries.find(e => e.id === id); if (this.tick > 0 && e && e.idle >= 180 && !e.done && !e.respawnAt) this.respawn(e); }
-  // "Ai đi xa nhất": a respawn costs 25 fuel. To the finish: it tops up to 30%, so a car limping on empty can't get stuck under the same hill forever.
-  private respawn(e: Entry) { e.crashes++; e.respawnAt = this.tick + 90; e.sim.setActive(false); const fuel = e.sim.snapshot().fuel; e.sim.setFuel(this.config.mode === 'distance' ? fuel - 25 : Math.max(fuel, 30)); }
+  // "Ai đi xa nhất": a respawn costs 25 fuel. To the finish: it tops up to 60% (the owner found 30% too little), so a car limping on empty can't get stuck under the same hill.
+  private respawn(e: Entry) { e.crashes++; e.respawnAt = this.tick + 90; e.sim.setActive(false); const fuel = e.sim.snapshot().fuel; e.sim.setFuel(this.config.mode === 'distance' ? fuel - 25 : Math.max(fuel, 60)); }
   step() {
     if (this.ended) return;
     this.tick++;
