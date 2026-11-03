@@ -1,4 +1,5 @@
 'use client';
+import { HomeIcon } from './HomeIcon';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { GAME_FILTERS, filterGames, type GameFilter } from '../data/games';
@@ -11,8 +12,18 @@ const NEWS_READ_KEY = 'vct_home_news_read';
 function readPreference(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
 function savePreference(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* The UI also works when storage is unavailable. */ } }
 function PigLogo() {
-  return <svg width="36" height="38" viewBox="0 0 36 38" fill="none" aria-hidden><path d="M7 15 5 3l10 7M23 10 32 3l-3 14" fill="#ff9db5" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/><circle cx="18" cy="22" r="14" fill="#ffb5ca" stroke="currentColor" strokeWidth="2.5"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/><circle cx="24" cy="19" r="1.5" fill="currentColor"/><ellipse cx="18" cy="26" rx="7" ry="5" fill="#f28ca8" stroke="currentColor" strokeWidth="2"/><path d="M15 25v2m6-2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
+  return <svg className="home-pig-logo" width="38" height="40" viewBox="0 0 40 42" fill="none" aria-hidden>
+    <path d="M9 17 6 4Q12 3 17 12M24 12Q30 3 35 4L32 18" fill="#f68fac" stroke="#542b32" strokeWidth="2.4" strokeLinejoin="round" />
+    <path d="m10 8 2 7 3-3m15 0 2 3 1-7" fill="#dc648a" />
+    <path d="M36 25c0 9-7 14-16 14S4 34 4 25 10 10 20 10s16 6 16 15Z" fill="#ffb5ca" stroke="#542b32" strokeWidth="2.4" />
+    <path d="M9 20c1-4 4-6 8-7" stroke="#ffe5ec" strokeWidth="2.5" strokeLinecap="round" />
+    <ellipse cx="10" cy="28" rx="3" ry="2" fill="#f282a3" /><ellipse cx="30" cy="28" rx="3" ry="2" fill="#f282a3" />
+    <ellipse cx="13" cy="22" rx="1.7" ry="2.2" fill="#542b32" /><ellipse cx="27" cy="22" rx="1.7" ry="2.2" fill="#542b32" />
+    <ellipse cx="20" cy="30" rx="7.5" ry="5.5" fill="#f58eac" stroke="#542b32" strokeWidth="2" />
+    <path d="M17 29v2m6-2v2" stroke="#743447" strokeWidth="2" strokeLinecap="round" />
+  </svg>;
 }
+
 const STEPS = [
   { title: 'Chọn một game', text: 'Không cần đăng ký, không cài đặt gì.' },
   { title: 'Tạo phòng, gửi link', text: 'Mỗi phòng một mã riêng. Dán vào Zalo hay Messenger là xong.' },
@@ -21,6 +32,7 @@ const STEPS = [
 export default function HomePage({ initialNews }: { initialNews: NewsPage }) {
   const [filter, setFilter] = useState<GameFilter>('all');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [skyTransition, setSkyTransition] = useState(0);
   const [readThrough, setReadThrough] = useState('');
   const [sheet, setSheet] = useState<{ open: boolean; expanded: boolean }>({ open: false, expanded: false });
   const games = filterGames(filter);
@@ -39,14 +51,27 @@ export default function HomePage({ initialNews }: { initialNews: NewsPage }) {
     setSheet({ open: true, expanded });
     if (newest) { setReadThrough(newest.publishedAt); savePreference(NEWS_READ_KEY, newest.publishedAt); }
   }
-  function toggleTheme() { const next = theme === 'light' ? 'dark' : 'light'; setTheme(next); savePreference(THEME_KEY, next); }
+
+  function toggleTheme() {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    savePreference(THEME_KEY, next);
+    setSkyTransition(current => current + 1);
+  }
+
   return <div className="home-page" data-theme={theme}>
     <a href="#home-games" className="home-skip-link">Đến danh sách trò chơi</a>
     <header className="home-hero"><nav className="home-nav home-container" aria-label="Điều hướng chính">
-      <Link href="/" className="home-logo"><PigLogo /><span>Chơi Cùng Tôi</span></Link><div className="home-nav-actions"><a className="home-nav-games" href="#home-games">🎮 <span>Trò chơi</span></a><button className="home-icon-button home-bell" aria-label={unread ? 'Mở bảng tin, có tin mới' : 'Mở bảng tin'} onClick={() => openNews()}>🔔{unread && <span className="home-unread-dot" />}</button><Link href="/leaderboard" className="home-icon-button" aria-label="Lịch sử trận đấu">↶</Link><button className="home-icon-button home-theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Chuyển sang giao diện ban đêm' : 'Chuyển sang giao diện ban ngày'} aria-pressed={theme === 'dark'}>{theme === 'light' ? '☾' : '☀'}</button></div>
+      <Link href="/" className="home-logo"><PigLogo /><span>Chơi Cùng Tôi</span></Link><div className="home-nav-actions"><a className="home-nav-games" href="#home-games"><HomeIcon name="game" /><span>Trò chơi</span></a><button className="home-icon-button home-bell" aria-label={unread ? 'Mở bảng tin, có tin mới' : 'Mở bảng tin'} onClick={() => openNews()}><HomeIcon name="bell" />{unread && <span className="home-unread-dot" />}</button><Link href="/leaderboard" className="home-icon-button" aria-label="Lịch sử trận đấu"><HomeIcon name="history" /></Link><button className="home-icon-button home-theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Chuyển sang ban đêm' : 'Chuyển sang ban ngày'} aria-pressed={theme === 'dark'}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>{theme === 'light' ? <path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /> : <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>}</svg></button></div>
     </nav><div className="home-hero-copy home-container"><h1>Hôm nay chơi gì?</h1><p>Rủ cả hội vào chơi bằng một đường link.<br className="home-mobile-break" /> Không cần tài khoản, không cài đặt gì.</p></div>
-      <svg className="home-cloud home-cloud-one" width="98" height="42" viewBox="0 0 98 42" aria-hidden><path d="M16 37C0 37 0 16 17 16 17-1 43-3 48 13 58 4 76 10 77 23 98 18 104 40 82 40Z" fill="#fffaf0" stroke="#2e1c0f" strokeWidth="2.5"/></svg>
-      <svg className="home-cloud home-cloud-two" width="66" height="33" viewBox="0 0 98 42" aria-hidden><path d="M16 37C0 37 0 16 17 16 17-1 43-3 48 13 58 4 76 10 77 23 98 18 104 40 82 40Z" fill="#fffaf0" stroke="#2e1c0f" strokeWidth="2.5"/></svg>
+      <div key={skyTransition} className={`home-sky-scene${skyTransition ? ' home-sky-changing' : ''}`} aria-hidden>
+        <div className="home-sky-glow" />
+        <svg className="home-celestial" width="88" height="88" viewBox="0 0 100 100">
+          {theme === 'dark' ? <><path d="M68 8A40 40 0 1 0 92 68 36 36 0 0 1 68 8Z" fill="#fff3cc" stroke="#2e1c0f" strokeWidth="2.5" /><circle cx="29" cy="51" r="5" fill="#e4d8aa"/><circle cx="46" cy="73" r="3" fill="#e4d8aa"/></> : <><g stroke="#ffe28a" strokeWidth="4" strokeLinecap="round"><path d="M50 3v10m0 74v10M3 50h10m74 0h10M17 17l7 7m52 52 7 7M17 83l7-7m52-52 7-7"/></g><circle cx="50" cy="50" r="30" fill="#ffc23a" stroke="#2e1c0f" strokeWidth="2.5"/></>}
+        </svg>
+        <svg className="home-cloud home-cloud-one" width="98" height="42" viewBox="0 0 98 42"><path d="M16 37C0 37 0 16 17 16 17-1 43-3 48 13 58 4 76 10 77 23 98 18 104 40 82 40Z" fill="#fffaf0" stroke="#2e1c0f" strokeWidth="2.5"/></svg>
+        <svg className="home-cloud home-cloud-two" width="66" height="33" viewBox="0 0 98 42"><path d="M16 37C0 37 0 16 17 16 17-1 43-3 48 13 58 4 76 10 77 23 98 18 104 40 82 40Z" fill="#fffaf0" stroke="#2e1c0f" strokeWidth="2.5"/></svg>
+      </div>
       <svg className="home-hills" viewBox="0 0 1440 88" preserveAspectRatio="none" aria-hidden><path d="M-10 67Q160-8 350 47T770 43T1100 35T1450 57V90H-10Z" fill="var(--home-grass)" stroke="var(--home-ink)" strokeWidth="3"/><path d="M-10 87Q170 27 355 68T770 66T1115 60T1450 77V91H-10Z" fill="var(--home-ground)" stroke="var(--home-ink)" strokeWidth="3"/></svg>
     </header>
     <main className="home-container home-main" id="home-games"><div className="home-filters" role="group" aria-label="Lọc trò chơi">{GAME_FILTERS.map(item => <button key={item.id} onClick={() => setFilter(item.id)} aria-pressed={filter === item.id}>{item.label}</button>)}</div>

@@ -88,11 +88,39 @@
 .home-sheet-scroll .home-news-item{padding:18px 0;gap:12px}.home-sheet-scroll .home-news-image{width:48px;height:48px}.home-sheet-scroll .home-news-meta{font-size:11px}.home-sheet-scroll .home-news-item p{font-size:14px}
 .home-news-load{display:flex;width:100%;margin-top:10px}.home-news-sentinel{min-height:52px;padding:5px}.home-news-error{font-size:13px;color:var(--home-text);padding:12px}.home-news-end{padding:20px 0;text-align:center;color:var(--home-muted);font-size:13px}
 .home-empty{padding:30px 15px;text-align:center;line-height:1.6}.home-empty .home-button{margin-top:16px}
-.home-seance{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 80%,#6a173e,#290e22 65%);overflow:hidden}.home-seance>svg{position:absolute;width:180px;height:170px;bottom:-25px;right:-25px}.home-card-suit{position:absolute;left:20px;top:24px;font-size:80px;color:#fff4d8;transform:rotate(-14deg)}
-.home-math{position:absolute;inset:0;background:linear-gradient(140deg,#4fa8e6,#142a52);overflow:hidden}.home-math>span{position:absolute;left:12px;top:24px;color:#fffaf0;font-size:25px;font-family:var(--home-display),system-ui,sans-serif;opacity:.7}.home-math>svg{position:absolute;width:160px;height:150px;bottom:-8px;right:-8px}
-.home-brawler{position:absolute;inset:0;background:linear-gradient(#4b9a32,#b3b35e);display:flex;align-items:center;justify-content:center;gap:4px}.home-brawler span{font-size:32px}.home-brawler img{object-fit:contain;image-rendering:pixelated;max-width:38%}
+ .home-icon{display:inline-block;vertical-align:middle;flex-shrink:0}
+.home-game-meta>span,.home-badges>span{display:inline-flex;align-items:center;gap:5px}
+.home-game-meta .home-icon,.home-badges .home-icon{width:15px;height:15px}
+.home-wide{grid-column:span 2}
+.home-playing-cards{position:absolute;inset:0;background:#5a1628;display:flex;align-items:center;justify-content:center;color:#2a0d14}
+.home-playing-cards>span{position:absolute;width:62px;height:88px;border-radius:9px;background:#ff9db5;border:2.5px solid #2a0d14;box-shadow:inset 0 0 0 5px #ff9db5,inset 0 0 0 7px #2a0d14;transform:translateX(-46px) rotate(-14deg)}
+.home-playing-cards>span:nth-child(2){transform:translateX(46px) rotate(14deg)}
+.home-playing-cards>span:nth-child(3){background:#fffaf0;box-shadow:none;transform:translateY(-6px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:800 26px/1 var(--home-display),sans-serif}
+.home-ships{position:absolute;inset:0;background-color:#1f5f9c;background-image:linear-gradient(#ffffff29 1px,transparent 1px),linear-gradient(90deg,#ffffff29 1px,transparent 1px);background-size:28px 28px}
+.home-ships>span{position:absolute;border-radius:999px}
+.home-ship{background:#d5dde4;border:2.5px solid #13202c}
+.home-ship-hit{width:14px;height:14px;background:#ef4f36;border:2.5px solid #13202c}
+.home-ship-miss{width:9px;height:9px;background:white}
 @media(max-width:1100px){.home-layout{grid-template-columns:1fr}.home-news-sidebar{display:none}.home-news-ticker{display:flex}.home-cloud-one{right:8%}.home-cloud-two{right:20%}}
 @media(max-width:760px){.home-container{padding-left:16px;padding-right:16px}.home-logo{font-size:21px;gap:8px}.home-logo svg{width:28px}.home-nav{padding-top:14px;padding-bottom:0}.home-nav-actions{gap:6px}.home-nav-games{display:none}.home-theme-toggle{width:36px;height:36px;border:0;background:transparent}.home-icon-button{width:40px;height:40px;border-radius:12px}.home-hero-copy{padding-top:26px}.home-hero-copy h1{font-size:36px;line-height:1.02}.home-hero-copy p{font-size:15px;line-height:1.5;max-width:320px;margin-top:8px}.home-hills{height:56px;margin-top:6px}.home-filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;padding:2px 2px 4px;margin-left:-2px;margin-right:-2px;margin-bottom:14px}.home-filters button{min-height:44px;padding:0 16px;font-size:14px;border-width:2px}.home-game-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.home-game-card{border-width:2px;border-radius:14px;box-shadow:0 3px 0 var(--home-ink)}.home-game-art{height:128px;border-bottom-width:2px}.home-game-copy{padding:10px 10px 12px;gap:3px}.home-game-tag{font-size:11px}.home-game-copy h2{font-size:19px;line-height:1.1}.home-game-meta{font-size:10px;gap:3px 8px}.home-featured{grid-row:auto;border-radius:20px;box-shadow:0 4px 0 var(--home-ink)}.home-featured .home-game-art{height:196px;min-height:196px;flex:auto}.home-featured .home-game-copy{padding:16px;gap:10px}.home-featured h2{font-size:31px;line-height:1.04}.home-featured p{font-size:13px;line-height:1.6}.home-badges{gap:6px}.home-badges>span{font-size:10px;padding:4px 8px}.home-game-actions{gap:9px;flex-direction:column}.home-button{min-height:46px;font-size:13px;border-width:2px}.home-button-primary{font-size:19px}.home-news-ticker{border-width:2px;margin-bottom:18px}.home-new{left:10px;top:10px;border-width:2px;font-size:12px}.home-how{margin-top:34px}.home-how>h2{font-size:28px}.home-how ol{grid-template-columns:1fr;gap:12px;margin-top:14px}.home-how li{padding:16px;border-width:2px}.home-footer{margin-top:28px;gap:18px}.home-author{width:100%}.home-social{margin-left:60px}.home-footer-bottom{font-size:10px}.home-news-dialog{width:100%;max-height:calc(100dvh - max(64px,env(safe-area-inset-top)));border-radius:26px 26px 0 0;border-bottom:0;border-left:0;border-right:0;margin:auto 0 0;box-shadow:0 -4px 0 var(--home-ink)}.home-sheet-header .home-icon-button{width:44px;height:44px}}
 @media(max-width:640px){.home-cloud{display:none}.home-mobile-break{display:block}}
 @media(max-width:360px){.home-logo{font-size:18px;gap:4px}.home-logo svg{width:24px}.home-nav-actions{gap:3px}.home-icon-button{width:36px;height:36px}.home-theme-toggle{width:30px}.home-hero-copy h1{font-size:32px}.home-game-copy h2{font-size:17px}.home-badges{gap:4px}}
-@media(prefers-reduced-motion:reduce){.home-page *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.home-page,.home-hero{transition:background-color .9s ease,color .6s ease}
+.home-sky-scene{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.home-celestial{position:absolute;right:18%;top:90px;filter:drop-shadow(0 0 16px #ffe8a680)}
+.home-sky-glow{position:absolute;width:560px;height:560px;right:calc(18% - 236px);top:-146px;background:radial-gradient(circle,#fff4bd70,transparent 68%);opacity:.65}
+.home-page[data-theme=dark] .home-sky-glow{background:radial-gradient(circle,#c8d8ff25,transparent 65%)}
+.home-page[data-theme=dark] .home-cloud{opacity:.65}
+.home-sky-changing .home-celestial{animation:home-celestial-rise 1.4s cubic-bezier(.16,1,.3,1) both}
+.home-sky-changing .home-cloud-one{animation:home-cloud-rush 1.3s cubic-bezier(.3,0,.2,1) both}
+.home-sky-changing .home-cloud-two{animation:home-cloud-rush 1.6s cubic-bezier(.3,0,.2,1) both}
+.home-sky-changing .home-sky-glow{animation:home-light-rise 1.6s ease-out both}
+@keyframes home-celestial-rise{from{transform:translateY(260px) rotate(-35deg);opacity:0}to{transform:translateY(0) rotate(0);opacity:1}}
+@keyframes home-cloud-rush{0%{transform:translateX(0)}45%{transform:translateX(65vw);opacity:0}46%{transform:translateX(-80vw);opacity:0}65%{opacity:1}100%{transform:translateX(0)}}
+@keyframes home-light-rise{from{transform:translateY(200px) scale(.3);opacity:0}to{transform:translateY(0) scale(1);opacity:.65}}
+@media(max-width:760px){.home-celestial{width:56px;height:56px;right:10%;top:68px;opacity:.65}.home-sky-glow{right:calc(10% - 252px);top:-184px}.home-hero-copy{padding-right:72px}.home-hero-copy h1{max-width:300px}.home-sky-scene .home-cloud{display:block;width:55px;height:28px;opacity:.45;top:145px;right:3%}.home-sky-scene .home-cloud-two{top:185px;right:16%;width:42px}.home-nav .home-theme-toggle{min-width:36px;min-height:44px}}
+@media(max-width:360px){.home-hero-copy{padding-right:58px}.home-celestial{right:5%;width:46px;height:46px}.home-nav .home-theme-toggle{min-width:30px}}
+@media(prefers-reduced-motion:reduce){.home-page,.home-page *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.home-pig-logo{flex-shrink:0;filter:drop-shadow(0 2px 0 #542b3226)}
+.home-page[data-theme=dark] .home-pig-logo{filter:drop-shadow(0 0 3px #ffb5ca35)}

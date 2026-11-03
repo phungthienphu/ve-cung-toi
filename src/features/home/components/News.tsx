@@ -1,4 +1,5 @@
 'use client';
+import { HomeIcon } from './HomeIcon';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,7 +11,7 @@ export function NewsList({ items, readThrough }: { items: HomeNews[]; readThroug
   </li>)}</ol>;
 }
 export function NewsPreview({ initial, readThrough, onExpand }: { initial: NewsPage; readThrough: string; onExpand: () => void }) {
-  return <aside className="home-news-sidebar" aria-label="Bảng tin"><h2 className="home-wood-title">📰 Bảng tin</h2><div className="home-news-panel"><NewsList items={initial.items} readThrough={readThrough} />{initial.items.length === 0 && <p className="home-empty">Chưa có tin mới. Quay lại sau nhé!</p>}{initial.nextCursor && <button className="home-news-more" onClick={onExpand}>Xem thêm cập nhật <span aria-hidden>→</span></button>}</div></aside>;
+  return <aside className="home-news-sidebar" aria-label="Bảng tin"><h2 className="home-wood-title"><HomeIcon name="news" />Bảng tin</h2><div className="home-news-panel"><NewsList items={initial.items} readThrough={readThrough} />{initial.items.length === 0 && <p className="home-empty">Chưa có tin mới. Quay lại sau nhé!</p>}{initial.nextCursor && <button className="home-news-more" onClick={onExpand}>Xem thêm cập nhật <span aria-hidden>→</span></button>}</div></aside>;
 }
 export function NewsSheet({ initial, open, expandedOnOpen, readThrough, onClose }: { initial: NewsPage; open: boolean; expandedOnOpen: boolean; readThrough: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -62,7 +63,7 @@ export function NewsSheet({ initial, open, expandedOnOpen, readThrough, onClose 
 
   return <dialog ref={dialog} className="home-news-dialog" aria-labelledby="home-news-heading" onCancel={event => { event.preventDefault(); closeRef.current(); }} onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeRef.current(); } }}>
     <span className="home-sheet-handle" aria-hidden />
-    <header className="home-sheet-header"><h2 id="home-news-heading" className="home-wood-title">📰 Bảng tin</h2><button className="home-icon-button" aria-label="Đóng bảng tin" onClick={onClose} autoFocus>✕</button></header>
+    <header className="home-sheet-header"><h2 id="home-news-heading" className="home-wood-title"><HomeIcon name="news" />Bảng tin</h2><button className="home-icon-button" aria-label="Đóng bảng tin" onClick={onClose} autoFocus>✕</button></header>
     <div className="home-sheet-scroll" ref={scrollRoot}><NewsList items={items} readThrough={readThrough} />{items.length === 0 && <p className="home-empty">Chưa có tin mới. Quay lại sau nhé!</p>}
       {cursor && !expanded && <button className="home-button home-news-load" onClick={() => { setExpanded(true); void loadMore(); }}>Xem thêm cập nhật ↓</button>}
       {expanded && cursor && <div ref={sentinel} className="home-news-sentinel"><button className="home-news-more" disabled={loading} onClick={() => void loadMore()}>{loading ? 'Đang tải thêm tin…' : error ? 'Thử tải lại' : 'Tải thêm tin'}</button></div>}

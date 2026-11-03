@@ -108,3 +108,7 @@ Artboard đặt hai mẫu rộng 390px cạnh nhau trong khung 860px, gap 80px, 
 Đã triển khai trang chủ trong `src/features/home`, CSS và font được giới hạn riêng cho trang chủ. Danh mục có bộ lọc theo metadata, giao diện sáng/tối và bảng tin responsive.
 
 Bảng tin mặc định tối đa 5 tin mới nhất; bấm Xem thêm mở chế độ cuộn tải tiếp qua `/api/news` với cursor ID, mỗi trang tối đa 5 tin. Có trạng thái tải, lỗi/thử lại và hết tin. Nội dung phát hành được quản lý trong `src/features/home/data/news.ts`; chưa có database hoặc CMS.
+
+## Điều chỉnh sau review
+
+Chỉ hiển thị đúng 8 game trong Main/Mobile; không đưa Math Quest, Math Boss, Brawler vào danh mục trang chủ. Font Baloo 2 800 và Be Vietnam Pro 400/500/600/700 được bundle bằng `next/font/local`, kèm giấy phép OFL, để dev/build không cần tải Google Fonts. Minh họa bài và hải chiến dùng CSS theo mẫu, Hải Chiến chiếm hai cột. Chờ review local trước khi push/deploy thay đổi này.
