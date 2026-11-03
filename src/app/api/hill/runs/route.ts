@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { isHillMap } from "@shared/hillTypes";
-import { dbConnect } from "@/lib/mongodb";
-import { HillRun, HillWallet } from "@/lib/models/Hill";
-import { currentHillDay, ensureHillWallet, hillBoard, parseHillRun, validHillPlayer } from "@/lib/hillServer";
+import { isHillMap } from "@shared/hill/types";
+import { dbConnect } from "@/server/db/mongodb";
+import { HillRun, HillWallet } from "@/server/models/Hill";
+import { currentHillDay, ensureHillWallet, hillBoard, parseHillRun, validHillPlayer } from "@/features/hill/server/runs";
 
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { BattleshipRoomListing } from "@shared/battleshipTypes";
+import type { BattleshipRoomListing } from "@shared/battleship/types";
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "127.0.0.1:1999";
 

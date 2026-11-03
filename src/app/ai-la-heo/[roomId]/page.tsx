@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import OldMaidRoom from "@/components/oldmaid/OldMaidRoom";
-import { btnPrimary } from "@/components/oldmaid/panels";
-import { drawFontClass } from "@/lib/drawFonts";
+import OldMaidRoom from "@/features/oldmaid/components/OldMaidRoom";
+import { btnPrimary } from "@/features/oldmaid/components/panels";
+import { drawFontClass } from "@/features/draw/fonts";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 
 export default function OldMaidRoomPage({ params }: { params: Promise<{ roomId: string }> }) {

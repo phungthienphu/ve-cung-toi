@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { HillRoomListing } from "@shared/hillRoomListing";
+import type { HillRoomListing } from "@shared/hill/roomListing";
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "127.0.0.1:1999";
 

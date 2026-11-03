@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { DarkBack } from "@/components/mathboss/DarkBack";
-import { LAST_HOST_ROOM_KEY } from "@/components/mathquest/shared";
-import { drawFontClass } from "@/lib/drawFonts";
+import { DarkBack } from "@/features/mathboss/components/DarkBack";
+import { LAST_HOST_ROOM_KEY } from "@/features/mathquest/components/shared";
+import { drawFontClass } from "@/features/draw/fonts";
 import { playClick } from "@/lib/sound";
 
 // Numbers only: students type the code on a phone keypad.

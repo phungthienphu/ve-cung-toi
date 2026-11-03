@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { HOME_CRUMB, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, TutorLogin, TutorTabs, logout } from "@/components/mathquest/shared";
-import { AttendanceCalendar } from "@/components/mathquest/attendance/Calendar";
-import { ClassCard, NewClassForm } from "@/components/mathquest/attendance/Classes";
-import { BillButton } from "@/components/mathquest/attendance/Bill";
-import { CopyMessage, type AttendanceData } from "@/components/mathquest/attendance/ui";
-import { WEEK, formatVnd, missedDays, parentMessage, shortDay, todayKey, weekdayOf } from "@/lib/mathQuest/tuition";
+import { HOME_CRUMB, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, TutorLogin, TutorTabs, logout } from "@/features/mathquest/components/shared";
+import { AttendanceCalendar } from "@/features/mathquest/components/attendance/Calendar";
+import { ClassCard, NewClassForm } from "@/features/mathquest/components/attendance/Classes";
+import { BillButton } from "@/features/mathquest/components/attendance/Bill";
+import { CopyMessage, type AttendanceData } from "@/features/mathquest/components/attendance/ui";
+import { WEEK, formatVnd, missedDays, parentMessage, shortDay, todayKey, weekdayOf } from "@/features/mathquest/lib/tuition";
 
 const TRAIL = [HOME_CRUMB, MATH_QUEST_CRUMB, TUTOR_CRUMB, { label: "Điểm danh & học phí" }];
 

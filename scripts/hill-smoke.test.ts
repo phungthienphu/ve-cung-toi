@@ -1,9 +1,9 @@
 /** Run: node --import tsx scripts/hill-smoke.test.ts */
 import assert from "node:assert/strict";
 import { Vec2 } from "planck";
-import { HillSim } from "../shared/hillSim";
-import { hillHeight, hillPickups } from "../shared/hillTerrain";
-import { HILL_DT } from "../shared/hillTypes";
+import { HillSim } from "../shared/hill/sim";
+import { hillHeight, hillPickups } from "../shared/hill/terrain";
+import { HILL_DT } from "../shared/hill/types";
 
 const idle = { gas: false, brake: false };
 const gas = { gas: true, brake: false };
@@ -32,7 +32,7 @@ crash.wheels[1].setTransform(Vec2(3.75, 2.1), Math.PI);
 step(crash, 100);
 assert.ok(crash.snapshot().overturnRemaining !== null, "roof-ground contact starts recovery timer");
 assert.equal(crash.snapshot().finished, null, "roof impact does not immediately end a run");
-step(crash, 240);
+step(crash, Math.ceil(crash.snapshot().overturnRemaining! * 60) + 2);
 assert.equal(crash.snapshot().finished, "overturned");
 const recover = new HillSim(1);
 recover.chassis.setTransform(Vec2(5, 1.2), Math.PI);

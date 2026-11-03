@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { makeRoomId } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import type { SoccerRoomListing } from "@shared/soccerTypes";
+import type { SoccerRoomListing } from "@shared/soccer/types";
 
 const ROOM_LIST_POLL_MS = 4000;
 

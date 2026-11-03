@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { CHAPTERS, LESSONS } from "@shared/mathQuestLessons";
-import { HOME_CRUMB, LAST_HOST_ROOM_KEY, MATH_QUEST_CRUMB, Paper, TopBar, TutorLogin, TutorTabs, logout, relativeDay } from "@/components/mathquest/shared";
+import { CHAPTERS, LESSONS } from "@shared/mathquest/lessons";
+import { HOME_CRUMB, LAST_HOST_ROOM_KEY, MATH_QUEST_CRUMB, Paper, TopBar, TutorLogin, TutorTabs, logout, relativeDay } from "@/features/mathquest/components/shared";
 
 interface Student {
   id: string;

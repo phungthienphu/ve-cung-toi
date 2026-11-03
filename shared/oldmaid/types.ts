@@ -1,0 +1,4 @@
+/** Stable domain API: models, configuration and rules are kept in separate modules. */
+export type { SkillType, SkillInfo, PairRule, BotLevel, OldMaidConfig, Emote, OldMaidPhase, OldMaidPlayer, OldMaidTurn, OldMaidRoundRow, OldMaidRoundSummary, OldMaidChatEntry, PublicOldMaidState, OldMaidHandCard, OldMaidEvent, OldMaidClientMessage, OldMaidServerMessage, OldMaidRoomListing } from "./models";
+export { JOKER, DECK, MAX_SEATS, MIN_PLAYERS, MAX_ROOM_PEOPLE, RECONNECT_GRACE_MS, DEAL_MS, OPENING_PAIRS_MS, DRAW_PEEK_MS, PAIR_THROW_MS, KEEP_SETTLE_MS, NEXT_ROUND_MS, TURN_SECONDS, ROUNDS_TO_PLAY, EMOTE_COOLDOWN_MS, SKILL_PEEK_MS, DOUBLE_CHOOSE_MS, SKILL_TIME_FLOOR_MS, SKILL_SHOW_MS, SKILL_ORDER, SKILL_BASE, SKILL_COPIES, SKILLS, isSkill, skillOf, skillsInPlay, DEFAULT_OLDMAID_CONFIG, PAIR_RULE_LABELS, rankOf, isRed, EMOTES, isEmote } from "./config";
+export { skillDeck, pairKey, isPair, splitPairs, seatAfter, seatBefore } from "./rules";

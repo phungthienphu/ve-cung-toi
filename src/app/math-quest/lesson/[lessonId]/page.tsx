@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
-import { CHAPTERS, findLesson, type Lesson, type LessonExample } from "@shared/mathQuestLessons";
-import { makeQuestion, type RevealedQuestion } from "@shared/mathBossTypes";
-import { MathText } from "@/components/mathboss/MathText";
-import { HOME_CRUMB, Loading, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, relativeDay, useMe } from "@/components/mathquest/shared";
+import { CHAPTERS, findLesson, type Lesson, type LessonExample } from "@shared/mathquest/lessons";
+import { makeQuestion, type RevealedQuestion } from "@shared/mathboss/types";
+import { MathText } from "@/features/mathboss/components/MathText";
+import { HOME_CRUMB, Loading, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, relativeDay, useMe } from "@/features/mathquest/components/shared";
 
 const PRACTICE_ROUND = 5;
 const LETTERS = ["A", "B", "C", "D"];

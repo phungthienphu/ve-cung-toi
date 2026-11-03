@@ -1,3 +1,3 @@
-import HillGame from "@/components/hill/HillGame";
+import HillGame from "@/features/hill/components/HillGame";
 
 export default function HillPage() { return <HillGame />; }

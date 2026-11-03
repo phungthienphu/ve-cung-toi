@@ -1,19 +1,19 @@
-import type { HillRoom } from "./hill-server";
-import type { HillDirectory } from "./hill-directory";
-import type { BattleshipDirectory } from "./battleship-directory";
-import type { BattleshipRoom } from "./battleship-server";
-import type { BrawlerRoom } from "./brawler-server";
-import type { DrawDirectory } from "./draw-directory";
-import type { MathBossRoom } from "./mathboss-server";
-import type { OldMaidDirectory } from "./oldmaid-directory";
-import type { OldMaidRoom } from "./oldmaid-server";
-import type { GameRoom } from "./server";
-import type { SoccerDirectory } from "./soccer-directory";
-import type { SoccerRoom } from "./soccer-server";
-import type { TankDirectory } from "./tank-directory";
-import type { TankRoom } from "./tank-server";
-import type { WerewolfDirectory } from "./werewolf-directory";
-import type { WerewolfRoom } from "./werewolf-server";
+import type { HillRoom } from "./hill/server";
+import type { HillDirectory } from "./hill/directory";
+import type { BattleshipDirectory } from "./battleship/directory";
+import type { BattleshipRoom } from "./battleship/server";
+import type { BrawlerRoom } from "./brawler/server";
+import type { DrawDirectory } from "./draw/directory";
+import type { MathBossRoom } from "./mathboss/server";
+import type { OldMaidDirectory } from "./oldmaid/directory";
+import type { OldMaidRoom } from "./oldmaid/server";
+import type { GameRoom } from "./draw/server";
+import type { SoccerDirectory } from "./soccer/directory";
+import type { SoccerRoom } from "./soccer/server";
+import type { TankDirectory } from "./tank/directory";
+import type { TankRoom } from "./tank/server";
+import type { WerewolfDirectory } from "./werewolf/directory";
+import type { WerewolfRoom } from "./werewolf/server";
 
 /**
  * Bindings from wrangler.jsonc. A binding's name, kebab-cased, is the party

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import type { MathBossPhase, MathBossPlayer, Shot } from "@shared/mathBossTypes";
-import { Arena } from "@/components/mathboss/Arena";
-import { drawFontClass } from "@/lib/drawFonts";
+import type { MathBossPhase, MathBossPlayer, Shot } from "@shared/mathboss/types";
+import { Arena } from "@/features/mathboss/components/Arena";
+import { drawFontClass } from "@/features/draw/fonts";
 
 // A sandbox for the battle scene: fake players, buttons that act out every
 // situation (hits, misses, the monster's counter-attack, a combo, the rage

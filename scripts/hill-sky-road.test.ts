@@ -1,9 +1,9 @@
 /** Run: node --import tsx scripts/hill-sky-road.test.ts */
 import assert from 'node:assert/strict';
 import { Vec2 } from 'planck';
-import { HillSim } from '../shared/hillSim';
-import { hillSkyRoads, hillDeckPoints, hillDeckHeight, hillHeight } from '../shared/hillTerrain';
-import { HILL_MAPS, type HillMapId } from '../shared/hillTypes';
+import { HillSim } from '../shared/hill/sim';
+import { hillSkyRoads, hillDeckPoints, hillDeckHeight, hillHeight } from '../shared/hill/terrain';
+import { HILL_MAPS, type HillMapId } from '../shared/hill/types';
 
 for (const map of Object.keys(HILL_MAPS) as HillMapId[]) {
   const roads = hillSkyRoads(1, 150, 4000, map);

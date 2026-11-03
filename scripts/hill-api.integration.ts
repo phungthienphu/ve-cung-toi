@@ -2,8 +2,8 @@
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import mongoose from "mongoose";
-import { HillRun, HillWallet } from "../src/lib/models/Hill";
-import { hillDay, hillDailySeed } from "../shared/hillTypes";
+import { HillRun, HillWallet } from "../src/server/models/Hill";
+import { hillDay, hillDailySeed } from "../shared/hill/types";
 
 async function main() {
   assert.equal(process.env.MONGODB_DB_NAME, "vct_hill_review_20261102", "Requires isolated review database");

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/mongodb";
-import GameHistory from "@/lib/models/GameHistory";
+import { dbConnect } from "@/server/db/mongodb";
+import GameHistory from "@/server/models/GameHistory";
 
 const VALID_GAME_TYPES = ["draw", "tank", "soccer", "werewolf", "battleship", "oldmaid"] as const;
 type GameType = (typeof VALID_GAME_TYPES)[number];

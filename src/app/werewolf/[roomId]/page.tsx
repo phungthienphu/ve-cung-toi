@@ -4,9 +4,9 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
-import { werewolfAvatarUrl } from "@/lib/werewolfAvatar";
-import { werewolfFontClass } from "@/lib/werewolfFonts";
-import WerewolfGameRoom from "@/components/werewolf/WerewolfGameRoom";
+import { werewolfAvatarUrl } from "@/features/werewolf/avatar";
+import { werewolfFontClass } from "@/features/werewolf/fonts";
+import WerewolfGameRoom from "@/features/werewolf/components/WerewolfGameRoom";
 
 export default function WerewolfRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);

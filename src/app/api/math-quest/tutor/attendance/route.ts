@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { MqClass, MqInvoice, MqSession, MqTuitionSettings, type ClassDoc } from "@/lib/models/Tuition";
-import { isId, tutorGuard } from "@/lib/mathQuest/tutorApi";
-import { DATE_PATTERN, OFF_REASONS, sessionAmount, type OffReason } from "@/lib/mathQuest/tuition";
+import { MqClass, MqInvoice, MqSession, MqTuitionSettings, type ClassDoc } from "@/server/models/Tuition";
+import { isId, tutorGuard } from "@/features/mathquest/server/tutorApi";
+import { DATE_PATTERN, OFF_REASONS, sessionAmount, type OffReason } from "@/features/mathquest/lib/tuition";
 
 // The tutor's attendance book (docs/diem-danh-hoc-phi-spec.md). GET: every
 // class, session and invoice — one tutor's handful of classes stays small.

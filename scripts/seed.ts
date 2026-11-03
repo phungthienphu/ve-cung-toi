@@ -5,8 +5,8 @@ import mongoose from "mongoose";
 
 config({ path: ".env.local" });
 config(); // fall back to .env if present
-import Wordlist from "../src/lib/models/Wordlist";
-import { DEFAULT_WORDLISTS } from "../shared/wordlists";
+import Wordlist from "../src/server/models/Wordlist";
+import { DEFAULT_WORDLISTS } from "../shared/draw/wordlists";
 
 async function main() {
   const uri = process.env.MONGODB_URI;

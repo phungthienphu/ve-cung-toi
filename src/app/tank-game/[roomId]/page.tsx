@@ -3,10 +3,10 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { TANK_COLORS, TANK_SKINS, TANK_SKIN_LABELS, skinForColor } from "@shared/tankTypes";
-import TankGameRoom from "@/components/tank/TankGameRoom";
-import TankPreview from "@/components/tank/TankPreview";
-import { ULTIMATE_UI } from "@/components/tank/ultimateUi";
+import { TANK_COLORS, TANK_SKINS, TANK_SKIN_LABELS, skinForColor } from "@shared/tank/types";
+import TankGameRoom from "@/features/tank/components/TankGameRoom";
+import TankPreview from "@/features/tank/components/TankPreview";
+import { ULTIMATE_UI } from "@/features/tank/components/ultimateUi";
 
 export default function TankRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);

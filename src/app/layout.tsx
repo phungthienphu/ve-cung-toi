@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import SoundToggle from "@/components/SoundToggle";
-import CelebrationBanner from "@/components/CelebrationBanner";
+import CelebrationBanner from "@/features/draw/components/CelebrationBanner";
 import { GAMES_SEO, SITE_NAME, SITE_URL, seoMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {

@@ -24,7 +24,7 @@ import {
   type SoccerRoomStatus,
   type SoccerTackleEvent,
   type SoccerTeam,
-} from "../../shared/soccerTypes";
+} from "../../shared/soccer/types";
 import { clampToField, makeId, otherTeam } from "./geometry";
 
 export interface TackleCtx {

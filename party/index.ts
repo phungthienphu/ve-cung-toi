@@ -7,23 +7,23 @@
 import { routePartykitRequest } from "partyserver";
 import type { Env } from "./env";
 
-export { GameRoom } from "./server";
-export { DrawDirectory } from "./draw-directory";
-export { TankRoom } from "./tank-server";
-export { TankDirectory } from "./tank-directory";
-export { BrawlerRoom } from "./brawler-server";
-export { SoccerRoom } from "./soccer-server";
-export { SoccerDirectory } from "./soccer-directory";
-export { WerewolfRoom } from "./werewolf-server";
-export { WerewolfDirectory } from "./werewolf-directory";
-export { BattleshipRoom } from "./battleship-server";
-export { BattleshipDirectory } from "./battleship-directory";
-export { MathBossRoom } from "./mathboss-server";
-export { OldMaidRoom } from "./oldmaid-server";
-export { OldMaidDirectory } from "./oldmaid-directory";
+export { GameRoom } from "./draw/server";
+export { DrawDirectory } from "./draw/directory";
+export { TankRoom } from "./tank/server";
+export { TankDirectory } from "./tank/directory";
+export { BrawlerRoom } from "./brawler/server";
+export { SoccerRoom } from "./soccer/server";
+export { SoccerDirectory } from "./soccer/directory";
+export { WerewolfRoom } from "./werewolf/server";
+export { WerewolfDirectory } from "./werewolf/directory";
+export { BattleshipRoom } from "./battleship/server";
+export { BattleshipDirectory } from "./battleship/directory";
+export { MathBossRoom } from "./mathboss/server";
+export { OldMaidRoom } from "./oldmaid/server";
+export { OldMaidDirectory } from "./oldmaid/directory";
 
-export { HillRoom } from "./hill-server";
-export { HillDirectory } from "./hill-directory";
+export { HillRoom } from "./hill/server";
+export { HillDirectory } from "./hill/directory";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

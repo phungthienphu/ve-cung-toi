@@ -3,7 +3,7 @@
 // actual game rules, so bots go through exactly the same handlers a human's
 // messages would (preview/lock/vote/…), never a shortcut around them.
 
-import type { NightSuspicionResult, WerewolfChatEntry, WerewolfConfig, WerewolfPhase, WerewolfPlayer } from "../../shared/werewolfTypes";
+import type { NightSuspicionResult, WerewolfChatEntry, WerewolfConfig, WerewolfPhase, WerewolfPlayer } from "../../shared/werewolf/types";
 import type { SecretPlayerState } from "./domain";
 
 export const BOT_NAMES = ["Bắp", "Cà Rốt", "Bánh Bao", "Khoai", "Mít", "Xoài", "Ổi", "Sầu Riêng", "Dưa Hấu", "Tắc Kè"];

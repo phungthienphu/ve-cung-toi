@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CHAPTERS, type Lesson } from "@shared/mathQuestLessons";
-import { HOME_CRUMB, Loading, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, logout, relativeDay, suggestNext, useMe, type ProgressEntry } from "@/components/mathquest/shared";
+import { CHAPTERS, type Lesson } from "@shared/mathquest/lessons";
+import { HOME_CRUMB, Loading, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, logout, relativeDay, suggestNext, useMe, type ProgressEntry } from "@/features/mathquest/components/shared";
 
 // The lesson notebook's front page. It always leads with one obvious next
 // step ("Việc nên làm bây giờ"), then the chapters of the student's grade —

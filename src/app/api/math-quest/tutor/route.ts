@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { MqLessonProgress, MqLessonReview, MqStudent } from "@/lib/models/MathQuest";
-import { PIN_PATTERN, hashPin, nameKey } from "@/lib/mathQuest/session";
-import { isId, tutorGuard as guard } from "@/lib/mathQuest/tutorApi";
-import { findLesson } from "@shared/mathQuestLessons";
+import { MqLessonProgress, MqLessonReview, MqStudent } from "@/server/models/MathQuest";
+import { PIN_PATTERN, hashPin, nameKey } from "@/features/mathquest/server/session";
+import { isId, tutorGuard as guard } from "@/features/mathquest/server/tutorApi";
+import { findLesson } from "@shared/mathquest/lessons";
 
 // The tutor's dashboard API. GET: everything the dashboard shows.
 // POST { action, ... }: manage students, mark lessons taught, review drafts.

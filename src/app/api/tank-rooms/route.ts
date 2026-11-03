@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { TankRoomListing } from "@shared/tankTypes";
+import type { TankRoomListing } from "@shared/tank/types";
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "127.0.0.1:1999";
 

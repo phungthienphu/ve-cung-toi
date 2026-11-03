@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { FORTUNE_REFUSED_LINE, FORTUNE_RESET, offlineReading } from "@/components/cards/fortune";
-import { parseFortuneRequest, saveReading, takeReading, visitorId } from "@/lib/fortuneAi";
-import { readingSource } from "@/lib/fortuneProviders";
-import { dbConnect } from "@/lib/mongodb";
+import { FORTUNE_REFUSED_LINE, FORTUNE_RESET, offlineReading } from "@/features/cards/components/fortune";
+import { parseFortuneRequest, saveReading, takeReading, visitorId } from "@/features/fortune/server/ai";
+import { readingSource } from "@/features/fortune/server/providers";
+import { dbConnect } from "@/server/db/mongodb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

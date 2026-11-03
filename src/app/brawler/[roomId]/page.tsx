@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import BrawlerGameRoom from "@/components/brawler/BrawlerGameRoom";
+import BrawlerGameRoom from "@/features/brawler/components/BrawlerGameRoom";
 
 export default function BrawlerRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);

@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { makeRoomId } from "@/lib/player";
-import { werewolfFontClass } from "@/lib/werewolfFonts";
+import { werewolfFontClass } from "@/features/werewolf/fonts";
 import { playClick } from "@/lib/sound";
-import { RoleArtwork } from "@/components/werewolf/ui";
-import { ROLE_LABELS, type WerewolfRole, type WerewolfRoomListing } from "@shared/werewolfTypes";
+import { RoleArtwork } from "@/features/werewolf/components/ui";
+import { ROLE_LABELS, type WerewolfRole, type WerewolfRoomListing } from "@shared/werewolf/types";
 
 const ROOM_LIST_POLL_MS = 4000;
 const SHOWCASE_ROLES: WerewolfRole[] = ["wolf", "seer", "guardian", "witch", "villager"];

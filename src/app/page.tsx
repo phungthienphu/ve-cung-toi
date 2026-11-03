@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { seanceFontClass } from "@/components/cards/fonts";
-import { Candle, Medium } from "@/components/cards/Medium";
-import { MonsterSprite } from "@/components/mathboss/MonsterSprite";
-import { drawFontClass } from "@/lib/drawFonts";
+import { seanceFontClass } from "@/features/cards/components/fonts";
+import { Candle, Medium } from "@/features/cards/components/Medium";
+import { MonsterSprite } from "@/features/mathboss/components/MonsterSprite";
+import { drawFontClass } from "@/features/draw/fonts";
 
 // The game hub: a hero, the newest games (the very newest big, the two before
 // it side by side), and a bento grid of every game with its own cover art

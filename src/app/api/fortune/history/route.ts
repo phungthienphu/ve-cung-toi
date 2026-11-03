@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import { isId, tutorGuard } from "@/lib/mathQuest/tutorApi";
-import { FortuneReading } from "@/lib/models/FortuneReading";
+import { isId, tutorGuard } from "@/features/mathquest/server/tutorApi";
+import { FortuneReading } from "@/server/models/FortuneReading";
 
 export const dynamic = "force-dynamic";
 

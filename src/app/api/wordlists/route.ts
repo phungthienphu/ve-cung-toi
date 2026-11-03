@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/mongodb";
-import Wordlist from "@/lib/models/Wordlist";
-import { DEFAULT_WORDLISTS } from "@shared/wordlists";
+import { dbConnect } from "@/server/db/mongodb";
+import Wordlist from "@/server/models/Wordlist";
+import { DEFAULT_WORDLISTS } from "@shared/draw/wordlists";
 
 export async function GET() {
   try {

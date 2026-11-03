@@ -1,11 +1,11 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { DarkBack } from "@/components/mathboss/DarkBack";
+import { DarkBack } from "@/features/mathboss/components/DarkBack";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
-import { drawFontClass } from "@/lib/drawFonts";
-import MathBossRoom from "@/components/mathboss/MathBossRoom";
-import { GRADES, type Grade } from "@shared/mathBossTypes";
+import { drawFontClass } from "@/features/draw/fonts";
+import MathBossRoom from "@/features/mathboss/components/MathBossRoom";
+import { GRADES, type Grade } from "@shared/mathboss/types";
 
 const GRADE_KEY = "vct_mathboss_grade";
 

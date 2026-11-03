@@ -3,9 +3,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { drawFontClass } from '@/lib/drawFonts';
+import { drawFontClass } from '@/features/draw/fonts';
 import { getStoredName } from '@/lib/player';
-import { HillFriendsPanel } from '@/components/hill/HillFriendsPanel';
+import { HillFriendsPanel } from '@/features/hill/components/HillFriendsPanel';
 
 // Where "Rời phòng" and shared links lead: the online-race finder on its own
 // page. The same panel is a mode of the game's main menu.

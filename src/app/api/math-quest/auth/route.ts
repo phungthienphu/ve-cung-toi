@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/mongodb";
-import { MqStudent } from "@/lib/models/MathQuest";
-import { NOT_CONFIGURED, checkPin, checkTutorPassword, endSessions, isConfigured, nameKey, startSession } from "@/lib/mathQuest/session";
+import { dbConnect } from "@/server/db/mongodb";
+import { MqStudent } from "@/server/models/MathQuest";
+import { NOT_CONFIGURED, checkPin, checkTutorPassword, endSessions, isConfigured, nameKey, startSession } from "@/features/mathquest/server/session";
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MS = 10 * 60 * 1000;

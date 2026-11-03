@@ -11,13 +11,14 @@ Game vẽ - đoán chữ nhiều người chơi thời gian thực, kiểu Skrib
 ## Cấu trúc thư mục
 
 ```
-src/app/                # Next.js App Router pages + API routes
-src/components/         # React components (canvas, chat, lobby, ...)
-src/lib/                # MongoDB connection, models, client hooks
-party/server.ts         # PartyKit room server — toàn bộ game loop
-shared/types.ts          # Types dùng chung giữa Next.js và PartyKit
-shared/wordlists.ts      # Bộ từ mặc định (Việt + Anh)
-scripts/seed.ts          # Seed bộ từ mặc định vào MongoDB
+src/app/                # Pages và API routes, giữ nguyên URL
+src/features/<game>/    # Components, hooks, audio và server helpers theo game
+src/components/         # UI dùng chung giữa các game
+src/lib/                # Tiện ích phía client, âm thanh dùng chung
+src/server/             # Kết nối database và Mongoose models
+party/<game>/           # Realtime room server và danh sách phòng
+shared/<game>/          # Models, config, rules dùng chung browser/server
+scripts/                # Seed và kiểm tra mô phỏng
 ```
 
 ## Chạy local
@@ -42,7 +43,7 @@ scripts/seed.ts          # Seed bộ từ mặc định vào MongoDB
    npm run seed
    ```
 
-   Lưu ý: PartyKit dùng bộ từ mặc định được bundle sẵn trong `shared/wordlists.ts` để chơi (không phụ thuộc DB lúc realtime), nên **không seed vẫn chơi được** — bước này chỉ để lưu bản ghi vào MongoDB.
+   Lưu ý: PartyKit dùng bộ từ mặc định được bundle sẵn trong `shared/draw/wordlists.ts` để chơi (không phụ thuộc DB lúc realtime), nên **không seed vẫn chơi được** — bước này chỉ để lưu bản ghi vào MongoDB.
 
 4. Chạy song song cả Next.js dev server và server realtime (PartyServer):
 
@@ -107,3 +108,5 @@ Tạo cluster free tier, tạo database user, whitelist IP `0.0.0.0/0` (hoặc I
 - Người mới vào giữa lượt (hoặc reload) nhận lại đúng toàn bộ nét vẽ hiện có.
 - Đoán đúng ở 1 tab cập nhật điểm số + trạng thái "đã đoán đúng" ở tất cả các tab còn lại.
 - Người vẽ rời phòng giữa chừng khiến lượt tự động kết thúc và chuyển người vẽ khác.
+
+Xem [kiến trúc và quy tắc tổ chức code](docs/architecture.md).

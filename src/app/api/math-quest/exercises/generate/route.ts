@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
-import { MqExerciseKinds, MqExerciseSet, type ExerciseDoc } from "@/lib/models/Exercise";
-import { AiFailure, aiConfigured, exerciseModel, isChange, reviseExercise, writeExercises, type Draft, type ExerciseRequest } from "@/lib/mathQuest/exerciseAi";
-import { exerciseGuard, exerciseView, ownerFilter, refundAiTurn, setView, takeAiTurn } from "@/lib/mathQuest/exerciseServer";
-import { findCurriculumLesson } from "@/lib/mathQuest/curriculum";
-import { isId } from "@/lib/mathQuest/tutorApi";
-import { COUNTS, LEVEL_CHOICES, MIX_KIND, NOTE_MAX, type GenerateEvent, type LevelChoice } from "@/lib/mathQuest/exerciseTypes";
+import { MqExerciseKinds, MqExerciseSet, type ExerciseDoc } from "@/server/models/Exercise";
+import { AiFailure, aiConfigured, exerciseModel, isChange, reviseExercise, writeExercises, type Draft, type ExerciseRequest } from "@/features/mathquest/server/exerciseAi";
+import { exerciseGuard, exerciseView, ownerFilter, refundAiTurn, setView, takeAiTurn } from "@/features/mathquest/server/exerciseServer";
+import { findCurriculumLesson } from "@/features/mathquest/lib/curriculum";
+import { isId } from "@/features/mathquest/server/tutorApi";
+import { COUNTS, LEVEL_CHOICES, MIX_KIND, NOTE_MAX, type GenerateEvent, type LevelChoice } from "@/features/mathquest/lib/exerciseTypes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

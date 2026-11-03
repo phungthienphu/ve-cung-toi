@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getStoredName, makeRoomId, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { drawFontClass } from "@/lib/drawFonts";
-import { MAX_PLAYERS, type DrawRoomListing } from "@shared/types";
+import { drawFontClass } from "@/features/draw/fonts";
+import { MAX_PLAYERS, type DrawRoomListing } from "@shared/draw/types";
 
 // Room list is a nice-to-have, not core gameplay — poll instead of a
 // websocket, plus a manual refresh button (see handleRefresh) so a player

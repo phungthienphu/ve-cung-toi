@@ -6,7 +6,7 @@
 // for what striking the ball actually does, so a real player's shot and a
 // bot's shot can never quietly drift apart in behavior.
 
-import { SOCCER_KICK_MAX_SPEED, SOCCER_KICK_MIN_SPEED, SOCCER_TOUCH_COOLDOWN_MS, type SoccerBall, type SoccerKickEvent, type SoccerPlayer } from "../../shared/soccerTypes";
+import { SOCCER_KICK_MAX_SPEED, SOCCER_KICK_MIN_SPEED, SOCCER_TOUCH_COOLDOWN_MS, type SoccerBall, type SoccerKickEvent, type SoccerPlayer } from "../../shared/soccer/types";
 import { makeId } from "./geometry";
 
 export interface KickCtx {

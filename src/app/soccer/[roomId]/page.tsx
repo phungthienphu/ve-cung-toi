@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import SoccerGameRoom from "@/components/soccer/SoccerGameRoom";
+import SoccerGameRoom from "@/features/soccer/components/SoccerGameRoom";
 
 export default function SoccerRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);

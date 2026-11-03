@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { makeRoomId } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { KILL_TARGET, MAX_TANK_PLAYERS, TANK_ROOM_MODE_LABELS, type TankRoomListing } from "@shared/tankTypes";
+import { KILL_TARGET, MAX_TANK_PLAYERS, TANK_ROOM_MODE_LABELS, type TankRoomListing } from "@shared/tank/types";
 
 // Room list is a nice-to-have, not core gameplay — poll instead of a
 // websocket, and just show whatever's in `rooms` (starting empty) if a
@@ -73,6 +73,11 @@ export default function TankGameHomePage() {
 
         <h1 className="mb-1 text-2xl font-bold text-ink">Bắn nhau cùng hội bạn</h1>
         <p className="mb-6 text-sm text-ink/60">Tối đa 8 người, ai đủ {KILL_TARGET} điểm tiêu diệt trước thì thắng.</p>
+
+        <Link href="/tank-game/local" onClick={playClick} className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-100">
+          🤖 Luyện tập / Đấu với bot
+        </Link>
+        <p className="mb-4 text-center text-xs text-ink/50">Chơi tại máy · không cần phòng mạng · chọn tối đa 5 bot</p>
 
         <button
           onClick={handleCreate}

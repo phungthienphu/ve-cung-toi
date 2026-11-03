@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { WerewolfTeam } from "@shared/werewolfTypes";
-import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/components/werewolf/WerewolfHistoryDetail";
+import type { WerewolfTeam } from "@shared/werewolf/types";
+import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/features/werewolf/components/WerewolfHistoryDetail";
 
 // No login means no stable per-account identity to rank against — two
 // different people typing "An" look identical to the old aggregate

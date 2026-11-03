@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { makeRoomId } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { MODE_LABELS, type BattleshipRoomListing } from "@shared/battleshipTypes";
-import { btnGhost, btnPrimary, card } from "@/components/battleship/ui";
+import { MODE_LABELS, type BattleshipRoomListing } from "@shared/battleship/types";
+import { btnGhost, btnPrimary, card } from "@/features/battleship/components/ui";
 
 const ROOM_LIST_POLL_MS = 4000;
 

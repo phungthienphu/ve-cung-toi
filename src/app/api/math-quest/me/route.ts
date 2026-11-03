@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/mongodb";
-import { MqLessonProgress, MqLessonReview, MqStudent } from "@/lib/models/MathQuest";
-import { NOT_CONFIGURED, isConfigured, readSession } from "@/lib/mathQuest/session";
-import { findLesson } from "@shared/mathQuestLessons";
+import { dbConnect } from "@/server/db/mongodb";
+import { MqLessonProgress, MqLessonReview, MqStudent } from "@/server/models/MathQuest";
+import { NOT_CONFIGURED, isConfigured, readSession } from "@/features/mathquest/server/session";
+import { findLesson } from "@shared/mathquest/lessons";
 
 // Who is looking at the notebook, and what they may see.
 // GET → { role: "student", student, progress, approved } | { role: "tutor", approved } | { role: null }

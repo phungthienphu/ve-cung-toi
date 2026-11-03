@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { MqExerciseKinds, MqExerciseSet } from "@/lib/models/Exercise";
-import { AiFailure, aiConfigured, suggestKinds } from "@/lib/mathQuest/exerciseAi";
-import { answerView, exerciseGuard, exerciseView, ownerFilter, readQuota, refundAiTurn, setView, takeAiTurn, takePasswordTry } from "@/lib/mathQuest/exerciseServer";
-import { findCurriculumLesson } from "@/lib/mathQuest/curriculum";
-import { checkAnswerKey, checkTutorPassword, issueAnswerKey } from "@/lib/mathQuest/session";
-import { isId } from "@/lib/mathQuest/tutorApi";
-import type { ExerciseKindsDoc } from "@/lib/models/Exercise";
-import type { LibraryItem } from "@/lib/mathQuest/exerciseTypes";
+import { MqExerciseKinds, MqExerciseSet } from "@/server/models/Exercise";
+import { AiFailure, aiConfigured, suggestKinds } from "@/features/mathquest/server/exerciseAi";
+import { answerView, exerciseGuard, exerciseView, ownerFilter, readQuota, refundAiTurn, setView, takeAiTurn, takePasswordTry } from "@/features/mathquest/server/exerciseServer";
+import { findCurriculumLesson } from "@/features/mathquest/lib/curriculum";
+import { checkAnswerKey, checkTutorPassword, issueAnswerKey } from "@/features/mathquest/server/session";
+import { isId } from "@/features/mathquest/server/tutorApi";
+import type { ExerciseKindsDoc } from "@/server/models/Exercise";
+import type { LibraryItem } from "@/features/mathquest/lib/exerciseTypes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

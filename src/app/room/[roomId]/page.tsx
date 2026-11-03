@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from "react";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { drawFontClass } from "@/lib/drawFonts";
-import GameRoom from "@/components/GameRoom";
+import { drawFontClass } from "@/features/draw/fonts";
+import GameRoom from "@/features/draw/components/GameRoom";
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);

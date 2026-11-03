@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { makeRoomId } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { MAX_BRAWLER_PLAYERS } from "@shared/brawlerTypes";
+import { MAX_BRAWLER_PLAYERS } from "@shared/brawler/types";
 
 export default function BrawlerHomePage() {
   const router = useRouter();

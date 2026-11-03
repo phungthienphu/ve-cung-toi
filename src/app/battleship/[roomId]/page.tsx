@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { getOrCreatePlayerId, getStoredName, setStoredName } from "@/lib/player";
-import BattleshipRoom from "@/components/battleship/BattleshipRoom";
-import { btnPrimary, card } from "@/components/battleship/ui";
+import BattleshipRoom from "@/features/battleship/components/BattleshipRoom";
+import { btnPrimary, card } from "@/features/battleship/components/ui";
 
 export default function BattleshipRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);

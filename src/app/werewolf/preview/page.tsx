@@ -11,25 +11,25 @@ import {
   type WerewolfPlayer,
   type WerewolfRole,
   type WerewolfTeam,
-} from "@shared/werewolfTypes";
-import { GAME_CONTENT } from "@/components/werewolf/gameContent";
-import { DisconnectNotice } from "@/components/werewolf/DisconnectNotice";
-import { NarratorLine } from "@/components/werewolf/NarratorLine";
-import { werewolfFontClass } from "@/lib/werewolfFonts";
-import { describeWerewolfSound, useWerewolfSound } from "@/lib/werewolfSound";
-import { LobbyScreen } from "@/components/werewolf/screens/LobbyScreen";
-import { RoleRevealScreen } from "@/components/werewolf/screens/RoleRevealScreen";
-import { NightScreen } from "@/components/werewolf/screens/NightScreen";
+} from "@shared/werewolf/types";
+import { GAME_CONTENT } from "@/features/werewolf/components/gameContent";
+import { DisconnectNotice } from "@/features/werewolf/components/DisconnectNotice";
+import { NarratorLine } from "@/features/werewolf/components/NarratorLine";
+import { werewolfFontClass } from "@/features/werewolf/fonts";
+import { describeWerewolfSound, useWerewolfSound } from "@/features/werewolf/audio";
+import { LobbyScreen } from "@/features/werewolf/components/screens/LobbyScreen";
+import { RoleRevealScreen } from "@/features/werewolf/components/screens/RoleRevealScreen";
+import { NightScreen } from "@/features/werewolf/components/screens/NightScreen";
 import {
   DawnScreen,
   DiscussionScreen,
   GameEndScreen,
   VoteResultScreen,
   VotingScreen,
-} from "@/components/werewolf/screens/DayScreens";
-import { PlayerStrip } from "@/components/werewolf/ui";
-import { SuspicionChart } from "@/components/werewolf/SuspicionChart";
-import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/components/werewolf/WerewolfHistoryDetail";
+} from "@/features/werewolf/components/screens/DayScreens";
+import { PlayerStrip } from "@/features/werewolf/components/ui";
+import { SuspicionChart } from "@/features/werewolf/components/SuspicionChart";
+import { WerewolfHistoryDetail, type WerewolfHistoryDetailData } from "@/features/werewolf/components/WerewolfHistoryDetail";
 
 const ROLES: WerewolfRole[] = ["villager", "wolf", "seer", "guardian", "witch"];
 type PreviewScene = WerewolfPhase | "suspicion" | "history";

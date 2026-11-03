@@ -1,11 +1,11 @@
 /** Run: node --import tsx scripts/hill-phase2.test.ts */
 import assert from "node:assert/strict";
 import { Vec2 } from "planck";
-import { HillSim } from "../shared/hillSim";
-import { HILL_VEHICLES, HILL_MAPS, hillDay, hillDailySeed, type HillVehicleId, type HillMapId, type HillRunSubmission } from "../shared/hillTypes";
-import { hillHeight } from "../shared/hillTerrain";
-import { parseHillRun } from "../src/lib/hillServer";
-import { cacheHillRun, readHillProgress, syncHillProgress, hillWalletView } from "../src/lib/hillProgress";
+import { HillSim } from "../shared/hill/sim";
+import { HILL_VEHICLES, HILL_MAPS, hillDay, hillDailySeed, type HillVehicleId, type HillMapId, type HillRunSubmission } from "../shared/hill/types";
+import { hillHeight } from "../shared/hill/terrain";
+import { parseHillRun } from "../src/features/hill/server/runs";
+import { cacheHillRun, readHillProgress, syncHillProgress, hillWalletView } from "../src/features/hill/client/progress";
 const idle = { gas: false, brake: false };
 const step = (s: HillSim, n: number, jump = false) => { for (let i = 0; i < n; i++) s.step({ ...idle, jump }); };
 

@@ -1,0 +1,112 @@
+
+
+export type RoomStatus = "lobby" | "choosing" | "playing" | "roundEnd" | "gameEnd";
+
+export interface Player {
+  id: string;
+  name: string;
+  score: number;
+  connected: boolean;
+  hasGuessedCorrectly: boolean;
+  isHost: boolean;
+}
+
+export interface ChatEntry {
+  id: string;
+  type: "chat" | "system" | "correct" | "close";
+  playerId?: string;
+  name?: string;
+  text?: string;
+  ts: number;
+}
+
+export interface StrokePoint {
+  x: number;
+  y: number;
+}
+
+export type DrawTool = "pen" | "eraser" | "rect" | "circle" | "triangle" | "star";
+
+export interface StrokeSegment {
+  strokeId: string;
+  color: string;
+  size: number;
+  tool: DrawTool;
+  /** Freehand tools: the path. Shapes: exactly [dragStart, dragEnd]. */
+  points: StrokePoint[];
+  /** Shapes only: solid fill instead of an outline. */
+  filled?: boolean;
+}
+
+export interface RoomConfig {
+  rounds: number; // how many times EACH player draws
+  drawSeconds: number;
+  wordlistIds: string[]; // e.g. ["vi-default", "en-default"]
+  customWords: string[]; // extra words typed by the host
+  customOnly: boolean; // when true, ignore wordlistIds entirely — draw only from customWords
+  minWords: number; // filter: minimum number of words in a chosen phrase
+  maxWords: number; // filter: maximum number of words in a chosen phrase
+}
+
+// Publicly broadcast room state. The secret `word` is replaced by
+// `wordHint` (underscores) for everyone except the current drawer,
+// who receives the real word via a private `your-word` message.
+export interface PublicRoomState {
+  roomId: string;
+  status: RoomStatus;
+  players: Player[];
+  hostId: string | null;
+  topic: string; // free-text theme the host sets so everyone knows what tonight's session is about — purely informational, doesn't filter word selection
+  config: RoomConfig;
+  drawerId: string | null;
+  wordLength: number | null;
+  wordHint: string | null;
+  revealedWord: string | null; // set during roundEnd/gameEnd
+  round: number; // 1-indexed "turn" number
+  totalTurns: number;
+  turnEndsAt: number | null; // epoch ms, for client-side countdown
+  phaseEndsAt: number | null; // epoch ms for choosing/roundEnd/gameEnd countdown
+  strokes: StrokeSegment[];
+}
+
+export type ClientMessage =
+  | { type: "join"; playerId: string; name: string }
+  | { type: "start_game"; config: RoomConfig }
+  | { type: "choose_word"; word: string }
+  | { type: "stroke"; segment: StrokeSegment }
+  | { type: "stroke_point"; strokeId: string; point: StrokePoint }
+  | { type: "stroke_end"; strokeId: string }
+  | { type: "clear_canvas" }
+  | { type: "undo_stroke" }
+  | { type: "chat"; text: string }
+  | { type: "play_again" }
+  | { type: "kick_player"; playerId: string }
+  | { type: "leave_room" }
+  | { type: "reveal_letter"; index: number }
+  | { type: "set_topic"; topic: string };
+
+/** One entry in the public room list (draw-directory party) — lets the
+ * draw-guess home screen show open lobbies people can join without already
+ * knowing a room code, same idea as TankRoomListing/SoccerRoomListing.
+ * Deliberately excludes player names since anyone loading the home page can
+ * fetch this, not just people already in the room. */
+export interface DrawRoomListing {
+  roomId: string;
+  playerCount: number;
+  status: RoomStatus;
+}
+
+export type ServerMessage =
+  | { type: "state"; state: PublicRoomState }
+  | { type: "your_word"; word: string }
+  | { type: "word_choices"; choices: string[]; deadline: number }
+  | { type: "chat_message"; entry: ChatEntry }
+  | { type: "stroke"; segment: StrokeSegment }
+  | { type: "stroke_point"; strokeId: string; point: StrokePoint }
+  | { type: "stroke_end"; strokeId: string }
+  | { type: "stroke_undo"; strokeId: string }
+  | { type: "clear_canvas" }
+  | { type: "round_result"; word: string; scores: { playerId: string; delta: number }[] }
+  | { type: "game_result"; players: Player[] }
+  | { type: "kicked" }
+  | { type: "error"; message: string };

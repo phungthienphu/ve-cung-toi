@@ -1,6 +1,6 @@
-import { unpackHillFrame } from "../shared/hillRaceWire";
+import { unpackHillFrame } from "../shared/hill/raceWire";
 import assert from 'node:assert/strict';
-import type { HillRaceState, HillRaceFrame } from '../shared/hillRaceTypes';
+import type { HillRaceState, HillRaceFrame } from '../shared/hill/raceTypes';
 const host = process.env.HILL_PARTY_URL || 'http://127.0.0.1:1999';
 const room = `TEST${Date.now()}`;
 const sockets: WebSocket[] = [];

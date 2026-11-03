@@ -1,4 +1,4 @@
-import type { SeerResult, SuspicionEntry, WerewolfRole } from "../../shared/werewolfTypes";
+import type { SeerResult, SuspicionEntry, WerewolfRole } from "../../shared/werewolf/types";
 
 export interface SecretPlayerState {
   role: WerewolfRole;

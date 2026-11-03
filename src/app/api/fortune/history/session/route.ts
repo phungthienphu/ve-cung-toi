@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { takeLoginAttempt, visitorId } from "@/lib/fortuneAi";
-import { NOT_CONFIGURED, checkTutorPassword, endSessions, isConfigured, startSession } from "@/lib/mathQuest/session";
-import { dbConnect } from "@/lib/mongodb";
+import { takeLoginAttempt, visitorId } from "@/features/fortune/server/ai";
+import { NOT_CONFIGURED, checkTutorPassword, endSessions, isConfigured, startSession } from "@/features/mathquest/server/session";
+import { dbConnect } from "@/server/db/mongodb";
 
 export const dynamic = "force-dynamic";
 

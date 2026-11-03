@@ -2,7 +2,7 @@
 // spirit as party/tank/geometry.ts, just much shorter since this game has
 // far fewer spatial concerns (no tile map, no shove-a-crate physics).
 
-import type { SoccerTeam } from "../../shared/soccerTypes";
+import type { SoccerTeam } from "../../shared/soccer/types";
 
 export function makeId(): string {
   return Math.random().toString(36).slice(2, 10);

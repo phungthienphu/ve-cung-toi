@@ -4,12 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SkillFace } from "@/components/oldmaid/MyHand";
-import { btnGhost, btnPrimary } from "@/components/oldmaid/panels";
-import { drawFontClass } from "@/lib/drawFonts";
+import { SkillFace } from "@/features/oldmaid/components/MyHand";
+import { btnGhost, btnPrimary } from "@/features/oldmaid/components/panels";
+import { drawFontClass } from "@/features/draw/fonts";
 import { makeRoomId } from "@/lib/player";
 import { playClick } from "@/lib/sound";
-import { SKILLS, SKILL_BASE, SKILL_ORDER, type OldMaidRoomListing } from "@shared/oldMaidTypes";
+import { SKILLS, SKILL_BASE, SKILL_ORDER, type OldMaidRoomListing } from "@shared/oldmaid/types";
 
 const ROOM_LIST_POLL_MS = 4000;
 

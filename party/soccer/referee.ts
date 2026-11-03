@@ -13,7 +13,7 @@ import {
   type SoccerBall,
   type SoccerPlayer,
   type SoccerReferee,
-} from "../../shared/soccerTypes";
+} from "../../shared/soccer/types";
 import { clampToField } from "./geometry";
 
 export interface RefereeCtx {

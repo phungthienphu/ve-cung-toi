@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
-import { HillRaceSim } from '../shared/hillRaceSim';
-import { DEFAULT_HILL_RACE, type HillRacer } from '../shared/hillRaceTypes';
-import { hillHeight } from '../shared/hillTerrain';
+import { HillRaceSim } from '../shared/hill/raceSim';
+import { DEFAULT_HILL_RACE, type HillRacer } from '../shared/hill/raceTypes';
+import { hillHeight } from '../shared/hill/terrain';
 import { Vec2 } from 'planck';
 const players: HillRacer[] = Array.from({ length: 6 }, (_, i) => ({ id: `p${i}`, name: `Driver ${i}`, vehicle: ['jeep', 'beetle', 'monster', 'bus'][i % 4] as HillRacer['vehicle'], connected: true, ready: true, points: 0 }));
 const race = new HillRaceSim(42, DEFAULT_HILL_RACE, players);

@@ -19,7 +19,7 @@ import {
   type SoccerBotDifficulty,
   type SoccerPlayer,
   type SoccerTeam,
-} from "../../shared/soccerTypes";
+} from "../../shared/soccer/types";
 import { applyKick, type KickCtx } from "./kicking";
 import { resolveTackle, type TackleCtx } from "./fouls";
 import type { InputState } from "./types";

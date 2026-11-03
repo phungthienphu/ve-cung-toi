@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HOME_CRUMB, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, TutorLogin, TutorTabs, logout } from "@/components/mathquest/shared";
-import { Builder, type BuilderRequest } from "@/components/mathquest/exercises/Builder";
-import { ExerciseCard, PrintMenu, SetCard, UnlockDialog, lessonGrade, lessonName, type PrintMode, type ReviseStage } from "@/components/mathquest/exercises/ExerciseCards";
-import { PrintSheet, type PrintJob } from "@/components/mathquest/exercises/PrintSheet";
-import { postExercises, streamGenerate } from "@/components/mathquest/exercises/api";
-import type { DraftView, ExerciseAnswer, ExerciseChange, ExerciseSetView, ExerciseView, LibraryItem, Quota, Viewer } from "@/lib/mathQuest/exerciseTypes";
+import { HOME_CRUMB, MATH_QUEST_CRUMB, Paper, TUTOR_CRUMB, TopBar, TutorLogin, TutorTabs, logout } from "@/features/mathquest/components/shared";
+import { Builder, type BuilderRequest } from "@/features/mathquest/components/exercises/Builder";
+import { ExerciseCard, PrintMenu, SetCard, UnlockDialog, lessonGrade, lessonName, type PrintMode, type ReviseStage } from "@/features/mathquest/components/exercises/ExerciseCards";
+import { PrintSheet, type PrintJob } from "@/features/mathquest/components/exercises/PrintSheet";
+import { postExercises, streamGenerate } from "@/features/mathquest/components/exercises/api";
+import type { DraftView, ExerciseAnswer, ExerciseChange, ExerciseSetView, ExerciseView, LibraryItem, Quota, Viewer } from "@/features/mathquest/lib/exerciseTypes";
 
 // "Xưởng đề AI" (docs/xuong-de-ai-spec.md): pick a lesson and a problem type,
 // the AI writes fresh exercises, the machine checks the answers. Students

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { HILL_VEHICLES, isHillVehicle } from "@shared/hillTypes";
-import { dbConnect } from "@/lib/mongodb";
-import { HillWallet } from "@/lib/models/Hill";
-import { ensureHillWallet, validHillPlayer } from "@/lib/hillServer";
+import { HILL_VEHICLES, isHillVehicle } from "@shared/hill/types";
+import { dbConnect } from "@/server/db/mongodb";
+import { HillWallet } from "@/server/models/Hill";
+import { ensureHillWallet, validHillPlayer } from "@/features/hill/server/runs";
 
 export async function GET(req: Request) {
   const playerId = new URL(req.url).searchParams.get("playerId");
