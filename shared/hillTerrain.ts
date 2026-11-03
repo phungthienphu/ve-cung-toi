@@ -56,8 +56,8 @@ export function hillPickups(seed: number, from: number, to: number, map: HillMap
   }
   // Coins along each sky road's deck, and an energy bottle halfway: the reward for getting up there.
   for (const road of hillSkyRoads(seed, from, to, map)) {
-    for (let x = road.x0 + 2, j = 0; x < road.xf - 2; x += 2.2, j++) if (x >= from && x <= to) pickups.push({ id: `d${road.section}-${j}`, x, y: road.y + 1.2, kind: "coin" });
-    const middle = (road.x0 + road.xf) / 2;
+    for (let x = road.x0 + 2, j = 0; x < road.x1 - 2; x += 2.2, j++) if (x >= from && x <= to) pickups.push({ id: `d${road.section}-${j}`, x, y: road.y + 1.2, kind: "coin" });
+    const middle = (road.x0 + road.x1) / 2;
     if (middle >= from && middle <= to) pickups.push({ id: `de${road.section}`, x: middle, y: road.y + 1.6, kind: "energy" });
   }
   if (denseFuel) {
@@ -91,10 +91,10 @@ const sectionKind = (seed: number, section: number) => (section === 0 ? 0 : Math
  * land on top). Getting up there takes both: speed off the ramp AND a jump
  * pressed right at the lip (the owner's rule). It sits higher than a fast car
  * flies without jumping, higher than a standing jump reaches, and far enough
- * past the lip that a jump without speed falls short. Flat from x0 to xf
- * (faster than the drop and basin below), then slopes down to the ground at x1.
+ * past the lip that a jump without speed falls short. Flat from x0 to x1,
+ * with open air beneath and a free drop off the far end.
  */
-export interface HillSkyRoad { section: number; lip: number; x0: number; xf: number; x1: number; y: number; endY: number }
+export interface HillSkyRoad { section: number; lip: number; x0: number; x1: number; y: number }
 
 /** Upward speed a jump adds (HillSim: an impulse of 6.5 m/s per kilogram), and a brisk speed at a ramp's lip. */
 const JUMP_SPEED = 6.5;
@@ -122,17 +122,11 @@ export function hillSkyRoad(seed: number, section: number, map: HillMapId): Hill
     const speedOnly = (BRISK * slope) ** 2 / (2 * gravity);
     const jumpOnly = JUMP_SPEED ** 2 / (2 * gravity);
     const rise = Math.max(speedOnly * 1.15, jumpOnly * 1.1) + 0.3;
-    const road = { section, lip, x0: lip + 8, xf: start + 58, y: ground(lip) + rise + 0.35 };
-    const length = Math.min(22, Math.max(8, (road.y - ground(road.xf)) * 1.8));
-    const full = { ...road, x1: road.xf + length, endY: ground(road.xf + length) };
-    // Skip it rather than run a deck through a hill: the road below must stay clear.
-    for (let x = Math.ceil(full.x0); x <= full.x1; x++) if (ground(x) > deckAt(full, x) - (x <= full.xf ? 1 : -0.05)) return null;
-    return full;
+    const road = { section, lip, x0: lip + 8, x1: start + 58, y: ground(lip) + rise + 0.35 };
+    // Keep the entire lower route open, including clearance for the tallest car.
+    for (let x = Math.floor(road.x0); x <= Math.ceil(road.x1); x++) if (ground(x) > road.y - 4) return null;
+    return road;
   });
-}
-
-function deckAt(road: HillSkyRoad, x: number) {
-  return x <= road.xf ? road.y : road.y + ((road.endY - road.y) * (x - road.xf)) / (road.x1 - road.xf);
 }
 
 export function hillSkyRoads(seed: number, from: number, to: number, map: HillMapId): HillSkyRoad[] {
@@ -144,11 +138,11 @@ export function hillSkyRoads(seed: number, from: number, to: number, map: HillMa
   return roads;
 }
 
-/** The deck's surface at x, or null where there is no sky road. A deck's far end can reach into the next section. */
+/** The floating deck's surface at x, or null beyond either end. */
 export function hillDeckHeight(seed: number, x: number, map: HillMapId): number | null {
   if (x < 40) return null;
   const section = Math.floor((x - 40) / SECTION);
-  for (const road of [hillSkyRoad(seed, section, map), hillSkyRoad(seed, section - 1, map)]) if (road && x >= road.x0 && x <= road.x1) return deckAt(road, x);
+  for (const road of [hillSkyRoad(seed, section, map), hillSkyRoad(seed, section - 1, map)]) if (road && x >= road.x0 && x <= road.x1) return road.y;
   return null;
 }
 
@@ -157,7 +151,7 @@ export function hillDeckPoints(road: HillSkyRoad): { x: number; y: number }[] {
   const xs = [road.x0];
   for (let x = Math.ceil(road.x0); x < road.x1; x++) if (x > road.x0) xs.push(x);
   xs.push(road.x1);
-  return xs.map((x) => ({ x, y: deckAt(road, x) }));
+  return xs.map((x) => ({ x, y: road.y }));
 }
 
 /** Water in a ravine: its surface level between from and to (where the ground dips below it). No water on the moon. */

@@ -1,7 +1,8 @@
-import { hillDeckPoints, hillHeight, hillSkyRoads, hillWater, type HillSkyRoad } from "@shared/hillTerrain";
+import { hillHeight, hillSkyRoads, hillWater } from "@shared/hillTerrain";
 import { HILL_JEEP, HILL_VEHICLES, HILL_MAPS, type HillMapId, type HillSnapshot, type HillFlag } from "@shared/hillTypes";
 
 
+import { drawSkyRoad } from "./drawSkyRoad";
 import { drawVehicle, drawWheel } from "./drawVehicle";
 
 /** `fx`/`fy`: where on screen the car sits (fractions), eased like the rest. */
@@ -53,7 +54,7 @@ export function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, se
   ctx.strokeStyle = "#42743a"; ctx.lineWidth = 7; ctx.lineJoin = "round"; ctx.stroke();
   ctx.strokeStyle = map.edge; ctx.lineWidth = 3; ctx.stroke();
   drawWater(ctx, sx, sy, s, seed, state.map, from, to);
-  for (const road of hillSkyRoads(seed, from, to, state.map)) drawSkyRoad(ctx, sx, sy, s, seed, state.map, road);
+  for (const road of hillSkyRoads(seed, from, to, state.map)) drawSkyRoad(ctx, sx, sy, s, state.map, road);
   for (let x = Math.ceil(from / 100) * 100; x <= to; x += 100) {
     if (x < 0) continue;
     const y = sy(hillHeight(seed, x, state.map));
@@ -208,65 +209,5 @@ function drawWater(ctx: CanvasRenderingContext2D, sx: (x: number) => number, sy:
       if (x === left) ctx.moveTo(sx(x), y); else ctx.lineTo(sx(x), y);
     }
     ctx.strokeStyle = look.foam; ctx.globalAlpha = 0.8; ctx.lineWidth = Math.max(1.5, 0.06 * s); ctx.stroke(); ctx.globalAlpha = 1;
-  }
-}
-
-const DECK: Record<HillMapId, { plank: string; dark: string; top: string; support: "posts" | "ropes" | "float" }> = {
-  tea: { plank: "#c6a052", dark: "#6b5328", top: "#e9d28a", support: "posts" }, // bamboo bridge
-  sand: { plank: "#c79a5b", dark: "#74522c", top: "#f1d59c", support: "posts" }, // boardwalk
-  mountain: { plank: "#8a6a4a", dark: "#433427", top: "#c9b08c", support: "ropes" }, // rope bridge
-  moon: { plank: "#8f95c6", dark: "#454a78", top: "#dfe3ff", support: "float" }, // drifting rock slabs
-};
-const DECK_DEPTH = 0.35;
-
-/** A sky road: plank deck, then posts down to the ground, hanging ropes, or (on the moon) nothing but a glow. */
-function drawSkyRoad(ctx: CanvasRenderingContext2D, sx: (x: number) => number, sy: (y: number) => number, s: number, seed: number, map: HillMapId, road: HillSkyRoad) {
-  const look = DECK[map];
-  const points = hillDeckPoints(road);
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
-  if (look.support === "posts") {
-    ctx.strokeStyle = look.dark; ctx.lineWidth = Math.max(3, 0.22 * s);
-    for (let x = road.x0 + 1; x < road.xf; x += 6) {
-      ctx.beginPath(); ctx.moveTo(sx(x), sy(road.y - DECK_DEPTH)); ctx.lineTo(sx(x), sy(hillHeight(seed, x, map))); ctx.stroke();
-    }
-  } else if (look.support === "float") {
-    ctx.fillStyle = "rgba(170, 190, 255, 0.18)";
-    ctx.beginPath(); ctx.ellipse(sx((road.x0 + road.xf) / 2), sy(road.y - 1.1), ((road.xf - road.x0) / 2) * s, 0.9 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = look.dark;
-    for (let x = road.x0 + 3; x < road.xf; x += 7) {
-      const bob = Math.sin(Date.now() / 700 + x) * 0.15;
-      ctx.beginPath(); ctx.ellipse(sx(x), sy(road.y - 1.6 + bob), 0.45 * s, 0.3 * s, 0.3, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-  // The deck itself.
-  ctx.beginPath();
-  points.forEach((p, i) => (i ? ctx.lineTo(sx(p.x), sy(p.y)) : ctx.moveTo(sx(p.x), sy(p.y))));
-  for (let i = points.length - 1; i >= 0; i--) ctx.lineTo(sx(points[i].x), sy(points[i].y - DECK_DEPTH));
-  ctx.closePath();
-  ctx.fillStyle = look.plank; ctx.fill();
-  ctx.strokeStyle = look.dark; ctx.lineWidth = 2; ctx.stroke();
-  ctx.strokeStyle = look.dark; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
-  for (let x = road.x0 + 0.9; x < road.x1; x += 0.9) {
-    const top = road.y + ((x <= road.xf ? 0 : (road.endY - road.y) * (x - road.xf) / (road.x1 - road.xf)));
-    ctx.beginPath(); ctx.moveTo(sx(x), sy(top)); ctx.lineTo(sx(x), sy(top - DECK_DEPTH)); ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-  ctx.beginPath();
-  points.forEach((p, i) => (i ? ctx.lineTo(sx(p.x), sy(p.y)) : ctx.moveTo(sx(p.x), sy(p.y))));
-  ctx.strokeStyle = look.top; ctx.lineWidth = Math.max(2, 0.08 * s); ctx.stroke();
-  if (look.support === "ropes") {
-    // Two tall posts and a sagging hand rope with hangers.
-    const top = road.y + 2.4;
-    ctx.strokeStyle = look.dark; ctx.lineWidth = Math.max(3, 0.2 * s);
-    for (const x of [road.x0, road.xf]) { ctx.beginPath(); ctx.moveTo(sx(x), sy(road.y)); ctx.lineTo(sx(x), sy(top)); ctx.stroke(); }
-    const sag = (x: number) => top - 1.6 * Math.sin(((x - road.x0) / (road.xf - road.x0)) * Math.PI);
-    ctx.lineWidth = Math.max(1.5, 0.06 * s); ctx.strokeStyle = "#d9c7a4";
-    ctx.beginPath();
-    for (let x = road.x0; x <= road.xf; x += 1) {
-      if (x === road.x0) ctx.moveTo(sx(x), sy(sag(x)));
-      else ctx.lineTo(sx(x), sy(sag(x)));
-    }
-    ctx.stroke();
-    for (let x = road.x0 + 2; x < road.xf; x += 2) { ctx.beginPath(); ctx.moveTo(sx(x), sy(sag(x))); ctx.lineTo(sx(x), sy(road.y)); ctx.stroke(); }
   }
 }
