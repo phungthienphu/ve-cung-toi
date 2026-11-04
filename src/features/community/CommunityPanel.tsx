@@ -37,7 +37,7 @@ export function CommunityPanel({ roomPath, compact = false }: { roomPath?: strin
   const [notice, setNotice] = useState('');
   const [older, setOlder] = useState<Message[]>([]);
   const [hasOlder, setHasOlder] = useState(true);
-  const [tab, setTab] = useState<'friends' | 'requests' | 'blocked' | 'support'>(() => params.get('tab') === 'support' ? 'support' : 'friends');
+  const [tab, setTab] = useState<'friends' | 'requests' | 'blocked' | 'support'>(() => params.get('tab') === 'support' ? 'support' : params.get('tab') === 'requests' ? 'requests' : 'friends');
   const end = useRef<HTMLDivElement>(null);
   const loginLink = useRef<HTMLAnchorElement>(null);
   useEffect(() => { if (loginPrompt) loginLink.current?.focus(); }, [loginPrompt]);
@@ -47,6 +47,7 @@ export function CommunityPanel({ roomPath, compact = false }: { roomPath?: strin
     const res = await fetch(`${guest ? "/api/community/search" : "/api/community"}?q=${encodeURIComponent(q)}&peer=${encodeURIComponent(peer)}`, { signal });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
+    if (signal?.aborted) return;
     setData(body);
     if (peer && !body.edges.some((e: {status: string; from: string; to: string}) => e.status === 'accepted' && (e.from === peer || e.to === peer))) setPeer('');
   }, [q, peer, guest]);
@@ -54,7 +55,9 @@ export function CommunityPanel({ roomPath, compact = false }: { roomPath?: strin
     const ctrl = new AbortController();
     const refresh = () => { if (!document.hidden) void load(ctrl.signal).catch(e => { if (e.name !== 'AbortError') setError(e.message); }); };
     refresh();
-    return () => { ctrl.abort(); };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => { ctrl.abort(); document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh); };
   }, [load, realtime.revision]);
   const latestMessageId = data?.messages.at(-1)?._id;
   useEffect(() => {
@@ -64,7 +67,7 @@ export function CommunityPanel({ roomPath, compact = false }: { roomPath?: strin
   async function act(action: string, to: string, extra: Record<string, string> = {}) {
     if (guest) { setLoginPrompt(true); return false; }
     setBusy(true); setError('');
-    try { const result = await socialAction(action, to, extra); await load(); if (result.realtime === false) setNotice('Đã lưu, nhưng chưa đẩy realtime được. Đang chờ kết nối Party.'); if (action === 'invite' && result.realtime !== false) setNotice('Đã gửi lời mời vào phòng.'); if (action === 'report' && result.realtime !== false) setNotice('Đã gửi báo cáo đến quản trị viên.'); return true; }
+    try { const result = await socialAction(action, to, extra); if (action === 'message' && result.message) { setData(previous => previous ? { ...previous, messages: [...previous.messages.filter(m => m._id !== result.message._id), result.message] } : previous); } else { await load(); } if (result.realtime === false) setNotice('Đã lưu, nhưng chưa đẩy realtime được. Đang chờ kết nối Party.'); if (action === 'invite' && result.realtime !== false) setNotice('Đã gửi lời mời vào phòng.'); if (action === 'report' && result.realtime !== false) setNotice('Đã gửi báo cáo đến quản trị viên.'); return true; }
     catch (e) { setError((e as Error).message); return false; }
     finally { setBusy(false); }
   }

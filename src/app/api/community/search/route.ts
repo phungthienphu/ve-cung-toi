@@ -1,3 +1,4 @@
+import { playerSearchPattern } from '@/features/community/player-search';
 import { dbConnect } from '@/server/db/mongodb';
 import { AccountUser } from '@/server/models/AccountUser';
 import { requestIp, takeLimit } from '@/features/account/server/rate-limit';
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
     if (q.length >= 2) {
       await dbConnect();
       if (!await takeLimit('public-player-search', requestIp(req.headers), 90, 60000)) throw new Error('429');
-      const escaped = q.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = playerSearchPattern(q);
       search = await AccountUser.find({ disabledAt: null, $or: [
         { name: { $regex: escaped, $options: 'i' } }, { username: { $regex: escaped, $options: 'i' } },
       ] }).select('playerId name username -_id').limit(20).lean();
