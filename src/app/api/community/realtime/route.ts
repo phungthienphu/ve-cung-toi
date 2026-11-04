@@ -8,8 +8,7 @@ export async function POST(req:Request){
     if(!sameOrigin(req))throw new Error('403');
     const user=await actor();
     if(!await takeLimit('realtime-ticket',user.playerId,30,60000))throw new Error('429');
-    const edges=await Friendship.find({status:'accepted',$or:[{from:user.playerId},{to:user.playerId}]}).lean();
-    const blocks=await PlayerBlock.find({$or:[{from:user.playerId},{to:user.playerId}]}).lean();
+    const [edges,blocks]=await Promise.all([Friendship.find({status:'accepted',$or:[{from:user.playerId},{to:user.playerId}]}).lean(),PlayerBlock.find({$or:[{from:user.playerId},{to:user.playerId}]}).lean()]);
     const excluded=new Set(blocks.flatMap(b=>[b.from,b.to]));
     const friends=edges.map(e=>e.from===user.playerId?e.to:e.from).filter(id=>!excluded.has(id)).slice(0,2000);
     const ticket=await signEnvelope(realtimeSecret(),'community-connect',{playerId:user.playerId,friends,admin:isAdminEmail(user.email),expires:Date.now()+300000});

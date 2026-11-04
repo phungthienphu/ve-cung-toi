@@ -20,7 +20,7 @@ export function ProfileActions({ playerId }: { playerId: string }) {
   useEffect(() => {
     if (status !== 'authenticated') return;
     const controller = new AbortController();
-    void fetch('/api/community', { signal: controller.signal }).then(async response => {
+    void fetch(`/api/community/contacts?tab=relation&peer=${encodeURIComponent(playerId)}`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error('Chưa tải được thông tin kết bạn.');
       const data = await response.json();
       const edge = data.edges.find((e: {from:string;to:string}) => e.from === playerId || e.to === playerId);

@@ -18,4 +18,4 @@ export async function verifyEnvelope<T extends { expires: number }>(secret: stri
   } catch { return null; }
 }
 export type RealtimeTicket = { playerId: string; friends: string[]; admin: boolean; expires: number };
-export type RealtimePublish = { targets: string[]; admins?: boolean; scope: 'community' | 'support' | 'revoke' | 'friends'; expires: number };
+export type RealtimePublish = { targets: string[]; admins?: boolean; scope: 'community' | 'support' | 'revoke' | 'friends'; change?: { kind: 'message' | 'read' | 'friends' | 'invite'; actor: string; peer: string }; expires: number };

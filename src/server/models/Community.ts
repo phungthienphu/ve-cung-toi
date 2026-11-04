@@ -3,9 +3,15 @@ const edge = new Schema({ key: { type: String, unique: true, required: true }, f
 const message = new Schema({ from: { type: String, index: true }, to: { type: String, index: true }, text: String, readAt: Date }, { timestamps: true });
 message.index({ from: 1, to: 1, createdAt: -1 });
 edge.index({ from: 1, to: 1 });
+edge.index({ from: 1, status: 1 });
+edge.index({ to: 1, status: 1 });
+message.index({ from: 1, to: 1, createdAt: -1, _id: -1 });
+message.index({ to: 1, from: 1, createdAt: -1, _id: -1 });
+message.index({ to: 1, readAt: 1, from: 1 });
 const invite = new Schema({ from: String, to: { type: String, index: true }, path: String, expiresAt: Date, readAt: Date }, { timestamps: true });
+invite.index({ to: 1, readAt: 1, expiresAt: 1 });
 invite.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-const block = new Schema({ from: String, to: String }); block.index({ from: 1, to: 1 }, { unique: true });
+const block = new Schema({ from: String, to: String }); block.index({ from: 1, to: 1 }, { unique: true }); block.index({ to: 1, from: 1 });
 const report = new Schema({ from: String, to: String, reason: String }, { timestamps: true });
 export const Friendship = mongoose.models.Friendship || mongoose.model('Friendship', edge);
 export const ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMessage', message);
