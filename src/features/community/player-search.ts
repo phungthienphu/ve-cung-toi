@@ -10,6 +10,6 @@ export function playerSearchPattern(query: string): string {
     d: 'dđ',
   };
   return Array.from(query.trim().replace(/^@/, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase())
-    .map(char => variants[char] ? `[${variants[char]}][\\u0300-\\u036f]*` : char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .map(char => variants[char] ? `[${variants[char]}][\u0300-\u036f]*` : char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('');
 }
