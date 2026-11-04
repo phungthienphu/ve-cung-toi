@@ -653,3 +653,24 @@ Trước đó xe con bọ (150 xu) vừa nhanh nhất vừa leo tốt nhất, c�
 - Nút "Hồi sinh" không còn hiện khi lượt đã xong. Trước đây nó vẫn hiện nhưng bấm không có tác dụng.
 - **Thời gian cứu xe khi lật ngửa tăng từ 3 lên 10 giây** theo ý chủ dự án (02/11/2026). Áp dụng cho mọi xe, mọi chế độ. Con số nằm duy nhất ở `HILL_JEEP.overturnSeconds` (`shared/hillTypes.ts`); vòng đếm ngược, phần khôi phục trạng thái khi đua online và các dòng hướng dẫn đều đọc từ đó. Những chỗ ghi "3 giây" ở phía trên spec là con số cũ.
 - **Sửa xe kẹt dưới cuối cầu (03/11/2026):** cầu một chiều giờ nhớ từng bộ phận xe chạm cầu từ phía nào ngay lúc mới chạm, và giữ kết luận đó cho tới khi rời khỏi cả cây cầu (`HillPhysicsWorld.deckAbove`). Trước đây game tính lại mỗi khung hình, nên ở đoạn cầu dốc xuống chạm đất, xe chui bên dưới bị coi là đang ở trên cầu và bị mặt cầu kẹp như cái nêm. Phần kiểm tra bánh chạm đất và nóc chạm đất cũng dùng cùng kết luận này.
+
+**Dốc không còn dựng đứng, xe mạnh hơn (04/11/2026, theo phản hồi của chủ dự án):**
+- Hai lớp gợn địa hình và chướng ngại có lúc cộng dồn, lại nhân hệ số khó (tới ×1,7), thành vách 55–60°. Với lực máy cũ, xe chỉ bò lên được dốc khoảng 29° (Xe buýt) tới 40° (Tải quái vật), nên các vách đó không xe nào lên nổi.
+- **Giới hạn độ dốc lên** theo từng đường (`MAX_CLIMB` trong `shared/hill/terrain.ts`), tính bằng độ cao tăng trên mỗi mét:
+
+  | Đường | Giới hạn | Góc |
+  | --- | --- | --- |
+  | Đồi chè | 0,6 | 31° |
+  | Đồi cát | 0,6 | 31° |
+  | Mặt trăng | 0,7 | 35° |
+  | Đèo | 0,75 | 37° |
+
+  - Chỗ nào dựng hơn thì thành con dốc khoét vào vách, cho tới khi gặp lại mặt đất gốc.
+  - Dốc xuống giữ nguyên độ gắt.
+  - Mặt đất được tính lần lượt từ mét 40 và lưu lại, nên máy chủ, phần đoán trước và phần vẽ luôn ra cùng một con đường.
+- **Mọi xe mạnh hơn cùng lúc:** tốc độ tối đa tăng khoảng 10%, lực kéo tăng 25%, thứ tự sở trường giữ nguyên. Con số mới ghi ở `HILL_VEHICLES`.
+  - Xe buýt và Xe con bọ giờ bò đều lên được khoảng 38°, Jeep 42°, Tải quái vật 54°, đều qua được giới hạn dốc ở trên.
+- **Cầu trên không:** tốc độ chuẩn dùng để tính độ cao cầu (`BRISK`) nâng từ 17 lên 19 m/s cho khớp với xe nhanh hơn, để vẫn phải lấy đà **và** bấm nhảy.
+- **Lưu ý:**
+  - Kỷ lục cũ được lập trên đường cũ, có vách dựng. Đường mới dễ hơn nên kỷ lục mới sẽ dễ vượt.
+  - Các con số mới tính trên giấy, **cần lái thử**.

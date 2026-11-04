@@ -5,8 +5,8 @@ export const HILL_DT = 1 / 60;
 export const HILL_JEEP = {
   wheelRadius: 0.55,
   wheelbase: 2.5,
-  motorSpeed: 32,
-  motorTorque: 10,
+  motorSpeed: 35,
+  motorTorque: 12.5,
   springHz: 4,
   damping: 0.75,
   airTorque: 12,
@@ -19,15 +19,18 @@ export const HILL_JEEP = {
 
 export const HILL_VEHICLES: Record<HillVehicleId, HillVehicle> = {
   jeep: { ...HILL_JEEP, name: "Jeep", icon: "🚙", price: 0, description: "Cân bằng, dễ lái", halfWidth: 1.65, cabinWidth: 0.95, density: 1.5, fuelRate: 1 },
-  // Balanced so each car leads at one thing (02/11/2026). Rough figures, from
-  // top speed = motorSpeed × wheelRadius and climbing ≈ 2·torque / radius / mass:
-  //   Jeep     17.6 m/s, ~5.3 m/s² — no weak spot.
-  //   Beetle   21.2 m/s, ~4.9 m/s² — fastest and the least fuel per metre; flips easily.
-  //   Monster  16.8 m/s, ~6.3 m/s² — best climber, big wheels over rock steps; slower than the Jeep, thirsty.
-  //   Bus      16.2 m/s, ~4.6 m/s² — hardest to flip (long wheelbase), heaviest to push; small city-bus wheels.
-  beetle: { name: "Xe con bọ", icon: "🚗", price: 150, description: "Nhanh nhất, tiết kiệm xăng; leo yếu, dễ lật", halfWidth: 1.35, cabinWidth: 0.8, wheelRadius: 0.45, wheelbase: 2, density: 0.9, motorSpeed: 47, motorTorque: 4.2, springHz: 4.5, damping: 0.7, airTorque: 6, recoveryTorque: 16, fuelRate: 0.8 },
-  monster: { name: "Tải quái vật", icon: "🛻", price: 450, description: "Leo dốc, vượt đá giỏi nhất; chậm, hao xăng", halfWidth: 1.9, cabinWidth: 1, wheelRadius: 0.8, wheelbase: 2.9, density: 2.7, motorSpeed: 21, motorTorque: 36, springHz: 3.5, damping: 0.8, airTorque: 24, recoveryTorque: 65, fuelRate: 1.3 },
-  bus: { name: "Xe buýt", icon: "🚌", price: 300, description: "Khó lật nhất, ủi mạnh; tăng tốc chậm", halfWidth: 2.65, cabinWidth: 2.25, wheelRadius: 0.45, wheelbase: 4.1, density: 2, motorSpeed: 36, motorTorque: 13.5, springHz: 4, damping: 0.8, airTorque: 35, recoveryTorque: 90, fuelRate: 0.9 },
+  // Balanced so each car leads at one thing (02/11/2026), then all made
+  // stronger together (04/11/2026: ~+10% top speed, +25% torque) so the
+  // order holds. Rough figures, from top speed = motorSpeed × wheelRadius,
+  // pull ≈ 2·torque / radius / mass, and the steepest steady climb asin(pull / g):
+  //   Jeep     19.3 m/s, ~6.6 m/s², 42° — no weak spot.
+  //   Beetle   23.4 m/s, ~6.1 m/s², 38° — fastest and the least fuel per metre; flips easily.
+  //   Monster  18.4 m/s, ~7.9 m/s², 54° — best climber, big wheels over rock steps; slower than the Jeep, thirsty.
+  //   Bus      18.0 m/s, ~6.0 m/s², 38° — hardest to flip (long wheelbase), heaviest to push; small city-bus wheels.
+  // The terrain never climbs steeper than MAX_CLIMB (terrain.ts), which all of them manage.
+  beetle: { name: "Xe con bọ", icon: "🚗", price: 150, description: "Nhanh nhất, tiết kiệm xăng; leo yếu, dễ lật", halfWidth: 1.35, cabinWidth: 0.8, wheelRadius: 0.45, wheelbase: 2, density: 0.9, motorSpeed: 52, motorTorque: 5.2, springHz: 4.5, damping: 0.7, airTorque: 6, recoveryTorque: 16, fuelRate: 0.8 },
+  monster: { name: "Tải quái vật", icon: "🛻", price: 450, description: "Leo dốc, vượt đá giỏi nhất; chậm, hao xăng", halfWidth: 1.9, cabinWidth: 1, wheelRadius: 0.8, wheelbase: 2.9, density: 2.7, motorSpeed: 23, motorTorque: 45, springHz: 3.5, damping: 0.8, airTorque: 24, recoveryTorque: 65, fuelRate: 1.3 },
+  bus: { name: "Xe buýt", icon: "🚌", price: 300, description: "Khó lật nhất, ủi mạnh; tăng tốc chậm", halfWidth: 2.65, cabinWidth: 2.25, wheelRadius: 0.45, wheelbase: 4.1, density: 2, motorSpeed: 40, motorTorque: 17, springHz: 4, damping: 0.8, airTorque: 35, recoveryTorque: 90, fuelRate: 0.9 },
 };
 
 export const HILL_MAPS: Record<HillMapId, { name: string; icon: string; description: string; gravity: number; friction: number; fuelRate: number; amplitude: number; sky: [string, string]; hills: string[]; ground: string; edge: string }> = {

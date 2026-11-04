@@ -11,35 +11,71 @@ function noise(seed: number, x: number): number {
   const s = t * t * (3 - 2 * t);
   return (random(seed, i) * (1 - s) + random(seed, i + 1) * s) * 2 - 1;
 }
+/** The authored profile at whole metre m, before climbs are capped (see groundAt). */
+function rawHeight(seed: number, m: number, map: HillMapId): number {
+  if (m <= 40) return 0;
+  const ramp = Math.min(1, (m - 40) / 18);
+  const difficulty = Math.min(1.7, 1 + m / 1600);
+  const base = noise(seed, m / 24) * 5 + noise(seed + 7, m / 8) * 1.6;
+  // Authored obstacle shapes mixed by seed; each 72 m has a visible challenge and a recovery stretch.
+  const section = Math.floor((m - 40) / 72), t = (m - 40) % 72;
+  const kind = section === 0 ? 0 : Math.floor(random(seed + 113, section) * 4);
+  const height = map === "mountain" ? 9 : map === "sand" ? 6 : map === "moon" ? 5 : 4.2;
+  let obstacle = 0;
+  if (kind === 0) { // Gradual launch ramp, then a sharp drop and landing basin.
+    if (t >= 10 && t < 24) obstacle = (t - 10) / 14 * height;
+    else if (t >= 24 && t < 30) obstacle = height * (1 - (t - 24) / 6);
+    else if (t >= 30 && t < 43) obstacle = -Math.sin((t - 30) / 13 * Math.PI) * height * 0.5;
+  } else if (kind === 1) { // Steep ravine with continuous floor: missed jumps can still climb out.
+    if (t >= 12 && t < 42) obstacle = -Math.sin((t - 12) / 30 * Math.PI) * height * 1.2;
+  } else if (kind === 2) { // Three rock steps, rounded enough for the Jeep's tyres.
+    if (t >= 10 && t < 34) obstacle = Math.floor((t - 10) / 8) * height * 0.28;
+    else if (t >= 34 && t < 45) obstacle = height * 0.84 * (1 - (t - 34) / 11);
+  } else if (t >= 10 && t < 50) { // Closely spaced humps make throttle timing matter.
+    obstacle = Math.sin((t - 10) / 40 * Math.PI * 4) * height * 0.45;
+  }
+  return ramp * difficulty * (base * HILL_MAPS[map].amplitude + obstacle);
+}
+
+/**
+ * Steepest climb on each map, as rise per metre. The two noise octaves and
+ * the obstacles could stack into 55–60° walls that no car can drive up
+ * (owner's report, 04/11/2026); every car now climbs these without a run-up
+ * (the Bus and the Beetle manage ~38°, see HILL_VEHICLES), the Monster with ease.
+ * Drops stay as steep as authored: falling off something is fair, a wall isn't.
+ */
+const MAX_CLIMB: Record<HillMapId, number> = { tea: 0.6, sand: 0.6, mountain: 0.75, moon: 0.7 };
+
+// Heights per seed and map, from metre 40 onwards: each one is the raw height
+// or the previous one plus MAX_CLIMB, whichever is lower. A wall becomes a ramp
+// that cuts into it until it meets the authored ground again. Always filled in
+// order from metre 40, so every caller (server, prediction, renderer) gets the
+// same ground whatever it asks for first.
+const grounds = new Map<string, number[]>();
+let lastKey = "", lastGround: number[] = [];
+function groundAt(seed: number, m: number, map: HillMapId): number {
+  if (m <= 40) return 0;
+  if (!(m < 200_000)) return rawHeight(seed, m, map); // No one drives 200 km; never fill that far.
+  const key = `${seed}:${map}`;
+  if (key !== lastKey) {
+    let ground = grounds.get(key);
+    if (!ground) {
+      if (grounds.size > 32) grounds.clear();
+      ground = [0];
+      grounds.set(key, ground);
+    }
+    lastKey = key;
+    lastGround = ground;
+  }
+  const ground = lastGround, climb = MAX_CLIMB[map];
+  while (ground.length <= m - 40) ground.push(Math.min(rawHeight(seed, 40 + ground.length, map), ground[ground.length - 1] + climb));
+  return ground[m - 40];
+}
+
 /** One height per metre; first 40 m are flat. Stable regardless of generation order. */
 export function hillHeight(seed: number, x: number, map: HillMapId = "tea"): number {
-  const at = (m: number) => {
-    if (m <= 40) return 0;
-    const ramp = Math.min(1, (m - 40) / 18);
-    const difficulty = Math.min(1.7, 1 + m / 1600);
-    const base = noise(seed, m / 24) * 5 + noise(seed + 7, m / 8) * 1.6;
-    // Authored obstacle shapes mixed by seed; each 72 m has a visible challenge and a recovery stretch.
-    const section = Math.floor((m - 40) / 72), t = (m - 40) % 72;
-    const kind = section === 0 ? 0 : Math.floor(random(seed + 113, section) * 4);
-    const height = map === "mountain" ? 9 : map === "sand" ? 6 : map === "moon" ? 5 : 4.2;
-    let obstacle = 0;
-    if (kind === 0) { // Gradual launch ramp, then a sharp drop and landing basin.
-      if (t >= 10 && t < 24) obstacle = (t - 10) / 14 * height;
-      else if (t >= 24 && t < 30) obstacle = height * (1 - (t - 24) / 6);
-      else if (t >= 30 && t < 43) obstacle = -Math.sin((t - 30) / 13 * Math.PI) * height * 0.5;
-    } else if (kind === 1) { // Steep ravine with continuous floor: missed jumps can still climb out.
-      if (t >= 12 && t < 42) obstacle = -Math.sin((t - 12) / 30 * Math.PI) * height * 1.2;
-    } else if (kind === 2) { // Three rock steps, rounded enough for the Jeep's tyres.
-      if (t >= 10 && t < 34) obstacle = Math.floor((t - 10) / 8) * height * 0.28;
-      else if (t >= 34 && t < 45) obstacle = height * 0.84 * (1 - (t - 34) / 11);
-    } else if (t >= 10 && t < 50) { // Closely spaced humps make throttle timing matter.
-      obstacle = Math.sin((t - 10) / 40 * Math.PI * 4) * height * 0.45;
-    }
-    return ramp * difficulty * (base * HILL_MAPS[map].amplitude + obstacle);
-
-  };
   const i = Math.floor(x);
-  return at(i) + (at(i + 1) - at(i)) * (x - i);
+  return groundAt(seed, i, map) + (groundAt(seed, i + 1, map) - groundAt(seed, i, map)) * (x - i);
 }
 /** Fuel gaps grow from ~100 m; coin clusters have fixed, reproducible IDs. */
 export function hillPickups(seed: number, from: number, to: number, map: HillMapId = "tea", denseFuel = false): HillPickup[] {
@@ -98,7 +134,7 @@ export interface HillSkyRoad { section: number; lip: number; x0: number; x1: num
 
 /** Upward speed a jump adds (HillSim: an impulse of 6.5 m/s per kilogram), and a brisk speed at a ramp's lip. */
 const JUMP_SPEED = 6.5;
-const BRISK = 17;
+const BRISK = 19; // Was 17 before the cars got ~10% faster (04/11/2026), so a run-up alone still falls short.
 
 const skyCache = new Map<string, HillSkyRoad | null>();
 const waterCache = new Map<string, { from: number; to: number; level: number } | null>();
