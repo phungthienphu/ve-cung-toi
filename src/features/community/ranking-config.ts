@@ -9,5 +9,5 @@ export const RANKING_GAMES = [
 ] as const;
 export type RankingGame = typeof RANKING_GAMES[number];
 export type RankedPlayer = { playerId: string; name: string; username?: string; score: number };
-export type RankingPage = { items: RankedPlayer[]; nextOffset: number | null };
+export type RankingPage = { items: RankedPlayer[]; nextOffset: number | null; updatedAt?: string | null };
 export type GameRankingPreview = { gameId: string; page: RankingPage };

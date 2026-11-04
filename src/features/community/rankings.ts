@@ -17,30 +17,37 @@ export async function loadRankingPage(gameId: string, offset = 0, limit = 20): P
   ];
   const source: PipelineStage[] = game.kind === 'distance' ? [
     { $match: { distance: { $gt: 0 } } },
-    { $project: { sourcePlayerId: '$playerId', value: '$distance' } },
+    { $project: { sourcePlayerId: '$playerId', value: '$distance', updatedAt: '$createdAt' } },
     ...identity,
-    { $group: { _id: '$accountId', score: { $max: '$value' } } },
+    { $group: { _id: '$accountId', score: { $max: '$value' }, updatedAt: { $max: '$updatedAt' } } },
   ] : [
     { $match: { verifiedReport: true, gameType: game.id } },
     { $unwind: '$players' },
     { $match: { 'players.isBot': { $ne: true }, 'players.playerId': { $type: 'string' }, ...(game.kind === 'wins' ? { 'players.won': true } : {}) } },
-    { $project: { sourcePlayerId: '$players.playerId', value: game.kind === 'wins' ? { $literal: 1 } : '$players.score' } },
+    { $project: { sourcePlayerId: '$players.playerId', updatedAt: '$playedAt', value: game.kind === 'wins' ? { $literal: 1 } : '$players.score' } },
     ...identity,
     // A merged guest and account in the same match contribute only once.
-    { $group: { _id: { match: '$_id', account: '$accountId' }, value: { $max: '$value' } } },
-    { $group: { _id: '$_id.account', score: { $sum: '$value' } } },
+    { $group: { _id: { match: '$_id', account: '$accountId' }, value: { $max: '$value' }, updatedAt: { $max: '$updatedAt' } } },
+    { $group: { _id: '$_id.account', score: { $sum: '$value' }, updatedAt: { $max: '$updatedAt' } } },
   ];
   const pipeline: PipelineStage[] = [...source,
     { $match: { score: { $gt: 0 } } },
     { $lookup: { from: AccountUser.collection.name, localField: '_id', foreignField: 'playerId', as: 'account' } },
     { $unwind: '$account' },
     { $match: { 'account.disabledAt': null } },
-    { $sort: { score: -1, _id: 1 } },
-    { $skip: offset }, { $limit: limit + 1 },
-    { $project: { _id: 0, playerId: '$_id', name: '$account.name', username: '$account.username', score: 1 } },
+    { $facet: {
+      rows: [
+        { $sort: { score: -1, _id: 1 } },
+        { $skip: offset }, { $limit: limit + 1 },
+        { $project: { _id: 0, playerId: '$_id', name: '$account.name', username: '$account.username', score: 1 } },
+      ],
+      latest: [{ $group: { _id: null, updatedAt: { $max: '$updatedAt' } } }],
+    } },
   ];
-  const rows = game.kind === 'distance' ? await HillRun.aggregate<RankedPlayer>(pipeline) : await GameHistory.aggregate<RankedPlayer>(pipeline);
-  return { items: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null };
+  type Result = { rows: RankedPlayer[]; latest: { updatedAt: Date | null }[] };
+  const [result] = game.kind === 'distance' ? await HillRun.aggregate<Result>(pipeline) : await GameHistory.aggregate<Result>(pipeline);
+  const rows = result?.rows ?? [];
+  return { items: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null, updatedAt: result?.latest[0]?.updatedAt?.toISOString() ?? null };
 }
 
-export const rankingPage = unstable_cache(loadRankingPage, ['public-game-rankings-v1'], { revalidate: 30, tags: ['public-rankings'] });
+export const rankingPage = unstable_cache(loadRankingPage, ['public-game-rankings-v2'], { revalidate: 30, tags: ['public-rankings'] });
