@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import './community.css';
 import { useCommunityRealtime } from './RealtimeProvider';
+import { PlayerSearch } from './PlayerSearch';
 import { SupportPanel } from './SupportPanel';
 type User = { playerId: string; name: string; username?: string };
 type Message = { _id: string; from: string; text: string; createdAt: string };
@@ -29,14 +30,14 @@ export function CommunityPanel({ roomPath, compact = false }: { roomPath?: strin
   const [data, setData] = useState<Data>();
   const [input, setInput] = useState(() => params.get('q')?.slice(0,60) ?? '');
   const [q, setQ] = useState(() => params.get('q')?.slice(0,60) ?? '');
-  const [peer, setPeer] = useState('');
+  const [peer, setPeer] = useState(() => params.get('peer') ?? '');
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [older, setOlder] = useState<Message[]>([]);
   const [hasOlder, setHasOlder] = useState(true);
-  const [tab, setTab] = useState<'friends' | 'requests' | 'blocked' | 'support'>('friends');
+  const [tab, setTab] = useState<'friends' | 'requests' | 'blocked' | 'support'>(() => params.get('tab') === 'support' ? 'support' : 'friends');
   const end = useRef<HTMLDivElement>(null);
   const loginLink = useRef<HTMLAnchorElement>(null);
   useEffect(() => { if (loginPrompt) loginLink.current?.focus(); }, [loginPrompt]);
@@ -81,17 +82,17 @@ export function CommunityPanel({ roomPath, compact = false }: { roomPath?: strin
   const accepted = data?.users.filter(u => data.edges.some(e => e.status === 'accepted' && (e.from === u.playerId || e.to === u.playerId))) ?? [];
   const pending = data?.users.filter(u => data.edges.some(e => e.status === 'pending' && (e.from === u.playerId || e.to === u.playerId))) ?? [];
   const messages = [...older, ...(data?.messages ?? [])].filter((m, i, a) => a.findIndex(n => n._id === m._id) === i);
-  return <section className={`chat-app ${compact ? 'chat-app-compact' : ''}`} data-chat-open={!!peer}>
+  return <section className={`chat-app ${compact ? 'chat-app-compact' : ''}`} data-chat-open={!!peer} data-search-active={q.trim().length >= 2 && !peer}>
     <div className="chat-contacts">
       {!guest && !realtime.connected && <p className="chat-connection" role="status">Đang kết nối realtime…</p>}
       <header className="chat-list-header"><small>CÙNG NHAU VUI HƠN</small><h1>Bạn bè & chat <span>{accepted.length}</span></h1></header>
-      <div className="chat-search"><span aria-hidden="true">⌕</span><input aria-label="Tìm người chơi" value={input} onChange={e => setInput(e.target.value)} placeholder="Tìm tên hoặc username…" maxLength={60} /></div>
+      <PlayerSearch value={input} onChange={setInput} suggest={false} />
       {guest && <p className="chat-guest-note">Tìm người chơi tự do. Đăng nhập để kết bạn và chat riêng.</p>}
       {room && !guest && <p className="chat-room-note">Mời bạn vào phòng · {room.split('/').at(-1)}</p>}
       <nav className="chat-tabs" aria-label="Danh sách bạn bè">{([['friends', 'Bạn bè'], ['requests', `Lời mời${pending.length ? ` (${pending.length})` : ''}`], ['blocked', 'Đã chặn'], ['support', 'Hỗ trợ']] as const).map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => { if (guest && id !== 'friends' && id !== 'support') { setLoginPrompt(true); return; } setTab(id); setInput(''); }}>{label}</button>)}</nav>
       <div className={`chat-contact-scroll ${tab === 'support' ? 'chat-support-scroll' : ''}`}>{tab === 'support' ? <SupportPanel /> : <>
         {!data && <p className="chat-empty">Đang tải…</p>}
-        {q.length >= 2 ? <><h2>Kết quả tìm kiếm</h2>{data?.search.length === 0 && <p className="chat-empty">Không tìm thấy người chơi.</p>}{data?.search.map(u => <div className="chat-person" key={u.playerId}><Avatar name={u.name} /><div><strong>{u.name}</strong><small>{u.username ? `@${u.username}` : 'Người chơi'}</small></div><span className="chat-person-actions">{guest ? <><button onClick={() => setLoginPrompt(true)}>Chat</button><button onClick={() => setLoginPrompt(true)}>+ Kết bạn</button></> : data.edges.some(e => e.status === 'accepted' && (e.from === u.playerId || e.to === u.playerId)) ? <><button onClick={() => select(u.playerId)}>Chat</button>{room && <button disabled={busy} onClick={() => void act('invite', u.playerId, { path: room })}>Mời vào phòng</button>}</> : <button disabled={busy || data.edges.some(e => e.from === u.playerId || e.to === u.playerId)} onClick={() => void act('request', u.playerId)}>{data.edges.some(e => e.from === u.playerId || e.to === u.playerId) ? 'Đang chờ' : '+ Kết bạn'}</button>}</span></div>)}</> : tab === 'blocked' ? <>{!data?.blocked.length && <p className="chat-empty">Bạn chưa chặn ai.</p>}{data?.blocked.map(id => <div className="chat-person" key={id}><span>Người chơi đã chặn</span><button disabled={busy} onClick={() => void act('unblock', id)}>Bỏ chặn</button></div>)}</> : tab === 'requests' ? <>{!pending.length && <p className="chat-empty">Chưa có lời mời kết bạn.</p>}{pending.map(u => {
+        {q.length >= 2 ? <><h2>Kết quả tìm kiếm</h2>{data?.search.length === 0 && <p className="chat-empty">Không tìm thấy người chơi.</p>}{data?.search.map(u => <div className="chat-person" key={u.playerId}><Avatar name={u.name} /><div><strong><Link href={`/players/${encodeURIComponent(u.playerId)}`}>{u.name}</Link></strong><small>{u.username ? `@${u.username}` : 'Người chơi'}</small></div><span className="chat-person-actions">{guest ? <><button onClick={() => setLoginPrompt(true)}>Chat</button><button onClick={() => setLoginPrompt(true)}>+ Kết bạn</button></> : data.edges.some(e => e.status === 'accepted' && (e.from === u.playerId || e.to === u.playerId)) ? <><button onClick={() => select(u.playerId)}>Chat</button>{room && <button disabled={busy} onClick={() => void act('invite', u.playerId, { path: room })}>Mời vào phòng</button>}</> : <button disabled={busy || data.edges.some(e => e.from === u.playerId || e.to === u.playerId)} onClick={() => void act('request', u.playerId)}>{data.edges.some(e => e.from === u.playerId || e.to === u.playerId) ? 'Đang chờ' : '+ Kết bạn'}</button>}</span></div>)}</> : tab === 'blocked' ? <>{!data?.blocked.length && <p className="chat-empty">Bạn chưa chặn ai.</p>}{data?.blocked.map(id => <div className="chat-person" key={id}><span>Người chơi đã chặn</span><button disabled={busy} onClick={() => void act('unblock', id)}>Bỏ chặn</button></div>)}</> : tab === 'requests' ? <>{!pending.length && <p className="chat-empty">Chưa có lời mời kết bạn.</p>}{pending.map(u => {
           const incoming = data?.edges.some(e => e.from === u.playerId && e.to === data.me);
           return <div className="chat-request" key={u.playerId}><div className="chat-person"><Avatar name={u.name} /><div><strong>{u.name}</strong><small>{incoming ? 'Muốn kết bạn với bạn' : 'Đang chờ phản hồi'}</small></div></div><div className="chat-request-actions">{incoming && <button disabled={busy} onClick={() => void act('accept', u.playerId)}>Chấp nhận</button>}<button disabled={busy} onClick={() => void act('remove', u.playerId)}>{incoming ? 'Từ chối' : 'Hủy lời mời'}</button></div></div>;
         })}</> : <>{accepted.length === 0 && <div className="chat-empty"><span className="chat-empty-icon">☏</span><strong>{guest ? 'Bạn đang tìm ai?' : room ? 'Rủ bạn vào phòng nhé' : 'Rủ bạn vào chơi nhé'}</strong><p>{guest ? 'Nhập ít nhất 2 ký tự tên hoặc username để tìm người chơi.' : 'Tìm tên người chơi phía trên để kết bạn và bắt đầu trò chuyện.'}</p></div>}{accepted.map(u => {

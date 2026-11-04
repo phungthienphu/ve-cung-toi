@@ -1,5 +1,7 @@
 'use client';
 
+import { PlayerRankings } from './PlayerRankings';
+import { PlayerSearch } from '@/features/community/PlayerSearch';
 import { AccountMenu } from '@/features/account/components/AccountMenu';
 import { PigLogo } from './PigLogo';
 import { HomeIcon } from './HomeIcon';
@@ -20,7 +22,13 @@ const STEPS = [
   { title: 'Tạo phòng, gửi link', text: 'Mỗi phòng một mã riêng. Dán vào Zalo hay Messenger là xong.' },
   { title: 'Cả hội vào chơi', text: 'Trên điện thoại hay máy tính đều được.' },
 ];
-export default function HomePage({ initialNews, disabledGames = [] }: { initialNews: NewsPage; disabledGames?: string[] }) {
+export default function HomePage({ initialNews }: { initialNews: NewsPage }) {
+  const [disabledGames, setDisabledGames] = useState<string[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch('/api/home/games', { signal: controller.signal }).then(async response => { if (response.ok) setDisabledGames((await response.json()).disabledGames); }).catch(() => {});
+    return () => controller.abort();
+  }, []);
   const [filter, setFilter] = useState<GameFilter>('all');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [skyTransition, setSkyTransition] = useState(0);
@@ -53,7 +61,7 @@ export default function HomePage({ initialNews, disabledGames = [] }: { initialN
   return <div className="home-page" data-theme={theme}>
     <a href="#home-games" className="home-skip-link">Đến danh sách trò chơi</a>
     <header className="home-hero"><nav className="home-nav home-container" aria-label="Điều hướng chính">
-      <Link href="/" className="home-logo"><PigLogo /><span>Chơi Cùng Tôi</span></Link><form className="home-player-search" action="/community" role="search" aria-label="Tìm người chơi"><input name="q" aria-label="Tìm người chơi" placeholder="Tìm tên hoặc username…" minLength={2} maxLength={60} required autoComplete="off"/><button type="submit" aria-label="Tìm kiếm người chơi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></form><div className="home-nav-actions"><AccountMenu /><a className="home-nav-games" href="#home-games"><HomeIcon name="game" /><span>Trò chơi</span></a><button className="home-icon-button home-bell" aria-label={unread ? 'Mở bảng tin, có tin mới' : 'Mở bảng tin'} onClick={() => openNews()}><HomeIcon name="bell" />{unread && <span className="home-unread-dot" />}</button><Link href="/leaderboard" className="home-icon-button" aria-label="Lịch sử trận đấu"><HomeIcon name="history" /></Link><button className="home-icon-button home-theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Chuyển sang ban đêm' : 'Chuyển sang ban ngày'} aria-pressed={theme === 'dark'}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>{theme === 'light' ? <path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /> : <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>}</svg></button></div>
+      <Link href="/" className="home-logo"><PigLogo /><span>Chơi Cùng Tôi</span></Link><PlayerSearch navigation /><div className="home-nav-actions"><AccountMenu /><a className="home-nav-games" href="#home-games"><HomeIcon name="game" /><span>Trò chơi</span></a><button className="home-icon-button home-bell" aria-label={unread ? 'Mở bảng tin, có tin mới' : 'Mở bảng tin'} onClick={() => openNews()}><HomeIcon name="bell" />{unread && <span className="home-unread-dot" />}</button><Link href="/leaderboard" className="home-icon-button" aria-label="Lịch sử trận đấu"><HomeIcon name="history" /></Link><button className="home-icon-button home-theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Chuyển sang ban đêm' : 'Chuyển sang ban ngày'} aria-pressed={theme === 'dark'}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>{theme === 'light' ? <path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /> : <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>}</svg></button></div>
     </nav><div className="home-hero-copy home-container"><h1>Hôm nay chơi gì?</h1><p>Rủ cả hội vào chơi bằng một đường link.<br className="home-mobile-break" /> Không cần tài khoản, không cài đặt gì.</p></div>
       <div key={skyTransition} className={`home-sky-scene${skyTransition ? ' home-sky-changing' : ''}`} aria-hidden>
         <div className="home-sky-glow" />
@@ -67,7 +75,7 @@ export default function HomePage({ initialNews, disabledGames = [] }: { initialN
     </header>
     <main className="home-container home-main" id="home-games"><div className="home-filters" role="group" aria-label="Lọc trò chơi">{GAME_FILTERS.map(item => <button key={item.id} onClick={() => setFilter(item.id)} aria-pressed={filter === item.id}>{item.label}</button>)}</div>
       {newest && <button className="home-news-ticker" onClick={() => openNews()}><span className="home-ticker-badge">{unread ? 'MỚI' : 'TIN'}</span><span>{newest.game}: {newest.title}</span><span aria-hidden>›</span></button>}
-      <div className="home-layout"><section aria-label="Danh sách trò chơi"><p className="home-sr-only" aria-live="polite">{games.length} trò chơi phù hợp</p><div className="home-game-grid">{games.map(game => <GameCard key={game.id} game={game} featured={game.id === 'hill'} />)}</div>{games.length === 0 && <div className="home-empty"><h2>Chưa có game phù hợp</h2><button className="home-button" onClick={() => setFilter('all')}>Xem tất cả trò chơi</button></div>}</section><NewsPreview initial={initialNews} readThrough={readThrough} onExpand={() => openNews(true)} /></div>
+      <div className="home-layout"><section aria-label="Danh sách trò chơi"><p className="home-sr-only" aria-live="polite">{games.length} trò chơi phù hợp</p><div className="home-game-grid">{games.map(game => <GameCard key={game.id} game={game} featured={game.id === 'hill'} />)}</div>{games.length === 0 && <div className="home-empty"><h2>Chưa có game phù hợp</h2><button className="home-button" onClick={() => setFilter('all')}>Xem tất cả trò chơi</button></div>}</section><div className="home-sidebar-stack"><NewsPreview initial={initialNews} readThrough={readThrough} onExpand={() => openNews(true)} /><PlayerRankings/></div></div>
       <section className="home-how" aria-labelledby="home-how-heading"><h2 id="home-how-heading">Chơi thế nào?</h2><ol>{STEPS.map((step, index) => <li key={step.title}><span className="home-step-number">{index + 1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></li>)}</ol></section>
       <footer className="home-footer"><div className="home-author"><span className="home-avatar">TP</span><div><span>Làm bởi</span><strong>Thiên Phú</strong><p>Có góp ý gì cứ nhắn mình nhé!</p></div></div><div className="home-social"><a href="https://www.facebook.com/phu.tuila.50" target="_blank" rel="noopener noreferrer">Facebook ↗</a><a href="https://github.com/phungthienphu" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div><div className="home-footer-bottom"><span>© {new Date().getFullYear()} Chơi Cùng Tôi</span><Link href="/privacy">Quyền riêng tư</Link><Link href="/leaderboard">Lịch sử trận đấu →</Link></div></footer>
     </main>

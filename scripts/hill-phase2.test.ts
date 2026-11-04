@@ -103,7 +103,7 @@ async function main() {
   assert.equal(readHillProgress(valid.playerId).wallet.coins, 25);
   assert.equal(calls, 2, "retry sends the same run ID");
   cacheHillRun({ ...valid, runId: "review-closed-00001", day: "2026-11-01" });
-  globalThis.fetch = async (_url, options) => options?.method ? Response.json({ error: "Đã khóa sổ" }, { status: 409 }) : Response.json({ coins: 25, unlocked: ["jeep"] });
+  globalThis.fetch = async (_url, options) => options?.method ? Response.json({ error: "Đường ngày này đã khóa sổ" }, { status: 409 }) : Response.json({ coins: 25, unlocked: ["jeep"] });
   const closed = await syncHillProgress(valid.playerId);
   assert.equal(closed.pending.length, 0); assert.equal(closed.rejected?.length, 1);
   assert.equal(hillWalletView(closed).coins, 25, "rejected runs never add spendable coins");

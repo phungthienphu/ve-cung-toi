@@ -1,6 +1,9 @@
 export interface HomeNews { id: string; publishedAt: string; game: string; title: string; href: string; image: string }
 // Newest first, actual release dates from git history. Add releases here, never backdate IDs.
 export const HOME_NEWS: HomeNews[] = [
+  { id: 'community-party-chat', publishedAt: '2026-11-04T15:32:40+07:00', game: 'Bạn bè', title: 'Tìm bạn, kết bạn và chat riêng; nhận lời mời vào phòng ngay trên màn hình.', href: '/community', image: '/bg-ve-cung-toi.png' },
+  { id: 'guest-admin-feedback', publishedAt: '2026-11-04T15:32:40+07:00', game: 'Chơi Cùng Tôi', title: 'Có góp ý hay gặp lỗi? Nhắn quản trị viên trong mục Hỗ trợ, không cần đăng nhập.', href: '/community?tab=support', image: '/bg-ve-cung-toi.png' },
+  { id: 'account-save-progress', publishedAt: '2026-11-04T15:32:40+07:00', game: 'Tài khoản', title: 'Đăng nhập để giữ tiến độ và xem thành tích; vẫn chơi khách bằng link như trước.', href: '/login', image: '/bg-ve-cung-toi.png' },
   { id: 'layout-restored', publishedAt: '2026-11-03T13:25:34+07:00', game: 'Chơi Cùng Tôi', title: 'Khôi phục bố cục các game trên máy tính và điện thoại.', href: '/draw-guess', image: '/bg-ve-cung-toi.png' },
   { id: 'tank-bots-mobile', publishedAt: '2026-11-03T12:01:57+07:00', game: 'Xe Tăng', title: 'Có luyện tập offline, 5 bot và joystick di chuyển 8 hướng, ngắm bắn 360°.', href: '/tank-game', image: '/tank/tank-bg.png' },
   { id: 'hill-floating-islands', publishedAt: '2026-11-03T11:37:03+07:00', game: 'Hoàng Kim', title: 'Cầu trên không thành đảo cỏ lơ lửng, hết đảo là rơi tự do.', href: '/con-duong-hoang-kim', image: '/racing-with-me.png' },

@@ -11,7 +11,7 @@
 ## Luồng xã hội
 
 - `/community`: tìm tên hoặc username (không tìm email), lời mời kết bạn, chấp nhận/từ chối, hủy bạn.
-- Hồ sơ `/players/[id]` chỉ hiện tên, username và thành tích cho người đăng nhập. Không công khai email, xu, mật khẩu.
+- Hồ sơ `/players/[id]` công khai tên, username và thành tích; khách bấm kết bạn/nhắn tin sẽ được yêu cầu đăng nhập. Không công khai email, xu, mật khẩu.
 - Chat chữ giữa bạn bè, tối đa 1000 ký tự; tải 50 tin mới và tải tiếp tin cũ. Tin nhắn được lưu trong MongoDB, chưa mã hóa đầu cuối.
 - Chặn chấm dứt bạn bè, ngăn đọc chat, tìm kiếm, gửi tin và mời phòng. Có thể bỏ chặn; không tự khôi phục bạn bè. Báo cáo vào admin.
 - Nút Bạn bè mở bảng nổi trên màn phòng, giữ game đang chạy. Chọn bạn và bấm Mời vào phòng hiện tại. Lời mời hết hạn sau 2 phút. Link chỉ được phép tới đường dẫn phòng của game trong catalog, không cho URL ngoài.
@@ -57,3 +57,10 @@ Chat bạn bè chỉ xuất hiện ngoài admin. Tab Hỗ trợ trong khung chat
 
 ### Góp ý không cần tài khoản
 Khách mở tab Hỗ trợ sẽ được chọn đăng nhập để trò chuyện hoặc tiếp tục bằng khách, nhập tên (tối đa 60 ký tự) và góp ý (tối đa 1000 ký tự). Góp ý khách là một chiều, không cấp quyền đọc hộp thư; admin thấy nhãn Khách và không có nút trả lời cho luồng này. API kiểm tra cùng origin và giới hạn 5 góp ý/10 phút theo khóa băm IP. Party thông báo ngay cho admin sau khi MongoDB lưu thành công. Người đã đăng nhập tiếp tục dùng hội thoại hỗ trợ hai chiều như cũ.
+
+
+### Tìm kiếm, bảng vàng và chuyển trang
+- Thanh tìm kiếm có gợi ý sau 300 ms, hủy request cũ, lưu tối đa 8 từ khóa trong localStorage; xóa từng mục hoặc xóa hết. Enter mở `/community?q=...`; kết quả dẫn tới hồ sơ công khai.
+- Bảng vàng Top 3 riêng cho từng game, Xem thêm mở danh sách phân trang/cuộn tiếp; không cộng điểm khác đơn vị. Hill dùng quãng đường tốt nhất, draw/tank/soccer dùng tổng điểm trận đã xác thực, các game còn lại dùng số trận thắng đã xác thực. Không xếp bot/tài khoản bị khóa; tiến độ khách đã gộp quy về tài khoản và không đếm lặp cùng trận.
+- Trang chủ không chờ MongoDB để dựng giao diện. Trạng thái game và bảng vàng tải độc lập qua API, cache server 30 giây. Khóa user hoặc bật/tắt game xóa cache liên quan. Route game vẫn kiểm tra bảo trì trên server, kể cả khi card trang chủ chưa cập nhật.
+- Kiểm tra xếp hạng: `npm run test:community:rankings` dùng database review riêng, kiểm tra tách game, Top 3/phân trang, trận xác thực, bot, khóa tài khoản, gộp khách và kỷ lục Hill.

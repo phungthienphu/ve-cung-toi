@@ -27,3 +27,4 @@
 .auth-methods { padding:12px; background:var(--home-badge); border-radius:12px; }
 @media(max-width:600px) { .auth-nav { min-height:76px; }.auth-brand { font-size:22px; }.auth-content { padding-top:12px; }.auth-card h1 { font-size:30px; } }
 @media(max-width:360px) { .auth-page { padding-inline:12px; }.auth-card { padding:20px; }.auth-card h1 { font-size:28px; }.auth-brand { gap:6px; font-size:20px; } }
+.auth-page-wide .auth-content{max-width:1000px;margin:0 auto}.auth-page-wide .auth-back-nav{max-width:none;margin:0 0 18px}

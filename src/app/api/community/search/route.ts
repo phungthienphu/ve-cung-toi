@@ -12,9 +12,9 @@ export async function GET(req: Request) {
     if (q.length >= 2) {
       await dbConnect();
       if (!await takeLimit('public-player-search', requestIp(req.headers), 90, 60000)) throw new Error('429');
-      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = q.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       search = await AccountUser.find({ disabledAt: null, $or: [
-        { name: { $regex: escaped, $options: 'i' } }, { username: q.toLowerCase() },
+        { name: { $regex: escaped, $options: 'i' } }, { username: { $regex: escaped, $options: 'i' } },
       ] }).select('playerId name username -_id').limit(20).lean();
     }
     return Response.json({ me: '', users: [], edges: [], blocked: [], online: [], messages: [], unread: [], search }, { headers: { 'Cache-Control': 'no-store' } });

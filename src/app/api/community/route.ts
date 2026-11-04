@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const ids = edges.map(e => e.from === me ? e.to : e.from).filter(id => !excluded.includes(id));
     const users = await AccountUser.find({ playerId: { $in: ids }, disabledAt: null }).select(publicFields).lean();
 
-    const search = q.length >= 2 ? await AccountUser.find({ disabledAt: null, playerId: { $nin: [me,...excluded] }, $or: [{ name: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }, { username: q.toLowerCase() }] }).select(publicFields).limit(20).lean() : [];
+    const search = q.length >= 2 ? await AccountUser.find({ disabledAt: null, playerId: { $nin: [me,...excluded] }, $or: [{ name: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }, { username: { $regex: q.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }] }).select(publicFields).limit(20).lean() : [];
     let messages: unknown[] = [];
     if (peer && !excluded.includes(peer) && edges.some(e => e.status === 'accepted' && (e.from === peer || e.to === peer))) {
       const before = url.searchParams.get('before');

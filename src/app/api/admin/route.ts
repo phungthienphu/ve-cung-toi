@@ -1,3 +1,4 @@
+import { revalidateTag } from 'next/cache';
 import { publishCommunity } from '@/features/community/realtime-server';
 import { actor, failure, isAdminEmail, sameOrigin } from '@/features/community/server';
 import { AccountUser } from '@/server/models/AccountUser';
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
     } else if (body.action === 'game' && HOME_GAMES.some(g => g.id === body.target)) {
       await GameSetting.updateOne({ gameId: body.target }, { enabled: body.enabled }, { upsert: true });
     } else throw new Error('400');
+    revalidateTag('home-games');
+    revalidateTag('public-rankings');
     await AdminAudit.create({ actor: me.playerId, action: `${body.action}:${body.enabled}`, target: body.target });
     return Response.json({ ok: true });
   } catch(e) { return failure(e); }
