@@ -1,6 +1,7 @@
 'use client';
 
 import './account.css';
+import { RealtimeProvider } from '@/features/community/RealtimeProvider';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
@@ -12,7 +13,7 @@ const AccountContext = createContext<AccountContextValue>({ enabled:false, login
 export const useAccount = () => useContext(AccountContext);
 
 export function AccountProvider({ children, session, enabled }: { children: React.ReactNode; session: Session | null; enabled: boolean }) {
-  return <SessionProvider session={session} refetchOnWindowFocus={enabled}><IdentityBoundary enabled={enabled}>{children}</IdentityBoundary></SessionProvider>;
+  return <SessionProvider session={session} refetchOnWindowFocus={enabled}><IdentityBoundary enabled={enabled}><RealtimeProvider>{children}</RealtimeProvider></IdentityBoundary></SessionProvider>;
 }
 function IdentityBoundary({ children, enabled }: { children: React.ReactNode; enabled: boolean }) {
   const { data: session, status } = useSession();

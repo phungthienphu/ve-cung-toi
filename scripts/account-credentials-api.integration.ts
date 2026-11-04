@@ -57,16 +57,15 @@ async function main() {
     assert.equal((await browser.call('/profile')).status, 200);
     const { digest } = await import('../src/features/account/server/rate-limit');
     await AuthRateLimit.deleteOne({ key: digest(`mail-email-minute:${email}:${Math.floor(Date.now()/60000)}`) });
-    assert.equal((await browser.post('password/forgot', { email })).status, 200);
-    const reset = await token();
-    const resetResult = await browser.post('password/reset', { token: reset, password: nextPassword, confirmation: nextPassword });
-    assert.equal(resetResult.status, 200);
-    assert.equal((await browser.call(`/api/hill/wallet?playerId=${playerId}`)).status, 403, 'old session cannot access wallet after reset');
+    assert.equal((await browser.post('password/forgot', { email })).status, 503);
+    assert.equal((await browser.post('password/reset', { token: 'disabled', password: nextPassword, confirmation: nextPassword })).status, 503);
+    assert.equal((await browser.post('password/change', { currentPassword: password, password: nextPassword, confirmation: nextPassword })).status, 200);
+    assert.equal((await browser.call(`/api/hill/wallet?playerId=${playerId}`)).status, 403, 'old session cannot access wallet after password change');
     assert.equal((await browser.post('merge', { guestId: randomBytes(5).toString('hex') })).status, 401, 'old session cannot merge');
     assert.equal((await browser.post('password/change', { currentPassword: nextPassword, password, confirmation: password })).status, 401);
     await browser.login(email, nextPassword);
     assert.equal((await browser.call(`/api/hill/wallet?playerId=${playerId}`)).status, 200, 'new password restores owner access');
-    console.log('Credentials HTTP passed: Google-disabled providers, CSRF origin, verification GET/POST, token replay, real Auth.js login, reset and revoked wallet/merge/security sessions.');
+    console.log('Credentials HTTP passed: Google-disabled providers, CSRF origin, verification GET/POST, token replay, real Auth.js login, disabled recovery, password change and revoked wallet/merge/security sessions.');
   } finally {
     const users = await AccountUser.find({ emailNormalized: { $in: fixtures } }).lean();
     const ids = users.map(user => user.playerId);

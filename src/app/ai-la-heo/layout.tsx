@@ -1,7 +1,8 @@
+import { GameGate } from '@/features/community/GameGate';
 import { GAMES_SEO, seoMetadata } from "@/lib/seo";
 
 export const metadata = seoMetadata(GAMES_SEO.oldmaid);
 
 export default function OldMaidLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <GameGate id="oldmaid">{children}</GameGate>;
 }

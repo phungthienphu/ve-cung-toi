@@ -10,6 +10,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "durable_objects": {
     "bindings": [
+      { "name": "Community", "class_name": "CommunityRoom" },
       { "name": "Main", "class_name": "GameRoom" },
       { "name": "Drawlobby", "class_name": "DrawDirectory" },
       { "name": "Tanks", "class_name": "TankRoom" },
@@ -37,7 +38,8 @@
       ]
     },
     { "tag": "v2", "new_sqlite_classes": ["OldMaidRoom", "OldMaidDirectory"] },
-    { "tag": "v3", "new_sqlite_classes": ["HillRoom", "HillDirectory"] }
+    { "tag": "v3", "new_sqlite_classes": ["HillRoom", "HillDirectory"] },
+    { "tag": "v4", "new_sqlite_classes": ["CommunityRoom"] }
   ],
   "observability": { "enabled": true }
 }

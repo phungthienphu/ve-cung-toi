@@ -15,6 +15,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p party/tsconfig.json",
     "test:tank": "node --import tsx scripts/tank-simulation.test.ts",
     "test:hill": "node --import tsx scripts/hill-phase2.test.ts && node --import tsx scripts/hill-race.test.ts && node --import tsx scripts/hill-sky-road.test.ts && node --import tsx scripts/hill-smoke.test.ts",
+    "test:community:realtime": "node --import tsx scripts/community-realtime.integration.ts",
+    "test:community": "node --import tsx scripts/community-api.integration.ts",
     "test:layout": "node --import tsx scripts/css-layout.test.ts",
     "test:account": "node --import tsx scripts/account-client.test.ts",
     "test:account:merge": "node --import tsx scripts/account-merge.integration.ts",

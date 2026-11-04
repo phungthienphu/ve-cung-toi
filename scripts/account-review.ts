@@ -16,6 +16,8 @@ if (emailReview) globalThis.fetch = async (input, init) => {
 };
 const guestOnly = process.argv.includes('--guest-only');
 Object.assign(process.env, {
+  NEXT_PUBLIC_COMMUNITY_HOST:process.env.COMMUNITY_REVIEW_HOST || '127.0.0.1:1999',
+  NEXT_BUILD_DIR:'.next-account-review',
   MONGODB_DB_NAME:'vct_account_review_20261104',
   AUTH_GOOGLE_ID:guestOnly || noGoogle ? '' : 'review-only',
   AUTH_GOOGLE_SECRET:guestOnly || noGoogle ? '' : 'review-only',

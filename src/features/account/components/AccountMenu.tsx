@@ -15,7 +15,7 @@ export function AccountMenu() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {session.user.image && <img src={session.user.image} alt="" referrerPolicy="no-referrer" width={28} height={28} />}
       <span>{session.user.name || 'Tài khoản'}</span>
-    </summary><div className="account-dropdown"><strong>{session.user.name}</strong><small>{session.user.email}</small><Link href="/profile">Hồ sơ & thành tích</Link><Link href="/account/security">Bảo mật tài khoản</Link><Link href="/privacy">Quyền riêng tư</Link><button disabled={busy} onClick={() => void logout()}>Đăng xuất</button></div></details>
+    </summary><div className="account-dropdown"><strong>{session.user.name}</strong><small>{session.user.email}</small><Link href="/community">Bạn bè & chat</Link>{session.user.isAdmin && <Link href="/admin">Quản trị</Link>}<Link href="/profile">Hồ sơ & thành tích</Link><Link href="/account/security">Bảo mật tài khoản</Link><Link href="/privacy">Quyền riêng tư</Link><button disabled={busy} onClick={() => void logout()}>Đăng xuất</button></div></details>
       : <button className="account-login" disabled={busy} onClick={() => void login()}>{busy ? 'Đang kết nối…' : 'Đăng nhập'}</button>}
     {error && !session && <div className="account-error" role="alert">{error}</div>}
   </div>;

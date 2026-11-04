@@ -21,6 +21,8 @@ import type { WerewolfRoom } from "./werewolf/server";
  * the names the hosted PartyKit setup used.
  */
 export interface Env {
+  Community: DurableObjectNamespace<import("./community/server").CommunityRoom>;
+  COMMUNITY_REALTIME_SECRET?: string;
   Hill: DurableObjectNamespace<HillRoom>;
   Hilllobby: DurableObjectNamespace<HillDirectory>;
   /** Base URL of the Next.js app, for posting finished games to /api/game-history. Unset = skip. */

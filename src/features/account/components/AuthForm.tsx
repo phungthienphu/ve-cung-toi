@@ -64,10 +64,11 @@ export function AuthForm(props: Props) {
   }
   const needsNewPassword = mode === 'register' || mode === 'reset' || (mode === 'security' && (props.hasPassword || props.proved));
   const inputType = showPassword ? 'text' : 'password';
+  if (['forgot', 'reset'].includes(mode)) return <section className="auth-card"><h1>Quên mật khẩu</h1><p>Sắp ra mắt. Tính năng khôi phục mật khẩu đang tạm ngừng.</p><Link href="/login">Về đăng nhập</Link></section>;
   return <section className="auth-card">
     <p className="auth-eyebrow">CHƠI CÙNG TÔI</p><h1>{titles[mode]}</h1>
     {mode === 'login' && <p>Giữ tiến độ và thành tích giữa các máy.</p>}
-    {mode === 'register' && <p>Email dùng để xác minh tài khoản và lấy lại mật khẩu khi bạn quên. Tên hiển thị có thể xuất hiện cùng kết quả trận.</p>}
+    {mode === 'register' && <p>Email dùng để xác minh tài khoản ; khôi phục mật khẩu sẽ được bổ sung sau. Tên hiển thị có thể xuất hiện cùng kết quả trận.</p>}
     {mode === 'forgot' && <p>Nhập email đã xác minh để nhận liên kết đặt lại mật khẩu.</p>}
     {mode === 'security' && <div className="auth-methods"><p>Email đã xác minh: <strong>{props.email}</strong></p><p>Google: {props.hasGoogle ? 'Đã liên kết' : 'Chưa liên kết'} · Mật khẩu: {props.hasPassword ? 'Đã thiết lập' : 'Chưa thiết lập'}</p>{props.username && <p>Tên đăng nhập: {props.username}</p>}</div>}
     {error && <p role="alert" className="auth-error" tabIndex={-1} ref={errorRef}>{error}</p>}
@@ -90,6 +91,6 @@ export function AuthForm(props: Props) {
     {(mode === 'register' && registered || mode === 'verify') && emailEnabled && <form onSubmit={resend} className="auth-form"><label>Email nhận xác minh<input type="email" autoComplete="email" value={mail} onChange={e => setMail(e.target.value)} required maxLength={254} /></label><button disabled={busy}>Gửi lại email xác minh</button></form>}
     {mode === 'login' && googleEnabled && <button className="auth-google" disabled={busy} onClick={() => void google()}>Tiếp tục với Google</button>}
     {mode === 'login' && !emailEnabled && !googleEnabled && <p>Đăng nhập chưa được cấu hình. Bạn vẫn có thể chơi khách.</p>}
-    <nav className="auth-links">{mode === 'security' ? <Link href="/profile">Hồ sơ & thành tích</Link> : mode !== 'login' && <Link href="/login">Đăng nhập</Link>}{mode === 'login' && emailEnabled && <><Link href="/register">Tạo tài khoản</Link><Link href="/forgot-password">Quên mật khẩu?</Link><Link href="/verify-email">Gửi lại xác minh</Link></>}{mode === 'reset' && <Link href="/forgot-password">Yêu cầu liên kết mới</Link>}<Link href="/">{mode === 'security' ? 'Trang chủ' : 'Chơi khách / Trang chủ'}</Link><Link href="/privacy">Quyền riêng tư</Link></nav>
+    <nav className="auth-links">{mode === 'login' && <button type="button" disabled>Quên mật khẩu · Sắp ra mắt</button>}{mode === 'security' ? <Link href="/profile">Hồ sơ & thành tích</Link> : mode !== 'login' && <Link href="/login">Đăng nhập</Link>}{mode === 'login' && emailEnabled && <><Link href="/register">Tạo tài khoản</Link><Link href="/verify-email">Gửi lại xác minh</Link></>}{mode === 'reset' && <Link href="/forgot-password">Yêu cầu liên kết mới</Link>}<Link href="/">{mode === 'security' ? 'Trang chủ' : 'Chơi khách / Trang chủ'}</Link><Link href="/privacy">Quyền riêng tư</Link></nav>
   </section>;
 }

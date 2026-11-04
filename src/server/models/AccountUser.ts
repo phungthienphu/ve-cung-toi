@@ -9,6 +9,7 @@ const schema = new Schema({
   username: { type: String },
   passwordHash: { type: String, select: false },
   sessionVersion: { type: Number, default: 0 },
+  disabledAt: { type: Date, default: null },
   passwordChangedAt: { type: Date },
   name: { type: String, default: '' },
   image: { type: String, default: '' },

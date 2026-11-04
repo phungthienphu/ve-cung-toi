@@ -1,3 +1,4 @@
+import { isAdminEmail } from '@/features/community/admin-access';
 import { cookies } from 'next/headers';
 import { INTENT_COOKIE } from '@/features/account/server/google';
 import NextAuth from 'next-auth';
@@ -24,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!await takeLimit('login-ip', requestIp(request.headers), 30, 900000) || !await takeLimit('login-id', identifier, 10, 900000)) return null;
         const user = await AccountUser.findOne(identifier.includes('@') ? { emailNormalized: normalizeEmail(identifier) } : { username: normalizeUsername(identifier) }).select('+passwordHash').lean();
         const matched = await checkPassword(user?.passwordHash, password);
-        if (!user?.emailVerifiedAt || !matched) return null;
+        if (!user?.emailVerifiedAt || user.disabledAt || !matched) return null;
         return { id: user.playerId, playerId: user.playerId, name: user.name, email: user.email, image: user.image, sessionVersion: user.sessionVersion ?? 0 };
       },
     })] : []),
@@ -51,13 +52,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (typeof token.playerId !== 'string') return null;
       const owner = await AccountUser.findOne({ playerId: token.playerId }).lean();
-      if (!owner || (owner.sessionVersion ?? 0) !== (token.sessionVersion ?? 0)) return null;
+      if (!owner || owner.disabledAt || (owner.sessionVersion ?? 0) !== (token.sessionVersion ?? 0)) return null;
       token.name = owner.name; token.email = owner.email; token.picture = owner.image;
       return token;
     },
     session({ session, token }) {
       if (session.user && typeof token.playerId === 'string') {
         session.user.playerId = token.playerId;
+        session.user.isAdmin = isAdminEmail(token.email);
         session.user.sessionVersion = typeof token.sessionVersion === 'number' ? token.sessionVersion : 0;
       }
       return session;

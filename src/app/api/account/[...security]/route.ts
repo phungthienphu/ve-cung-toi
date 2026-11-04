@@ -14,6 +14,8 @@ export const runtime = 'nodejs';
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 
 export async function POST(req: Request, context: { params: Promise<{ security: string[] }> }) {
+  const requestedAction = (await context.params).security.join('/');
+  if (['password/forgot', 'password/reset'].includes(requestedAction)) return json({ error: 'Quên mật khẩu — Sắp ra mắt.' }, 503);
   if (!emailLoginEnabled) return json({ error: 'Chức năng email chưa được cấu hình. Bạn vẫn có thể chơi khách hoặc dùng Google nếu có.' }, 503);
   try {
     const origin = req.headers.get('origin');

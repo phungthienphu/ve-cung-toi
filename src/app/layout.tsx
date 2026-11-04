@@ -1,3 +1,5 @@
+import { homeFonts } from '@/features/home/fonts';
+import { CommunityWidget } from '@/features/community/CommunityWidget';
 import { headers } from 'next/headers';
 import { auth, authEnabled } from '@/auth';
 import { AccountProvider } from '@/features/account/components/AccountProvider';
@@ -48,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="min-h-app text-slate-900 antialiased">
-        <AccountProvider session={session} enabled={authEnabled}>{children}</AccountProvider>
+        <AccountProvider session={session} enabled={authEnabled}>{children}<div className={homeFonts} style={{ display: 'contents' }}><CommunityWidget /></div></AccountProvider>
         {CF_ANALYTICS_TOKEN && !sensitive && (
           <Script
             defer

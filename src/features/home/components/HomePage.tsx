@@ -20,13 +20,13 @@ const STEPS = [
   { title: 'Tạo phòng, gửi link', text: 'Mỗi phòng một mã riêng. Dán vào Zalo hay Messenger là xong.' },
   { title: 'Cả hội vào chơi', text: 'Trên điện thoại hay máy tính đều được.' },
 ];
-export default function HomePage({ initialNews }: { initialNews: NewsPage }) {
+export default function HomePage({ initialNews, disabledGames = [] }: { initialNews: NewsPage; disabledGames?: string[] }) {
   const [filter, setFilter] = useState<GameFilter>('all');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [skyTransition, setSkyTransition] = useState(0);
   const [readThrough, setReadThrough] = useState('');
   const [sheet, setSheet] = useState<{ open: boolean; expanded: boolean }>({ open: false, expanded: false });
-  const games = filterGames(filter);
+  const games = filterGames(filter).filter(game => !disabledGames.includes(game.id));
   const newest = initialNews.items[0];
   const unread = !!newest && (Date.parse(newest.publishedAt) > (Date.parse(readThrough) || 0));
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function HomePage({ initialNews }: { initialNews: NewsPage }) {
   return <div className="home-page" data-theme={theme}>
     <a href="#home-games" className="home-skip-link">Đến danh sách trò chơi</a>
     <header className="home-hero"><nav className="home-nav home-container" aria-label="Điều hướng chính">
-      <Link href="/" className="home-logo"><PigLogo /><span>Chơi Cùng Tôi</span></Link><div className="home-nav-actions"><AccountMenu /><a className="home-nav-games" href="#home-games"><HomeIcon name="game" /><span>Trò chơi</span></a><button className="home-icon-button home-bell" aria-label={unread ? 'Mở bảng tin, có tin mới' : 'Mở bảng tin'} onClick={() => openNews()}><HomeIcon name="bell" />{unread && <span className="home-unread-dot" />}</button><Link href="/leaderboard" className="home-icon-button" aria-label="Lịch sử trận đấu"><HomeIcon name="history" /></Link><button className="home-icon-button home-theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Chuyển sang ban đêm' : 'Chuyển sang ban ngày'} aria-pressed={theme === 'dark'}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>{theme === 'light' ? <path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /> : <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>}</svg></button></div>
+      <Link href="/" className="home-logo"><PigLogo /><span>Chơi Cùng Tôi</span></Link><form className="home-player-search" action="/community" role="search" aria-label="Tìm người chơi"><input name="q" aria-label="Tìm người chơi" placeholder="Tìm tên hoặc username…" minLength={2} maxLength={60} required autoComplete="off"/><button type="submit" aria-label="Tìm kiếm người chơi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></form><div className="home-nav-actions"><AccountMenu /><a className="home-nav-games" href="#home-games"><HomeIcon name="game" /><span>Trò chơi</span></a><button className="home-icon-button home-bell" aria-label={unread ? 'Mở bảng tin, có tin mới' : 'Mở bảng tin'} onClick={() => openNews()}><HomeIcon name="bell" />{unread && <span className="home-unread-dot" />}</button><Link href="/leaderboard" className="home-icon-button" aria-label="Lịch sử trận đấu"><HomeIcon name="history" /></Link><button className="home-icon-button home-theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Chuyển sang ban đêm' : 'Chuyển sang ban ngày'} aria-pressed={theme === 'dark'}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>{theme === 'light' ? <path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /> : <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>}</svg></button></div>
     </nav><div className="home-hero-copy home-container"><h1>Hôm nay chơi gì?</h1><p>Rủ cả hội vào chơi bằng một đường link.<br className="home-mobile-break" /> Không cần tài khoản, không cài đặt gì.</p></div>
       <div key={skyTransition} className={`home-sky-scene${skyTransition ? ' home-sky-changing' : ''}`} aria-hidden>
         <div className="home-sky-glow" />

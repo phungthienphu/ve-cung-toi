@@ -1350,3 +1350,8 @@
 .home-page[data-theme=dark] .home-pig-logo {
     filter: drop-shadow(0 0 3px #ffb5ca35)
 }
+/* Player discovery belongs in the primary navigation, for guests and members. */
+.home-player-search{display:flex;align-items:center;gap:9px;flex:1;max-width:340px;min-width:180px;margin:0 24px;padding:9px 12px;border:1.5px solid #dccaa7;border-radius:12px;background:#fffaf0;color:#8b7959}
+.home-player-search input{width:100%;min-width:0;background:none;border:0;outline:none;font:inherit;font-size:12px;color:#352b1d}
+.home-player-search input::placeholder{color:#9b8c72}.home-player-search:focus-within{border-color:#e8b752;box-shadow:0 0 0 3px #e8b75225}.home-page .home-player-search input:focus-visible{outline:none}.home-player-search svg{flex-shrink:0}.home-player-search button{font:inherit;font-size:11px;font-weight:650;color:#785a24;padding:4px 7px;border-radius:6px;background:#e8b75222;white-space:nowrap}
+@media(max-width:1000px){.home-nav{flex-wrap:wrap;gap:16px}.home-player-search{order:3;flex-basis:100%;max-width:none;margin:0;width:100%}.home-nav-actions{margin-left:auto}}
