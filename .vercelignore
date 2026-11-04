@@ -1,0 +1,11 @@
+.next*
+node_modules
+.partykit
+.wrangler
+.env*
+!.env.example
+.dev.vars*
+*.tsbuildinfo
+.agents
+.codex
+.claude
