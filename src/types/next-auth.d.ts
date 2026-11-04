@@ -1,4 +1,5 @@
 import type { DefaultSession } from 'next-auth';
 declare module 'next-auth' {
-  interface Session { user: DefaultSession['user'] & { playerId: string } }
+  interface Session { user: DefaultSession['user'] & { playerId: string; sessionVersion: number } }
+  interface User { playerId?: string; sessionVersion?: number }
 }

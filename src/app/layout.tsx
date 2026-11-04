@@ -1,4 +1,5 @@
-import { auth, googleLoginEnabled } from '@/auth';
+import { headers } from 'next/headers';
+import { auth, authEnabled } from '@/auth';
 import { AccountProvider } from '@/features/account/components/AccountProvider';
 import type { Metadata } from "next";
 import Script from "next/script";
@@ -27,7 +28,8 @@ const CF_ANALYTICS_TOKEN =
   process.env.NODE_ENV === "production" ? (process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN ?? "f8df945b818b452abce98d044db19508") : "";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = googleLoginEnabled ? await auth() : null;
+  const sensitive = (await headers()).get('x-vct-sensitive-page') === '1';
+  const session = authEnabled ? await auth() : null;
   return (
     // Monetag's tag stamps attributes (e.g. data-fp) on <html> before React
     // hydrates; that mismatch is expected and harmless.
@@ -36,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Keep Monetag's loader in the server-rendered head. Their verifier
             may look for the installation snippet, not only the resulting
             dynamically-created script element. */}
-        {ADS_ENABLED && (
+        {ADS_ENABLED && !sensitive && (
           <script
             dangerouslySetInnerHTML={{
               __html:
@@ -46,8 +48,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="min-h-app text-slate-900 antialiased">
-        <AccountProvider session={session} enabled={googleLoginEnabled}>{children}</AccountProvider>
-        {CF_ANALYTICS_TOKEN && (
+        <AccountProvider session={session} enabled={authEnabled}>{children}</AccountProvider>
+        {CF_ANALYTICS_TOKEN && !sensitive && (
           <Script
             defer
             src="https://static.cloudflareinsights.com/beacon.min.js"

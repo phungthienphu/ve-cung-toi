@@ -20,10 +20,14 @@
     "test:account:merge": "node --import tsx scripts/account-merge.integration.ts",
     "test:account:api": "node --import tsx scripts/account-api.integration.ts",
     "dev:account-review": "node --import tsx scripts/account-review.ts",
-    "test:account:profile": "node --import tsx scripts/account-profile.integration.ts"
+    "test:account:profile": "node --import tsx scripts/account-profile.integration.ts",
+    "account:auth:migrate": "node --import tsx scripts/account-auth-migrate.ts",
+    "test:account:credentials": "node --import tsx scripts/account-credentials.integration.ts",
+    "test:account:credentials-api": "node --import tsx scripts/account-credentials-api.integration.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
+    "@node-rs/argon2": "^2.2.2",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "canvas-confetti": "^1.9.4",

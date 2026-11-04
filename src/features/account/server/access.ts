@@ -1,4 +1,4 @@
-import { auth, googleLoginEnabled } from '@/auth';
+import { auth, authEnabled } from '@/auth';
 import { AccountUser } from '@/server/models/AccountUser';
 import { HillWallet } from '@/server/models/Hill';
 
@@ -13,7 +13,7 @@ export async function requirePlayerAccess(playerId: string) {
   ]);
   if (wallet?.mergedTo) throw new PlayerAccessError('Tiến độ mã khách này đã chuyển vào tài khoản. Hãy tải lại trang.', 409);
   if (owner) {
-    if (!googleLoginEnabled) throw new PlayerAccessError('Đăng nhập hiện chưa được cấu hình.', 403);
+    if (!authEnabled) throw new PlayerAccessError('Đăng nhập hiện chưa được cấu hình.', 403);
     const session = await auth();
     if (session?.user?.playerId !== playerId) throw new PlayerAccessError('Bạn cần đăng nhập đúng tài khoản để dùng tiến độ này.', 403);
   }

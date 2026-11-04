@@ -66,3 +66,7 @@ Sau khi thêm env: restart local / redeploy Vercel. Chưa đủ ba biến AUTH_G
 - Chỉ số thắng lấy từ kết quả do phòng tính: Tank/Soccer theo đội hoặc người thắng, Vẽ tính đồng hạng cao nhất, Ma sói theo phe, Hải chiến theo người/đội thắng, Ai là heo theo hạng nhất. Bot không có thống kê tài khoản. Trận luyện tập không được báo cáo vẫn không tính.
 - Brawler/Math Boss chưa có lưu kết quả; Math Quest giữ hồ sơ học sinh riêng, chưa liên kết Google.
 - Xác thực báo cáo bảo vệ kênh Cloudflare → web; chưa phải cơ chế chống giả danh khi tham gia phòng. Phòng hiện vẫn nhận mã người chơi do client gửi, nên thống kê chỉ để tham khảo, không dùng trao xu hoặc phần thưởng có giá trị.
+
+## Đăng nhập bằng email/mật khẩu
+
+Xem [email-login-setup.md](email-login-setup.md) cho migration index/tài khoản và cấu hình Resend. Khi email được bật, không cần env Google để có nút đăng nhập. `googleSubject` trở thành optional, nhưng định danh Google vẫn theo subject và không tự liên kết bằng email. Phiên có sessionVersion và bị thu hồi sau thay đổi mật khẩu.

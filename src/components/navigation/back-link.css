@@ -1,0 +1,5 @@
+.navigation-back { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; max-width:100%; padding:10px 14px; border:2px solid var(--home-ink,#2e1c0f); border-radius:12px; background:var(--home-surface,#fffaf0); color:var(--home-text,#2e1c0f); font:600 13px/1.5 var(--home-body),system-ui,sans-serif; text-decoration:none; box-shadow:0 2px 0 var(--home-ink,#2e1c0f); }
+.navigation-back svg { flex-shrink:0; }
+.navigation-back:hover { text-decoration:none; filter:brightness(.97); }
+.navigation-back:active { transform:translateY(2px); box-shadow:none; }
+.navigation-back:focus-visible { outline:3px solid var(--home-text,#2e1c0f); outline-offset:4px; }

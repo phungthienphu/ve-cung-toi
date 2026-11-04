@@ -1,0 +1,27 @@
+/* Shared colors for the home hub and account pages. */
+.home-page,.account-surface {
+    --home-ground: #ecc489;
+    --home-sky: #4fa8e6;
+    --home-grass: #4b9a32;
+    --home-surface: #fffaf0;
+    --home-text: #2e1c0f;
+    --home-ink: #2e1c0f;
+    --home-muted: #5c3d22;
+    --home-badge: #f6e2bd;
+    --home-hero-text: #1f2f45;
+    --home-wood: #8a5530;
+    --home-gold: #ffc23a;
+    color-scheme: light;
+}
+.home-page[data-theme=dark],.account-surface[data-theme=dark] {
+    --home-ground: #0f2418;
+    --home-sky: #142a52;
+    --home-grass: #285532;
+    --home-surface: #183a27;
+    --home-text: #f4efdc;
+    --home-ink: #050c08;
+    --home-muted: #b4ccb3;
+    --home-badge: #254d34;
+    --home-hero-text: #d8e4ef;
+    color-scheme: dark;
+}

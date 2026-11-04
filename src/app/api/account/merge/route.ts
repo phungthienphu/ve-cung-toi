@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { auth, googleLoginEnabled } from '@/auth';
+import { auth, authEnabled } from '@/auth';
 import { dbConnect } from '@/server/db/mongodb';
 import { validHillPlayer } from '@/features/hill/server/runs';
 import { mergeGuestProgress } from '@/features/account/server/merge';
 import { PlayerAccessError } from '@/features/account/server/access';
 
 export async function POST(req: Request) {
-  if (!googleLoginEnabled) return NextResponse.json({ error:'Đăng nhập Google chưa được cấu hình.' }, { status:503 });
+  if (!authEnabled) return NextResponse.json({ error:'Đăng nhập chưa được cấu hình.' }, { status:503 });
   const origin = req.headers.get('origin');
   if (origin) {
     try {

@@ -1,6 +1,7 @@
+import { BackLink } from '@/components/navigation/BackLink';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { auth, googleLoginEnabled } from '@/auth';
+import { auth, authEnabled } from '@/auth';
 import { AccountMenu } from '@/features/account/components/AccountMenu';
 import { getAccountProfile } from '@/features/account/server/profile';
 import './profile.css';
@@ -10,13 +11,13 @@ export const dynamic = 'force-dynamic';
 const number = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value);
 
 export default async function ProfilePage() {
-  const session = googleLoginEnabled ? await auth() : null;
-  if (!session?.user?.playerId) return <main className="player-profile"><div className="profile-shell"><Link href="/">← Trang chủ</Link><h1>Hồ sơ của bạn</h1><p>Đăng nhập để xem thành tích và giữ tiến độ giữa các máy.</p><AccountMenu /></div></main>;
+  const session = authEnabled ? await auth() : null;
+  if (!session?.user?.playerId) return <main className="player-profile"><div className="profile-shell"><BackLink href="/">Về trang chủ</BackLink><h1>Hồ sơ của bạn</h1><p>Đăng nhập để xem thành tích và giữ tiến độ giữa các máy.</p><AccountMenu /></div></main>;
   let profile;
   try { profile = await getAccountProfile(session.user.playerId); }
-  catch { return <main className="player-profile"><div className="profile-shell"><Link href="/">← Trang chủ</Link><h1>Chưa tải được thành tích</h1><p>Tiến độ vẫn được giữ. Bạn thử tải lại trang sau nhé.</p><Link href="/profile">Thử lại</Link></div></main>; }
+  catch { return <main className="player-profile"><div className="profile-shell"><BackLink href="/">Về trang chủ</BackLink><h1>Chưa tải được thành tích</h1><p>Tiến độ vẫn được giữ. Bạn thử tải lại trang sau nhé.</p><Link href="/profile">Thử lại</Link></div></main>; }
   return <main className="player-profile"><div className="profile-shell">
-    <nav><Link href="/">← Trang chủ</Link><AccountMenu /></nav>
+    <nav><BackLink href="/">Về trang chủ</BackLink><AccountMenu /></nav>
     <header className="profile-identity">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {session.user.image ? <img src={session.user.image} alt="" referrerPolicy="no-referrer" width={72} height={72} /> : <span className="profile-avatar">{(session.user.name || 'B')[0]}</span>}

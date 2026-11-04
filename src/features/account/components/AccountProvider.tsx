@@ -2,7 +2,7 @@
 
 import './account.css';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { SessionProvider, useSession, signIn, signOut } from 'next-auth/react';
+import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import { getOrCreateGuestId, setAccountPlayerId } from '@/lib/player';
 import { flushGuestProgress, IDLE_GUEST_KEY, transferGuestProgress } from '../client/guest-progress';
@@ -56,7 +56,7 @@ function IdentityBoundary({ children, enabled }: { children: React.ReactNode; en
     try {
       // Do not navigate away until pending runs have reached the server.
       await flushGuestProgress(getOrCreateGuestId());
-      await signIn('google', { redirectTo: window.location.pathname + window.location.search });
+      window.location.assign('/login?next=' + encodeURIComponent(window.location.pathname));
     } catch { setError('Chưa đồng bộ được tiến độ khách. Thử đăng nhập lại khi có mạng nhé.'); setBusy(false); }
   }
   async function logout() {
