@@ -45,3 +45,11 @@ export async function hillBoard(map: string, day: string | null, playerId: strin
   return { leaders: result?.leaders ?? [], personal, nearby };
 }
 export function currentHillDay() { return hillDay(); }
+
+export async function hillBests(playerId: string): Promise<Record<string, number>> {
+  const rows = await HillRun.aggregate<{ _id: { map: string; day: string | null }; distance: number }>([
+    { $match: { playerId } },
+    { $group: { _id: { map: '$map', day: '$day' }, distance: { $max: '$distance' } } },
+  ]);
+  return Object.fromEntries(rows.map(row => [`${row._id.map}:${row._id.day ?? 'all'}`, row.distance]));
+}

@@ -1302,11 +1302,11 @@ export class OldMaidRoom extends Server<Env> {
       const rows = this.lastRound.rows;
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-game-history-secret": this.env.GAME_HISTORY_SECRET ?? "" },
         body: JSON.stringify({
           gameType: "oldmaid",
           roomId: this.name,
-          players: rows.map((row) => ({ name: row.name, score: rows.length - row.place })),
+          players: rows.map((row) => ({ playerId: row.id, name: row.name, score: rows.length - row.place, won: row.place === 1 })),
           rounds: this.round,
           mode: `${rows.length} người${skillsInPlay(this.config) ? " · lá kỹ năng" : ""}`,
           winnerName: rows[0]?.name ?? null,

@@ -1,0 +1,14 @@
+.account-menu { flex-shrink:0; position:relative; font-size:13px; color:#493222; }
+.account-login,.account-menu summary { display:flex; align-items:center; gap:8px; cursor:pointer; border:1.5px solid #61442a; border-radius:10px; padding:8px 12px; background:#fff9eb; font-weight:600; white-space:nowrap; }
+.account-menu summary { list-style:none; }.account-menu summary::-webkit-details-marker { display:none; }
+.account-menu summary img { border-radius:50%; }.account-menu summary span { max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.account-dropdown,.account-error { position:absolute; right:0; top:calc(100% + 8px); width:250px; z-index:40; padding:16px; border:1px solid #c8b599; border-radius:10px; background:#fff9eb; box-shadow:0 8px 24px #30241b22; display:grid; gap:12px; }
+.account-dropdown small { overflow-wrap:anywhere; }.account-dropdown button,.account-error button { text-align:left; color:#a53f30; }
+.account-error { font-size:12px; }.account-save-prompt { display:grid; gap:5px; text-align:center; margin:16px 0; }
+.account-save-prompt button { font-size:14px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }.account-save-prompt small { font-size:11px; opacity:.7; }
+@media(max-width:600px) { .account-menu summary span { display:none; }.account-login { padding:7px; font-size:11px; } }
+
+@media(max-width:600px) { .home-nav:has(.account-menu) .home-logo { font-size:16px; gap:4px; } .home-nav:has(.account-menu) .home-nav-actions { flex-shrink:0; } }
+@media(max-width:360px) { .home-nav:has(.account-menu) .home-logo span { display:none; } }
+
+.account-sync-notice { position:fixed; bottom:16px; left:16px; right:16px; margin:auto; width:fit-content; max-width:calc(100vw - 32px); z-index:60; display:flex; align-items:center; gap:12px; padding:12px 16px; border:1px solid #b98f51; border-radius:8px; background:#fff4d3; color:#61401d; box-shadow:0 4px 20px #30241b22; font-size:12px; }.account-sync-notice button { flex-shrink:0; font-weight:700; text-decoration:underline; }

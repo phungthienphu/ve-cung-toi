@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { HILL_VEHICLES, isHillVehicle } from "@shared/hill/types";
 import { dbConnect } from "@/server/db/mongodb";
 import { HillWallet } from "@/server/models/Hill";
-import { ensureHillWallet, validHillPlayer } from "@/features/hill/server/runs";
+import { ensureHillWallet, validHillPlayer, hillBests } from "@/features/hill/server/runs";
+
+import { PlayerAccessError, requirePlayerAccess } from '@/features/account/server/access';
 
 export async function GET(req: Request) {
   const playerId = new URL(req.url).searchParams.get("playerId");
   if (!validHillPlayer(playerId)) return NextResponse.json({ error: "Mã máy không hợp lệ" }, { status: 400 });
   try {
     await dbConnect();
+    await requirePlayerAccess(playerId);
     const wallet = await ensureHillWallet(playerId);
-    return NextResponse.json({ coins: wallet!.coins, unlocked: wallet!.unlocked });
-  } catch { return NextResponse.json({ error: "Chưa kết nối được ví xu" }, { status: 503 }); }
+    return NextResponse.json({ coins: wallet!.coins, unlocked: wallet!.unlocked, bests: await hillBests(playerId) });
+  } catch (error) { if (error instanceof PlayerAccessError) return NextResponse.json({ error: error.message }, { status: error.status }); return NextResponse.json({ error: "Chưa kết nối được ví xu" }, { status: 503 }); }
 }
 export async function POST(req: Request) {
   let body;
@@ -20,11 +23,12 @@ export async function POST(req: Request) {
   const playerId: string = body.playerId;
   const vehicle = body.vehicle as keyof typeof HILL_VEHICLES;
   try {
-    await dbConnect(); await ensureHillWallet(playerId);
-    const bought = await HillWallet.findOneAndUpdate({ playerId, coins: { $gte: HILL_VEHICLES[vehicle].price }, unlocked: { $ne: vehicle } },
+    await dbConnect(); await requirePlayerAccess(playerId); await ensureHillWallet(playerId);
+    const bought = await HillWallet.findOneAndUpdate({ playerId, mergedTo: null, coins: { $gte: HILL_VEHICLES[vehicle].price }, unlocked: { $ne: vehicle } },
       { $inc: { coins: -HILL_VEHICLES[vehicle].price }, $addToSet: { unlocked: vehicle } }, { new: true }).lean();
+    await requirePlayerAccess(playerId);
     const wallet = bought ?? await HillWallet.findOne({ playerId }).orFail().lean();
     if (!wallet.unlocked.includes(vehicle)) return NextResponse.json({ error: "Chưa đủ xu mở xe" }, { status: 409 });
     return NextResponse.json({ coins: wallet.coins, unlocked: wallet.unlocked });
-  } catch { return NextResponse.json({ error: "Chưa mở được xe, thử lại sau" }, { status: 503 }); }
+  } catch (error) { if (error instanceof PlayerAccessError) return NextResponse.json({ error: error.message }, { status: error.status }); return NextResponse.json({ error: "Chưa mở được xe, thử lại sau" }, { status: 503 }); }
 }

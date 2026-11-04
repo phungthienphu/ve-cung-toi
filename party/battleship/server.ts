@@ -1034,11 +1034,11 @@ export class BattleshipRoom extends Server<Env> {
       const players = [...this.players.values()];
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-game-history-secret": this.env.GAME_HISTORY_SECRET ?? "" },
         body: JSON.stringify({
           gameType: "battleship",
           roomId: this.name,
-          players: players.map((player) => ({ name: player.name, score: player.sinks })),
+          players: players.map((player) => ({ playerId: player.id, name: player.name, score: player.sinks, won: this.winnerIds.includes(player.id) || (!!this.winnerTeam && player.team === this.winnerTeam) })),
           mode: this.config.mode,
           winnerName: this.winnerTeam ? null : this.winnerIds.map((id) => this.players.get(id)?.name).join(", ") || null,
           winningTeam: this.winnerTeam,

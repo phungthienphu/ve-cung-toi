@@ -25,6 +25,8 @@ export interface Env {
   Hilllobby: DurableObjectNamespace<HillDirectory>;
   /** Base URL of the Next.js app, for posting finished games to /api/game-history. Unset = skip. */
   NEXT_APP_URL?: string;
+  /** Shared with Next.js; authenticates match reports, never sent to browsers. */
+  GAME_HISTORY_SECRET?: string;
   Main: DurableObjectNamespace<GameRoom>;
   Drawlobby: DurableObjectNamespace<DrawDirectory>;
   Tanks: DurableObjectNamespace<TankRoom>;

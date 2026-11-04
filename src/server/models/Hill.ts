@@ -13,10 +13,12 @@ const runSchema = new Schema({
   duration: { type: Number, required: true },
 }, { timestamps: true });
 runSchema.index({ map: 1, day: 1, distance: -1, playerId: 1 });
+runSchema.index({ playerId: 1, map: 1, day: 1, distance: -1 });
 const walletSchema = new Schema({
   playerId: { type: String, required: true, unique: true },
   coins: { type: Number, default: 0, min: 0 },
   unlocked: { type: [String], default: ["jeep"] },
+  mergedTo: { type: String, default: null },
   // Atomic credit guard: retrying a run can never award its coins twice.
   creditedRuns: { type: [String], default: [], select: false },
 }, { timestamps: true });

@@ -1,5 +1,6 @@
 "use client";
 
+import { SaveProgressPrompt } from '@/features/account/components/AccountMenu';
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { homeFonts } from '@/features/home/fonts';
@@ -416,6 +417,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
               {roster(teamA, "Đội A", "text-blue-600")}
               {roster(teamB, "Đội B", "text-red-600")}
             </div>
+            <SaveProgressPrompt />
             {playAgainButtons}
           </div>
         </main>
@@ -449,6 +451,7 @@ export default function TankGameRoom({ roomId, playerId, name, color }: Props) {
             </table>
           </div>
 
+          <SaveProgressPrompt />
           {playAgainButtons}
         </div>
       </main>

@@ -1,0 +1,17 @@
+import { NextResponse, type NextRequest } from 'next/server';
+import { handlers, googleLoginEnabled } from '@/auth';
+
+export async function GET(req: NextRequest) {
+  if (!googleLoginEnabled) {
+    // Auth.js needs a secret even for session reads. An unconfigured site is
+    // intentionally guest-only, including client focus/session refreshes.
+    if (req.nextUrl.pathname.endsWith('/session')) return NextResponse.json(null);
+    if (req.nextUrl.pathname.endsWith('/providers')) return NextResponse.json({});
+    return NextResponse.json({ error:'Đăng nhập Google chưa được cấu hình.' }, { status:503 });
+  }
+  return handlers.GET(req);
+}
+export async function POST(req: NextRequest) {
+  if (!googleLoginEnabled) return NextResponse.json({ error:'Đăng nhập Google chưa được cấu hình.' }, { status:503 });
+  return handlers.POST(req);
+}

@@ -1,3 +1,5 @@
+import { withTransactionRetry } from '@/server/db/transaction';
+import { PlayerAccessError, requirePlayerAccess } from '@/features/account/server/access';
 import { NextResponse } from "next/server";
 import { isHillMap } from "@shared/hill/types";
 import { dbConnect } from "@/server/db/mongodb";
@@ -19,18 +21,21 @@ export async function POST(req: Request) {
   if (!run) return NextResponse.json({ error: "Lượt chạy không hợp lệ" }, { status: 400 });
   try {
     await dbConnect();
+    await requirePlayerAccess(run.playerId);
     const wallet = await ensureHillWallet(run.playerId);
     if (!wallet!.unlocked.includes(run.vehicle)) return NextResponse.json({ error: "Xe chưa được mở" }, { status: 403 });
-    let stored = await HillRun.findOne({ runId: run.runId }).lean();
-    // Closed daily boards accept no new runs. Previously accepted runs can retry wallet credit.
-    if (!stored && run.day && run.day !== currentHillDay()) return NextResponse.json({ error: "Đường ngày này đã khóa sổ" }, { status: 409 });
-    if (!stored) {
-      try { stored = await HillRun.findOneAndUpdate({ runId: run.runId }, { $setOnInsert: run }, { upsert: true, new: true }).lean(); }
-      catch (error) { if ((error as { code?: number }).code !== 11000) throw error; stored = await HillRun.findOne({ runId: run.runId }).lean(); }
-    }
-    if (!stored || stored.playerId !== run.playerId) return NextResponse.json({ error: "Mã lượt chạy không hợp lệ" }, { status: 409 });
-    await HillWallet.updateOne({ playerId: run.playerId, creditedRuns: { $ne: run.runId } }, { $inc: { coins: stored.coins }, $addToSet: { creditedRuns: run.runId } });
+    await withTransactionRetry(async session => {
+      let stored = await HillRun.findOne({ runId: run.runId }).session(session).lean();
+      if (!stored && run.day && run.day !== currentHillDay()) throw new PlayerAccessError("Đường ngày này đã khóa sổ", 409);
+      if (!stored) stored = await HillRun.findOneAndUpdate({ runId: run.runId }, { $setOnInsert: run }, { upsert: true, new: true, session }).lean();
+      if (!stored || stored.playerId !== run.playerId) throw new PlayerAccessError("Mã lượt chạy không hợp lệ", 409);
+      // Read/write the source wallet in the same transaction as the run: a
+      // concurrent guest merge must include this credit or force a retry.
+      const active = await HillWallet.findOne({ playerId: run.playerId, mergedTo: null }).session(session).lean();
+      if (!active) throw new PlayerAccessError("Tiến độ đã chuyển vào tài khoản. Hãy tải lại trang.", 409);
+      await HillWallet.updateOne({ playerId: run.playerId, mergedTo: null, creditedRuns: { $ne: run.runId } }, { $inc: { coins: stored.coins }, $addToSet: { creditedRuns: run.runId } }, { session });
+    });
     const updated = await HillWallet.findOne({ playerId: run.playerId }).orFail().lean();
-    return NextResponse.json({ wallet: { coins: updated.coins, unlocked: updated.unlocked }, board: await hillBoard(stored.map, stored.day ?? null, stored.playerId) });
-  } catch { return NextResponse.json({ error: "Chưa lưu được lượt chạy, bạn có thể thử lại" }, { status: 503 }); }
+    return NextResponse.json({ wallet: { coins: updated.coins, unlocked: updated.unlocked }, board: await hillBoard(run.map, run.day ?? null, run.playerId) });
+  } catch (error) { if (error instanceof PlayerAccessError) return NextResponse.json({ error: error.message }, { status: error.status }); return NextResponse.json({ error: "Chưa lưu được lượt chạy, bạn có thể thử lại" }, { status: 503 }); }
 }

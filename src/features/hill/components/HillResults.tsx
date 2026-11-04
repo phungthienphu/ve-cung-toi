@@ -1,5 +1,6 @@
 "use client";
 
+import { SaveProgressPrompt } from '@/features/account/components/AccountMenu';
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { HILL_JEEP, HILL_MAPS, HILL_VEHICLES, type HillBoard, type HillSnapshot, type HillVehicleId, type HillWallet } from "@shared/hill/types";
@@ -66,6 +67,7 @@ export function HillResults({
   return (
     <div className="hk-ui hk-result w-full max-w-md overflow-hidden rounded-[28px] border border-white/20 bg-emerald-950/95 text-center shadow-2xl landscape:grid landscape:max-w-2xl landscape:grid-cols-2 landscape:text-left">
       <div className="relative p-5 landscape:flex landscape:flex-col landscape:justify-center">
+        <SaveProgressPrompt />
         {newRecord && (
           <p className="mx-auto mb-2 w-fit -rotate-2 rounded-lg bg-amber-400 px-3 py-1 font-draw-display text-sm font-extrabold text-emerald-950 shadow-lg landscape:mx-0">🚩 KỶ LỤC MỚI!</p>
         )}

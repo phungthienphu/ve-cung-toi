@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/server/db/mongodb";
 import GameHistory from "@/server/models/GameHistory";
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     } = body as {
       gameType?: GameType;
       roomId: string;
-      players: { name: string; score: number }[];
+      players: { name: string; score: number; playerId?: string; won?: boolean; isBot?: boolean }[];
       rounds?: number;
       mode?: string;
       winnerName?: string | null;
@@ -37,10 +38,14 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
+    const expected = process.env.GAME_HISTORY_SECRET;
+    const provided = req.headers.get("x-game-history-secret") ?? "";
+    const verifiedReport = !!expected && Buffer.byteLength(expected) === Buffer.byteLength(provided) && timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
     await GameHistory.create({
+      verifiedReport,
       gameType: gameType && VALID_GAME_TYPES.includes(gameType) ? gameType : "draw",
       roomId,
-      players,
+      players: players.map(player => ({ name: player.name, score: player.score, ...(verifiedReport ? { playerId: player.playerId, won: player.won, isBot: player.isBot } : {}) })),
       rounds,
       mode,
       winnerName,

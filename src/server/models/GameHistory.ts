@@ -3,6 +3,9 @@ import mongoose, { Schema, type InferSchemaType } from "mongoose";
 const PlayerResultSchema = new Schema(
   {
     name: { type: String, required: true },
+    playerId: { type: String, select: false },
+    won: { type: Boolean },
+    isBot: { type: Boolean, default: false },
     score: { type: Number, required: true },
   },
   { _id: false }
@@ -27,6 +30,7 @@ const GameHistorySchema = new Schema(
   {
     gameType: { type: String, enum: ["draw", "tank", "soccer", "werewolf", "battleship", "oldmaid"], default: "draw" },
     roomId: { type: String, required: true },
+    verifiedReport: { type: Boolean, default: false },
     // The at-a-glance scoreboard for the summary list — draw's real score,
     // tank's kill-based score, soccer's goals. Full per-player breakdowns
     // (if any) live in `detail`.
@@ -41,6 +45,8 @@ const GameHistorySchema = new Schema(
   },
   { timestamps: true }
 );
+
+GameHistorySchema.index({ "players.playerId": 1, verifiedReport: 1, playedAt: -1 });
 
 export type GameHistoryDoc = InferSchemaType<typeof GameHistorySchema>;
 

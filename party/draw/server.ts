@@ -559,10 +559,10 @@ export class GameRoom extends Server<Env> {
       if (!base) return;
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-game-history-secret": this.env.GAME_HISTORY_SECRET ?? "" },
         body: JSON.stringify({
           roomId: this.name,
-          players: [...this.players.values()].map((p) => ({ name: p.name, score: p.score })),
+          players: [...this.players.values()].map((p) => ({ playerId: p.id, name: p.name, score: p.score, won: p.score === Math.max(...[...this.players.values()].map(player => player.score)) })),
           rounds: this.config.rounds,
           playedAt: new Date().toISOString(),
         }),

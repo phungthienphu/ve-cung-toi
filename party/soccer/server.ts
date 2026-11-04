@@ -601,11 +601,11 @@ export class SoccerRoom extends Server<Env> {
       const players = [...this.players.values()];
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-game-history-secret": this.env.GAME_HISTORY_SECRET ?? "" },
         body: JSON.stringify({
           gameType: "soccer",
           roomId: this.name,
-          players: players.map((p) => ({ name: p.name, score: p.goals })),
+          players: players.map((p) => ({ playerId: p.id, name: p.name, score: p.goals, isBot: p.isBot, won: !!this.winningTeam && p.team === this.winningTeam })),
           mode: `${this.teamSize}v${this.teamSize}`,
           winningTeam: this.winningTeam,
           teamScores: this.teamScores,

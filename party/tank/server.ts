@@ -18,10 +18,10 @@ export class TankRoom extends Server<Env> {
       const base = this.env.NEXT_APP_URL;
       if (!base) return;
       void fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", "x-game-history-secret": this.env.GAME_HISTORY_SECRET ?? "" },
         body: JSON.stringify({
           gameType: "tank", roomId: this.name,
-          players: players.map(p => ({ name: p.name, score: p.score })),
+          players: players.map(p => ({ playerId: p.id, name: p.name, score: p.score, isBot: !!p.bot, won: state.mode === "team" ? !!state.winningTeam && p.team === state.winningTeam : p.id === state.winnerId })),
           mode: state.mode, winnerName: players.find(p => p.id === state.winnerId)?.name ?? null,
           winningTeam: state.winningTeam, teamScores: state.mode === "team" ? state.teamScores : undefined,
           detail: players.map(p => ({ name: p.name, color: p.color, team: p.team, score: p.score, deaths: p.deaths, damageDealt: p.damageDealt, damageTaken: p.damageTaken })),

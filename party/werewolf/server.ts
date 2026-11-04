@@ -882,11 +882,11 @@ export class WerewolfRoom extends Server<Env> {
 
       await fetch(`${base.replace(/\/$/, "")}/api/game-history`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-game-history-secret": this.env.GAME_HISTORY_SECRET ?? "" },
         body: JSON.stringify({
           gameType: "werewolf",
           roomId: this.name,
-          players: detail.map((player) => ({ name: player.name, score: player.won ? 1 : 0 })),
+          players: detail.map((player) => ({ playerId: player.playerId, name: player.name, score: player.won ? 1 : 0, won: player.won })),
           mode: `${detail.length} người · ${this.day} ngày`,
           winningTeam: this.winner,
           detail: {

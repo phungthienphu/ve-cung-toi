@@ -1,0 +1,13 @@
+import Link from 'next/link';
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title:'Quyền riêng tư' };
+export default function PrivacyPage() {
+  return <main className="min-h-app bg-amber-50 px-5 py-12 text-stone-800"><article className="mx-auto max-w-2xl space-y-6 leading-7">
+    <Link href="/" className="underline">← Về trang chủ</Link><h1 className="text-3xl font-bold">Quyền riêng tư</h1><p>Cập nhật ngày 04/11/2026. Bạn có thể chơi khách mà không cần tạo tài khoản.</p>
+    <h2 className="text-xl font-bold">Khi đăng nhập Google</h2><p>Web lưu mã tài khoản Google, email, tên và đường dẫn ảnh đại diện để nhận biết tài khoản và hiển thị menu. Web không nhận hay lưu mật khẩu Google và không xin quyền đọc Gmail, danh bạ hoặc tệp của bạn. Cookie đăng nhập giúp duy trì phiên tối đa 30 ngày.</p>
+    <h2 className="text-xl font-bold">Tiến độ và dữ liệu trò chơi</h2><p>Web lưu xu, xe đã mở, lượt chạy/kỷ lục và kết quả trận có mã người chơi trong MongoDB. Hồ sơ tài khoản hiển thị thống kê riêng từng game; lịch sử của mã khách đã gộp được liên kết với tài khoản. Tên chơi và thành tích có thể xuất hiện trên bảng xếp hạng hoặc lịch sử trận công khai; đừng dùng tên thật nếu bạn không muốn công khai. Trình duyệt lưu mã khách, cài đặt và lượt chơi chưa đồng bộ. Khi đăng nhập, tiến độ khách trên máy này được chuyển một lần vào tài khoản. Đăng xuất không xoá tiến độ tài khoản; máy sẽ dùng mã khách riêng.</p>
+    <h2 className="text-xl font-bold">Dịch vụ và thống kê</h2><p>Google xử lý đăng nhập; Vercel phục vụ web; MongoDB lưu tài khoản và tiến độ; Cloudflare vận hành phòng chơi và thống kê lượt truy cập bằng Web Analytics không dùng cookie. Các dịch vụ này xử lý dữ liệu theo chính sách riêng của họ. Không bán thông tin tài khoản.</p>
+    <h2 className="text-xl font-bold">Dành cho người chơi nhỏ tuổi</h2><p>Không nhập địa chỉ, số điện thoại, trường/lớp hay thông tin nhạy cảm vào tên chơi hoặc chat. Nếu bạn chưa đủ tuổi tự sử dụng tài khoản Google theo quy định nơi ở, hãy nhờ cha mẹ/người giám hộ hỗ trợ hoặc tiếp tục chơi khách.</p>
+    <h2 className="text-xl font-bold">Quản lý dữ liệu</h2><p>Bạn có thể đăng xuất trong menu tài khoản và xoá dữ liệu lưu trên trình duyệt bằng cài đặt trình duyệt. Việc này không xoá tài khoản, xu hoặc kỷ lục trên máy chủ. Để yêu cầu xoá dữ liệu tài khoản, mở một yêu cầu tại <a href="https://github.com/phungthienphu/ve-cung-toi/issues" className="underline">kênh hỗ trợ của dự án</a>; chỉ nêu yêu cầu ban đầu, không đăng email hay thông tin riêng tư công khai. Chủ web cần xác minh quyền sở hữu trước khi xử lý.</p>
+  </article></main>;
+}

@@ -15,7 +15,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p party/tsconfig.json",
     "test:tank": "node --import tsx scripts/tank-simulation.test.ts",
     "test:hill": "node --import tsx scripts/hill-phase2.test.ts && node --import tsx scripts/hill-race.test.ts && node --import tsx scripts/hill-sky-road.test.ts && node --import tsx scripts/hill-smoke.test.ts",
-    "test:layout": "node --import tsx scripts/css-layout.test.ts"
+    "test:layout": "node --import tsx scripts/css-layout.test.ts",
+    "test:account": "node --import tsx scripts/account-client.test.ts",
+    "test:account:merge": "node --import tsx scripts/account-merge.integration.ts",
+    "test:account:api": "node --import tsx scripts/account-api.integration.ts",
+    "dev:account-review": "node --import tsx scripts/account-review.ts",
+    "test:account:profile": "node --import tsx scripts/account-profile.integration.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -26,6 +31,7 @@
     "mongoose": "^8.9.5",
     "nanoid": "^5.0.9",
     "next": "^15.1.4",
+    "next-auth": "^5.0.0-beta.32",
     "openai": "^7.45.1",
     "partyserver": "0.5.10",
     "partysocket": "^1.0.2",

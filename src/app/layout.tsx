@@ -1,3 +1,5 @@
+import { auth, googleLoginEnabled } from '@/auth';
+import { AccountProvider } from '@/features/account/components/AccountProvider';
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
@@ -24,7 +26,8 @@ const ADS_ENABLED = false;
 const CF_ANALYTICS_TOKEN =
   process.env.NODE_ENV === "production" ? (process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN ?? "f8df945b818b452abce98d044db19508") : "";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = googleLoginEnabled ? await auth() : null;
   return (
     // Monetag's tag stamps attributes (e.g. data-fp) on <html> before React
     // hydrates; that mismatch is expected and harmless.
@@ -43,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className="min-h-app text-slate-900 antialiased">
-        {children}
+        <AccountProvider session={session} enabled={googleLoginEnabled}>{children}</AccountProvider>
         {CF_ANALYTICS_TOKEN && (
           <Script
             defer
