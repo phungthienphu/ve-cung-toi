@@ -8,9 +8,10 @@ const Context = createContext<State>({ revision: 0, supportRevision: 0, online: 
 export const useCommunityRealtime = () => useContext(Context);
 /** One socket per signed-in tab, shared by chat, invites and the admin support inbox. */
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession(); const playerId = session?.user?.playerId;
+  const { data: session, status } = useSession(); const playerId = session?.user?.playerId;
   const [state, setState] = useState<State>({ revision: 0, supportRevision: 0, online: [], connected: false });
   useEffect(() => {
+    if (status === 'loading') return;
     resetCommunityCache(playerId ?? '');
     if (!playerId) return;
     setState({ revision: 0, supportRevision: 0, online: [], connected: false });
@@ -40,6 +41,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const focus = () => { if (document.hidden) return; invalidateCommunity(); if (socket.readyState === WebSocket.CLOSED) socket.reconnect(); };
     window.addEventListener('online', focus); window.addEventListener('focus', focus); document.addEventListener('visibilitychange', focus);
     return () => { stopped = true; window.removeEventListener('online', focus); window.removeEventListener('focus', focus); document.removeEventListener('visibilitychange', focus); socket.close(); };
-  }, [playerId]);
+  }, [playerId, status]);
   return <Context.Provider value={playerId ? state : { revision: 0, supportRevision: 0, online: [], connected: false }}>{children}</Context.Provider>;
 }
