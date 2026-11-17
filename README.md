@@ -83,6 +83,49 @@ Lưu ý: `postinstall` chạy `patch-package` để áp bản vá trong `patches
    - `NEXT_PUBLIC_PARTYKIT_HOST` — domain server realtime đã deploy ở trên (không có `https://`, ví dụ `ve-cung-toi.<subdomain>.workers.dev`).
 3. Deploy.
 
+### Next.js dự phòng trên Cloudflare Workers
+
+Web/API: https://ve-cung-toi-web.phungthienphu.workers.dev.
+Realtime tiếp tục dùng Worker `ve-cung-toi` hiện có. Cấu hình web nằm riêng trong
+`wrangler.web.jsonc`; không dùng `party:deploy` để deploy web.
+
+```bash
+npm run build:cloudflare
+npm run deploy:cloudflare
+```
+
+Build lấy URL mặc định từ `wrangler.web.jsonc`. Có thể đặt cấu hình production
+trong `.env.cloudflare.local` (đã được Git bỏ qua). Các secret runtime như
+`MONGODB_URI`, `MONGODB_DB_NAME`, `AUTH_SECRET`, Google OAuth, mật khẩu gia sư,
+AI router và `COMMUNITY_REALTIME_SECRET` phải được đặt riêng trên web Worker:
+
+```bash
+npx wrangler secret put MONGODB_URI --config wrangler.web.jsonc
+# Hoặc nhập nhiều secret từ một file JSON riêng tư:
+npx wrangler secret bulk /path/to/secrets.json --config wrangler.web.jsonc
+```
+
+Giữ MongoDB hiện tại. Workers tạo kết nối và model riêng cho từng request,
+đóng kết nối sau khi response stream hoàn tất; Node/Vercel vẫn dùng connection
+cache cũ. Mật khẩu vẫn dùng Argon2id cùng tham số và định dạng hash đã lưu,
+với implementation JavaScript tương thích Workers. Ảnh dùng file gốc để không
+phụ thuộc Cloudflare Images.
+
+Khi đổi domain, cập nhật `AUTH_URL`, `AUTH_PUBLIC_ORIGIN`, `NEXT_PUBLIC_SITE_URL`,
+Google OAuth Authorized redirect URI (`<origin>/api/auth/callback/google`) và
+secret `NEXT_APP_URL` trên realtime Worker. Hai Worker phải có cùng secret
+`COMMUNITY_REALTIME_SECRET`; nếu dùng thống kê tài khoản cho ván mới, đặt thêm
+`GAME_HISTORY_SECRET` giống nhau ở cả hai. Người dùng cần đăng nhập lại trên
+domain mới; dữ liệu localStorage ở domain Vercel không tự chuyển sang.
+
+Kiểm tra phần tương thích runtime trước khi release:
+
+```bash
+npm run test:cloudflare:auth
+npm run test:cloudflare:db
+npm run typecheck
+```
+
 ### MongoDB Atlas
 
 Tạo cluster free tier, tạo database user, whitelist IP `0.0.0.0/0` (hoặc IP cụ thể của Vercel nếu muốn chặt hơn), lấy connection string dán vào `MONGODB_URI`.

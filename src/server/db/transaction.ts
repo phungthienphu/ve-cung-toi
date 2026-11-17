@@ -1,8 +1,9 @@
-import mongoose, { type ClientSession } from 'mongoose';
+import { type ClientSession } from 'mongoose';
+import { databaseMongoose } from './request-scope';
 
 /** Driver retries transient conflicts; also retry concurrent unique upserts. */
 export async function withTransactionRetry(work: (session: ClientSession) => Promise<void>) {
-  const session = await mongoose.startSession();
+  const session = await databaseMongoose().startSession();
   try {
     for (let attempt = 0; ; attempt++) {
       try { await session.withTransaction(() => work(session)); return; }

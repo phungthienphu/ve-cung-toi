@@ -1,4 +1,5 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from '../db/model';
+import { Schema } from 'mongoose';
 const edge = new Schema({ key: { type: String, unique: true, required: true }, from: String, to: String, status: { type: String, enum: ['pending', 'accepted'], default: 'pending' } }, { timestamps: true });
 const message = new Schema({ from: { type: String, index: true }, to: { type: String, index: true }, text: String, readAt: Date }, { timestamps: true });
 message.index({ from: 1, to: 1, createdAt: -1 });

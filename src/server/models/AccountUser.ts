@@ -1,4 +1,6 @@
-import mongoose, { Schema, type InferSchemaType } from 'mongoose';
+import type { Model } from 'mongoose';
+import mongoose from '../db/model';
+import { Schema, type InferSchemaType } from 'mongoose';
 
 const schema = new Schema({
   googleSubject: { type: String },
@@ -19,4 +21,4 @@ schema.index({ googleSubject: 1 }, { unique: true, partialFilterExpression: { go
 schema.index({ emailNormalized: 1 }, { unique: true, partialFilterExpression: { emailNormalized: { $type: 'string' } } });
 schema.index({ username: 1 }, { unique: true, partialFilterExpression: { username: { $type: 'string' } } });
 type Account = InferSchemaType<typeof schema>;
-export const AccountUser = (mongoose.models.AccountUser as mongoose.Model<Account> | undefined) ?? mongoose.model<Account>('AccountUser', schema);
+export const AccountUser = (mongoose.models.AccountUser as Model<Account> | undefined) ?? mongoose.model<Account>('AccountUser', schema);

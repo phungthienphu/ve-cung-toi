@@ -1,4 +1,5 @@
-import mongoose, { Schema, type Model, type Types } from "mongoose";
+import mongoose from '../db/model';
+import { Schema, type Model, type Types } from "mongoose";
 
 // The tutor's attendance book and tuition bills (docs/diem-danh-hoc-phi-spec.md).
 // A class is whoever is taught together and billed to one parent; it has

@@ -1,4 +1,5 @@
-import mongoose, { Schema, type Model } from "mongoose";
+import mongoose from '../db/model';
+import { Schema, type Model } from "mongoose";
 
 // Every reading the fortune teller gives — the AI one or the quick offline
 // one — for the admin's history on /card-draw. Written by /api/fortune only.

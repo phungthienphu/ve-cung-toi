@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { databaseMongoose, databaseRequestScope } from './request-scope';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME;
@@ -18,6 +19,20 @@ global._mongooseCache = cache;
 export async function dbConnect() {
   if (!MONGODB_URI) {
     throw new Error("MONGODB_URI is not set. Add it to .env.local (see .env.example).");
+  }
+  const scope = databaseRequestScope();
+  if (scope) {
+    scope.connecting ??= databaseMongoose().connect(MONGODB_URI, {
+      bufferCommands: false,
+      dbName: MONGODB_DB_NAME || undefined,
+      maxPoolSize: 3,
+      minPoolSize: 0,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      autoIndex: false,
+      autoCreate: false,
+    }).catch(error => { scope.connecting = undefined; throw error; });
+    return scope.connecting;
   }
   if (cache.conn) return cache.conn;
   if (!cache.promise) {

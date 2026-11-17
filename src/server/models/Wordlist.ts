@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType } from "mongoose";
+import mongoose from '../db/model';
+import { Schema, type InferSchemaType } from "mongoose";
 
 const WordlistSchema = new Schema(
   {

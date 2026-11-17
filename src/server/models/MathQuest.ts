@@ -1,4 +1,5 @@
-import mongoose, { Schema, type Model, type Types } from "mongoose";
+import mongoose from '../db/model';
+import { Schema, type Model, type Types } from "mongoose";
 
 // Math Quest (docs/math-quest-design-spec.md): the tutor's students, what
 // each has been taught / reviewed, and which lesson drafts the tutor has

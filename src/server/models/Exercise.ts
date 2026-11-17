@@ -1,4 +1,5 @@
-import mongoose, { Schema, type Model, type Types } from "mongoose";
+import mongoose from '../db/model';
+import { Schema, type Model, type Types } from "mongoose";
 import type { ExerciseCheck } from "@/features/mathquest/lib/mathCheck";
 import type { ExerciseKind, ExerciseLevel, ExerciseStyle, LevelChoice, Verified } from "@/features/mathquest/lib/exerciseTypes";
 

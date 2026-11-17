@@ -13,8 +13,9 @@ export async function takeLimit(scope: string, subject: string, maximum: number,
   }
   return !!row && row.count <= maximum;
 }
-/** Only Vercel's overwritten header is trusted. Custom proxies must set AUTH_TRUST_PROXY=true. */
+/** Trust provider-overwritten headers only on the corresponding runtime. */
 export function requestIp(headers: Headers) {
+  if (process.env.CLOUDFLARE_WEB === 'true') return headers.get('cf-connecting-ip')?.trim() || 'unknown';
   if (process.env.VERCEL) return headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   if (process.env.AUTH_TRUST_PROXY === 'true') return headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   return 'local';

@@ -1,4 +1,6 @@
-import mongoose, { Schema, type InferSchemaType } from 'mongoose';
+import type { Model } from 'mongoose';
+import mongoose from '../db/model';
+import { Schema, type InferSchemaType } from 'mongoose';
 
 const registrationSchema = new Schema({
   emailNormalized: { type: String, required: true, unique: true },
@@ -27,6 +29,6 @@ limitSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 type Registration = InferSchemaType<typeof registrationSchema>;
 type Token = InferSchemaType<typeof tokenSchema>;
 type Limit = InferSchemaType<typeof limitSchema>;
-export const AccountRegistration = (mongoose.models.AccountRegistration as mongoose.Model<Registration> | undefined) ?? mongoose.model<Registration>('AccountRegistration', registrationSchema);
-export const AccountToken = (mongoose.models.AccountToken as mongoose.Model<Token> | undefined) ?? mongoose.model<Token>('AccountToken', tokenSchema);
-export const AuthRateLimit = (mongoose.models.AuthRateLimit as mongoose.Model<Limit> | undefined) ?? mongoose.model<Limit>('AuthRateLimit', limitSchema);
+export const AccountRegistration = (mongoose.models.AccountRegistration as Model<Registration> | undefined) ?? mongoose.model<Registration>('AccountRegistration', registrationSchema);
+export const AccountToken = (mongoose.models.AccountToken as Model<Token> | undefined) ?? mongoose.model<Token>('AccountToken', tokenSchema);
+export const AuthRateLimit = (mongoose.models.AuthRateLimit as Model<Limit> | undefined) ?? mongoose.model<Limit>('AuthRateLimit', limitSchema);

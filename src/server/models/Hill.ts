@@ -1,4 +1,6 @@
-import mongoose, { Schema, type InferSchemaType } from "mongoose";
+import type { Model } from 'mongoose';
+import mongoose from '../db/model';
+import { Schema, type InferSchemaType } from "mongoose";
 
 const runSchema = new Schema({
   runId: { type: String, required: true, unique: true },
@@ -24,5 +26,5 @@ const walletSchema = new Schema({
 }, { timestamps: true });
 type Run = InferSchemaType<typeof runSchema>;
 type Wallet = InferSchemaType<typeof walletSchema>;
-export const HillRun = (mongoose.models.HillRun as mongoose.Model<Run> | undefined) ?? mongoose.model<Run>("HillRun", runSchema);
-export const HillWallet = (mongoose.models.HillWallet as mongoose.Model<Wallet> | undefined) ?? mongoose.model<Wallet>("HillWallet", walletSchema);
+export const HillRun = (mongoose.models.HillRun as Model<Run> | undefined) ?? mongoose.model<Run>("HillRun", runSchema);
+export const HillWallet = (mongoose.models.HillWallet as Model<Wallet> | undefined) ?? mongoose.model<Wallet>("HillWallet", walletSchema);

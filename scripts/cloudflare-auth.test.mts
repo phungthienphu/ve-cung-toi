@@ -1,0 +1,22 @@
+/** Native Argon2 fixture proves existing passwords survive the Workers migration. */
+import assert from 'node:assert/strict';
+import { hashPassword, checkPassword } from '../src/features/account/server/password';
+import { requestIp } from '../src/features/account/server/rate-limit';
+const password = "Cloudflare migration mật khẩu 2026 ";
+const nativeHash = "$argon2id$v=19$m=19456,t=2,p=1$d/7gVXfSnwcAA6AX4AVEng$wFEUdAXKTjZ2Kx7NgdbfzJUF855DAw9UmVPCyjLgJVc";
+assert.ok(await checkPassword(nativeHash, password));
+assert.equal(await checkPassword(nativeHash, password.trim()), false);
+assert.equal(await checkPassword(nativeHash, 'wrong-password'), false);
+const fresh = await hashPassword(password);
+assert.ok(await checkPassword(fresh, password));
+assert.equal(await checkPassword(null, password), false);
+assert.equal(await checkPassword('malformed', password), false);
+assert.equal(await checkPassword(nativeHash.replace('m=19456', 'm=999999999'), password), false);
+const oldCloudflare = process.env.CLOUDFLARE_WEB, oldVercel = process.env.VERCEL;
+process.env.CLOUDFLARE_WEB = 'true';
+process.env.VERCEL = '1';
+assert.equal(requestIp(new Headers({ 'cf-connecting-ip': '203.0.113.5', 'x-vercel-forwarded-for': '192.0.2.1', 'x-forwarded-for': '192.0.2.2' })), '203.0.113.5');
+assert.equal(requestIp(new Headers({ 'x-forwarded-for': '192.0.2.2' })), 'unknown');
+if (oldCloudflare === undefined) delete process.env.CLOUDFLARE_WEB; else process.env.CLOUDFLARE_WEB = oldCloudflare;
+if (oldVercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = oldVercel;
+console.log('Cloudflare auth passed: native password compatibility, whitespace, invalid hashes, cost bounds and trusted client IP.');

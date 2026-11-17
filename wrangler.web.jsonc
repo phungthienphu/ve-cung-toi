@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ve-cung-toi-web",
+  "main": "cloudflare/web.ts",
+  "workers_dev": true,
+  "preview_urls": false,
+  "compatibility_date": "2026-11-17",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "ve-cung-toi-web" }
+  ],
+  "vars": {
+    "CLOUDFLARE_WEB": "true",
+    "AUTH_TRUST_HOST": "true",
+    "AUTH_URL": "https://ve-cung-toi-web.phungthienphu.workers.dev",
+    "AUTH_PUBLIC_ORIGIN": "https://ve-cung-toi-web.phungthienphu.workers.dev",
+    "NEXT_PUBLIC_SITE_URL": "https://ve-cung-toi-web.phungthienphu.workers.dev",
+    "NEXT_PUBLIC_PARTYKIT_HOST": "ve-cung-toi.phungthienphu.workers.dev",
+    "NEXT_PUBLIC_COMMUNITY_HOST": "ve-cung-toi.phungthienphu.workers.dev"
+  },
+  "observability": { "enabled": true }
+}
